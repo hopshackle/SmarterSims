@@ -293,9 +293,9 @@ class MCTSChildTest {
         repeat(100) {
             rolloutActions.add(childAgent.rolloutPolicy(simpleMazeGame, simpleMazeGame.possibleActions(0)))
         }
-        assertEquals(rolloutActions.count{it == NoAction}.toDouble(), 33.0, 10.0)
-        assertEquals(rolloutActions.count{it == Move(0, Direction.LEFT)}.toDouble(), 33.0, 10.0)
-        assertEquals(rolloutActions.count{it == Move(0, Direction.RIGHT)}.toDouble(), 33.0, 10.0)
+        assertEquals(rolloutActions.count{it == NoAction}.toDouble(), 33.0, 12.0)
+        assertEquals(rolloutActions.count{it == Move(0, Direction.LEFT)}.toDouble(), 33.0, 12.0)
+        assertEquals(rolloutActions.count{it == Move(0, Direction.RIGHT)}.toDouble(), 33.0, 12.0)
         assertEquals(childAgent.treeCalls, 0)
         assertEquals(childAgent.expansionCalls, 0)
         assertEquals(childAgent.rolloutCalls, 100)

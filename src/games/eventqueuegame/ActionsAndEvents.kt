@@ -177,8 +177,20 @@ data class LaunchExpedition(val player: PlayerId, val from: Int, val toCode: Int
         val to = destinationCity(world, from, toCode)
         return world.cities[from].owner == player &&
                 world.cities[from].pop > 0 &&
-                from != to
+                from != to &&
+                meetsMinStrengthCriterion(world)
     }
+
+    fun meetsMinStrengthCriterion(world: World): Boolean {
+        val sourceCityPop = world.cities[from].pop
+        val maxActions = world.cities.size.toDouble()
+        val to = destinationCity(world, from, toCode)
+        var forcesSent = ((proportion + 1.0) / maxActions * sourceCityPop)
+        if (world.cities[toCode].owner != player && world.cities[to].pop > forcesSent / world.params.minAssaultFactor[playerIDToNumber(player)])
+            return false
+        return true
+    }
+
 
     // only visible to planning player
     override fun visibleTo(player: Int, state: ActionAbstractGameState) = player == playerIDToNumber(this.player)

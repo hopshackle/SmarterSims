@@ -9,12 +9,14 @@ import kotlin.random.Random
 fun main() {
     val params = EventGameParams(
             fogOfWar = true,
+            fogStrengthAssumption = doubleArrayOf(5.0, 10.0),
             nAttempts = 20,
             citySeparation = 50,
             minConnections = 3,
             speed = 5.0,
             planningHorizon = 200,
             OODALoop = intArrayOf(25, 25),
+            minAssaultFactor = doubleArrayOf(3.0, 1.0),
             blueLanchesterCoeff = 0.05,
             redLanchesterCoeff = 0.05,
             blueLanchesterExp = 0.5,
@@ -28,18 +30,18 @@ fun main() {
 
 
     game.scoreFunction[PlayerId.Blue] = compositeScoreFunction(
-            simpleScoreFunction(5.0, 1.0),
+            simpleScoreFunction(5.0, 1.0, 0.0, 0.0),
             visibilityScore(2.0, 1.0)
             //   game.scoreFunction = specificTargetScoreFunction(50.0)
     )
     game.scoreFunction[PlayerId.Red] = compositeScoreFunction(
-            simpleScoreFunction(5.0, 1.0),
+            simpleScoreFunction(5.0, 1.0, 0.0, 0.0),
             visibilityScore(0.0, 0.0)
             //   game.scoreFunction = specificTargetScoreFunction(50.0)
     )
     StatsCollator.clear()
     val blueAgent = SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40,
-            useMutationTransducer = false, probMutation = 0.1,
+            useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = false,
             horizon = params.planningHorizon)
             // , opponentModel = SimpleActionEvoAgent(SimpleEvoAgent(name = "OppEA", nEvals = 10, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon))
     )

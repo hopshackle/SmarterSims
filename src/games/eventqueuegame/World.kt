@@ -183,7 +183,7 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
         val state = copy()
         state.cities = ArrayList(cities.withIndex().map { (i, c) ->
             if (checkVisible(i, perspective)) City(c.location, c.radius, c.pop, c.owner, c.name, c.fort)
-            else City(c.location, c.radius, 0.0, PlayerId.Fog, c.name, c.fort)
+            else City(c.location, c.radius, params.fogStrengthAssumption[playerIDToNumber(perspective)], PlayerId.Fog, c.name, c.fort)
         })
         state.currentTransits = ArrayList(currentTransits.filter { t -> checkVisible(t, perspective) }) // each Transit is immutable, but not the list of active ones
         state.routes = routes       // immutable, so safe

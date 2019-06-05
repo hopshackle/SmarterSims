@@ -34,6 +34,7 @@ data class EventGameParams(
         val maxDistance: Int = 1000,
         val percentFort: Double = 0.25,
         val fogOfWar: Boolean = false,
+        val fogStrengthAssumption: DoubleArray = doubleArrayOf(1.0, 1.0),
         // force and combat attributes
         val speed: Double = 10.0,
         val fortAttackerCoeffDivisor: Double = 3.0,
@@ -44,6 +45,7 @@ data class EventGameParams(
         val redLanchesterExp: Double = 1.0,  // should be between 0.0 and 1.0
         // agent behaviour
         val OODALoop: IntArray = intArrayOf(10, 10),
+        val minAssaultFactor:DoubleArray = doubleArrayOf(0.1, 0.1),
         val planningHorizon: Int = 100,
         val maxActionsPerState: Int = 7
 
@@ -72,8 +74,8 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     }
 
     var scoreFunction: MutableMap<PlayerId, (LandCombatGame, Int) -> Double> = mutableMapOf(
-            PlayerId.Blue to simpleScoreFunction(5.0, 1.0),
-            PlayerId.Red to simpleScoreFunction(5.0, 1.0)
+            PlayerId.Blue to simpleScoreFunction(1.0, 0.0, -1.0, 0.0),
+            PlayerId.Red to simpleScoreFunction(1.0, 0.0, -1.0, 0.0)
     )
 
     override fun copy(perspective: Int): LandCombatGame {

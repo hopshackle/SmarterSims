@@ -11,15 +11,15 @@ class ObjectiveFunctionTest {
     fun simpleObjectiveTest() {
         val startState = game.copy()
         startState.scoreFunction = mutableMapOf(
-                PlayerId.Blue to simpleScoreFunction(5.0, 1.0),
-                PlayerId.Red to simpleScoreFunction(5.0, 1.0)
+                PlayerId.Blue to simpleScoreFunction(5.0, 1.0, 0.0, -1.0),
+                PlayerId.Red to simpleScoreFunction(5.0, 1.0, 0.0, -1.0)
         )
-        assertEquals(startState.score(0), 0.0)
-        assertEquals(startState.score(1), -0.0)
+        assertEquals(startState.score(0), 5.0)
+        assertEquals(startState.score(1), 5.0)
 
         LaunchExpedition(PlayerId.Red, 1, 1, 1, 0).apply(startState)
         startState.next(5)
-        assertEquals(startState.score(0), -5.0)
-        assertEquals(startState.score(1), 5.0)
+        assertEquals(startState.score(0), 5.0)
+        assertEquals(startState.score(1), 10.0)
     }
 }

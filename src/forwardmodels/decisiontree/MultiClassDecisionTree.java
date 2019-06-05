@@ -1,6 +1,4 @@
 package forwardmodels.decisiontree;
-import games.sokoban.Grid;
-import jdk.jshell.spi.ExecutionControl;
 import weka.classifiers.trees.J48;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
