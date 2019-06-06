@@ -145,17 +145,26 @@ data class Wait(val playerRef: Int, val wait: Int) : Action {
 
 data class LaunchExpedition(val player: PlayerId, val from: Int, val toCode: Int, val proportion: Int, val wait: Int) : Action {
 
+    fun forcesSent(state: ActionAbstractGameState): Double {
+        if (state is LandCombatGame) {
+            with(state.world) {
+                val sourceCityPop = cities[from].pop
+                var forcesSent = ((proportion + 1.0) / state.nActions() * sourceCityPop)
+                if (forcesSent < 1.0) forcesSent = Math.min(1.0, sourceCityPop)
+                return forcesSent
+            }
+        }
+        return -1.0
+    }
+
     override fun apply(state: ActionAbstractGameState): Int {
         if (state is LandCombatGame) {
             val world = state.world
-            val to = destinationCity(world, from, toCode)
-            if (isValid(world)) {
-                val sourceCityPop = world.cities[from].pop
-                val maxActions = world.cities.size.toDouble()
+            val to = destinationCity(state)
+            if (isValid(state)) {
                 val distance = world.cities[from].location.distanceTo(world.cities[to].location)
                 val arrivalTime = state.nTicks() + (distance / world.params.speed).toInt()
-                var forcesSent = ((proportion + 1.0) / maxActions * sourceCityPop)
-                if (forcesSent < 1.0) forcesSent = Math.min(1.0, sourceCityPop)
+                val forcesSent = forcesSent(state)
                 val transit = Transit(forcesSent, from, to, player, state.nTicks(), arrivalTime)
                 // we execute the troop departure immediately
                 TransitStart(transit).apply(state)
@@ -166,28 +175,34 @@ data class LaunchExpedition(val player: PlayerId, val from: Int, val toCode: Int
         return state.nTicks() + wait
     }
 
-    private fun destinationCity(world: World, from: Int, toCode: Int): Int {
-        val routes = world.allRoutesFromCity[from] ?: emptyList()
+    fun destinationCity(state: LandCombatGame): Int {
+        val routes = state.world.allRoutesFromCity[from] ?: emptyList()
         if (routes.isEmpty())
             throw AssertionError("Should not be empty")
         return routes[toCode % routes.size].toCity
     }
 
-    fun isValid(world: World): Boolean {
-        val to = destinationCity(world, from, toCode)
-        return world.cities[from].owner == player &&
-                world.cities[from].pop > 0 &&
+    fun isValid(state: LandCombatGame): Boolean {
+        val to = destinationCity(state)
+        return state.world.cities[from].owner == player &&
+                state.world.cities[from].pop > 0 &&
                 from != to &&
-                meetsMinStrengthCriterion(world)
+                meetsMinStrengthCriterion(state)
     }
 
-    fun meetsMinStrengthCriterion(world: World): Boolean {
-        val sourceCityPop = world.cities[from].pop
-        val maxActions = world.cities.size.toDouble()
-        val to = destinationCity(world, from, toCode)
-        var forcesSent = ((proportion + 1.0) / maxActions * sourceCityPop)
-        if (world.cities[toCode].owner != player && world.cities[to].pop > forcesSent / world.params.minAssaultFactor[playerIDToNumber(player)])
-            return false
+    fun meetsMinStrengthCriterion(state: LandCombatGame): Boolean {
+        val targetCity = destinationCity(state)
+        val forceStrength = forcesSent(state)
+
+        with(state.world) {
+            if (cities[toCode].owner != player && cities[targetCity].pop > forceStrength / params.minAssaultFactor[playerIDToNumber(player)])
+                return false
+            val forcesOnArc = currentTransits
+                    .filter { it.fromCity == targetCity && it.toCity == from && it.playerId != player }
+                    .sumByDouble(Transit::nPeople)
+            if (forcesOnArc > forceStrength / params.minAssaultFactor[playerIDToNumber(player)])
+                return false
+        }
         return true
     }
 

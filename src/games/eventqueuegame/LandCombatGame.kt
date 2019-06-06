@@ -125,7 +125,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         // if we take a real action, then we must wait for a minimum period before the next one
         val playerId = numberToPlayerID(player)
         val proposedAction = LaunchExpedition(playerId, gene[0], gene[1], gene[2], max(gene[3], world.params.OODALoop[player]))
-        if (!proposedAction.isValid(this.world))
+        if (!proposedAction.isValid(this))
             return Wait(player, max(gene[3], 1))
         return proposedAction
     }
