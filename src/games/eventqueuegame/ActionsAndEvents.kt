@@ -195,7 +195,8 @@ data class LaunchExpedition(val player: PlayerId, val from: Int, val toCode: Int
         val forceStrength = forcesSent(state)
 
         with(state.world) {
-            if (cities[toCode].owner != player && cities[targetCity].pop > forceStrength / params.minAssaultFactor[playerIDToNumber(player)])
+            if (cities[targetCity].owner == player) return true
+            if (cities[targetCity].pop > forceStrength / params.minAssaultFactor[playerIDToNumber(player)])
                 return false
             val forcesOnArc = currentTransits
                     .filter { it.fromCity == targetCity && it.toCity == from && it.playerId != player }
