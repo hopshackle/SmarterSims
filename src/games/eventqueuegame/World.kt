@@ -106,9 +106,9 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
             var n = 0
             for (i in 0 until nAttempts) {
                 val isFort = random.nextDouble() < percentFort;
-                val location = Vec2d(minRad + random.nextDouble((width - 2.0 * minRad)),
-                        minRad + random.nextDouble((height - 2.0 * minRad)))
-                val city = City(location, minRad, 0.0, name = n.toString(), fort = isFort)
+                val location = Vec2d(radius + random.nextDouble((width - 2.0 * radius)),
+                        radius + random.nextDouble((height - 2.0 * radius)))
+                val city = City(location, radius, 0.0, name = n.toString(), fort = isFort)
                 if (canPlace(city, cities, citySeparation)) {
                     cities += city
                     n++

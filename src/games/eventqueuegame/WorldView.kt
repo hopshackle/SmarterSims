@@ -59,7 +59,7 @@ class WorldView(var game: LandCombatGame) : JComponent() {
                 g.fill(ellipse)
                 val label = if (c.owner == PlayerId.Fog) "?" else "${c.pop.roundToInt()}"
                 DrawUtil().centreString(g, label, xScale * c.location.x, yScale * c.location.y)
-                DrawUtil().centreString(g, c.name, xScale * (c.location.x + params.minRad + 20), yScale * (c.location.y + params.minRad + 20), Color.WHITE)
+                DrawUtil().centreString(g, c.name, xScale * (c.location.x + params.radius + 20), yScale * (c.location.y + params.radius + 20), Color.WHITE)
             }
 
             for (t in currentTransits) {
@@ -75,12 +75,12 @@ class WorldView(var game: LandCombatGame) : JComponent() {
             }
 
             for (t in game.targets.getOrDefault(PlayerId.Blue, emptyList())) {
-                DrawUtil().centreString(g, "TGT", xScale * (cities[t].location.x + params.minRad + 40),
-                        yScale * (cities[t].location.y + params.minRad), playerCols[PlayerId.Blue])
+                DrawUtil().centreString(g, "TGT", xScale * (cities[t].location.x + params.radius + 40),
+                        yScale * (cities[t].location.y + params.radius), playerCols[PlayerId.Blue])
             }
             for (t in game.targets.getOrDefault(PlayerId.Red, emptyList())) {
-                DrawUtil().centreString(g, "TGT", xScale * (cities[t].location.x + params.minRad + 40),
-                        yScale * (cities[t].location.y + params.minRad - 40), playerCols[PlayerId.Red])
+                DrawUtil().centreString(g, "TGT", xScale * (cities[t].location.x + params.radius + 40),
+                        yScale * (cities[t].location.y + params.radius - 40), playerCols[PlayerId.Red])
             }
         }
     }

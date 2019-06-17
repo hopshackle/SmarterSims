@@ -63,13 +63,12 @@ data class CityInflux(val player: PlayerId, val pop: Double, val destination: In
                 city.pop += pop
             } else {
                 val p = world.params
+                val playerRef = playerIDToNumber(player)
                 val result = lanchesterClosedFormBattle(pop, city.pop,
-                        (if (player == PlayerId.Blue) p.blueLanchesterCoeff else p.redLanchesterCoeff)
-                                / if (city.fort) p.fortAttackerCoeffDivisor else 1.0,
-                        if (player == PlayerId.Blue) p.blueLanchesterExp else p.redLanchesterExp,
-                        if (player == PlayerId.Blue) p.redLanchesterCoeff else p.blueLanchesterCoeff,
-                        (if (player == PlayerId.Blue) p.redLanchesterExp else p.blueLanchesterExp)
-                                + if (city.fort) p.fortDefenderExpIncrease else 0.0
+                        p.lanchesterCoeff[playerRef] / if (city.fort) p.fortAttackerDivisor else 1.0,
+                        p.lanchesterExp[playerRef],
+                        p.lanchesterCoeff[1 - playerRef],
+                        p.lanchesterExp[1 - playerRef] + if (city.fort) p.fortDefenderExpBonus else 0.0
                 )
                 if (result > 0.0) {
                     // attackers win
@@ -102,11 +101,12 @@ data class Battle(val transit1: Transit, val transit2: Transit) : Action {
     override fun apply(state: ActionAbstractGameState): Int {
         if (state is LandCombatGame) {
             val p = state.world.params
+            val playerRef = playerIDToNumber(transit1.playerId)
             val result = lanchesterClosedFormBattle(transit1.nPeople, transit2.nPeople,
-                    if (transit1.playerId == PlayerId.Blue) p.blueLanchesterCoeff else p.redLanchesterCoeff,
-                    if (transit1.playerId == PlayerId.Blue) p.blueLanchesterExp else p.redLanchesterExp,
-                    if (transit1.playerId == PlayerId.Blue) p.redLanchesterCoeff else p.blueLanchesterCoeff,
-                    if (transit1.playerId == PlayerId.Blue) p.redLanchesterExp else p.blueLanchesterExp
+                    p.lanchesterCoeff[playerRef],
+                    p.lanchesterExp[playerRef],
+                    p.lanchesterCoeff[1 - playerRef],
+                    p.lanchesterExp[1 - playerRef]
             )
             val winningTransit = if (result > 0.0) transit1 else transit2
             val losingTransit = if (result > 0.0) transit2 else transit1

@@ -23,8 +23,7 @@ data class EventGameParams(
         val nAttempts: Int = 10,
         val width: Int = 1000,
         val height: Int = 600,
-        val minRad: Int = 25,
-        val maxRad: Int = 25,
+        val radius: Int = 25,
         val blueForce: Int = 100,
         val redForce: Int = 100,
         val citySeparation: Int = 30,
@@ -37,16 +36,14 @@ data class EventGameParams(
         val fogStrengthAssumption: DoubleArray = doubleArrayOf(1.0, 1.0),
         // force and combat attributes
         val speed: Double = 10.0,
-        val fortAttackerCoeffDivisor: Double = 3.0,
-        val fortDefenderExpIncrease: Double = 0.5,
-        val blueLanchesterCoeff: Double = 0.05,
-        val redLanchesterCoeff: Double = 0.05,
-        val blueLanchesterExp: Double = 1.0,    // should be between 0.0 and 1.0
-        val redLanchesterExp: Double = 1.0,  // should be between 0.0 and 1.0
+        val fortAttackerDivisor: Double = 3.0,
+        val fortDefenderExpBonus: Double = 0.5,
+        val lanchesterCoeff: DoubleArray = doubleArrayOf(0.05, 0.05),
+        val lanchesterExp: DoubleArray = doubleArrayOf(1.0, 1.0),    // should be between 0.0 and 1.0
         // agent behaviour
         val OODALoop: IntArray = intArrayOf(10, 10),
         val minAssaultFactor:DoubleArray = doubleArrayOf(0.1, 0.1),
-        val planningHorizon: Int = 100,
+        val planningHorizon: IntArray = intArrayOf(100, 100),
         val maxActionsPerState: Int = 7
 
 )

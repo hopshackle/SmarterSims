@@ -14,16 +14,14 @@ fun main() {
             citySeparation = 50,
             minConnections = 3,
             speed = 5.0,
-            planningHorizon = 200,
+            planningHorizon = intArrayOf(200, 200),
             OODALoop = intArrayOf(25, 25),
             minAssaultFactor = doubleArrayOf(2.0, 2.0),
-            blueLanchesterCoeff = 0.05,
-            redLanchesterCoeff = 0.05,
-            blueLanchesterExp = 0.5,
-            redLanchesterExp = 0.5,
+            lanchesterCoeff = doubleArrayOf(0.05, 0.05),
+            lanchesterExp = doubleArrayOf(0.5, 0.5),
             percentFort = 0.25,
-            fortAttackerCoeffDivisor = 2.0,
-            fortDefenderExpIncrease = 0.1)
+            fortAttackerDivisor = 2.0,
+            fortDefenderExpBonus = 0.1)
     val agents = HashMap<PlayerId, SimpleActionPlayerInterface>()
     agents[PlayerId.Blue] = SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40, horizon = 100, useMutationTransducer = false, probMutation = 0.25, name = "BLUE")
             , opponentModel = HeuristicAgent(2.0, 1.0))

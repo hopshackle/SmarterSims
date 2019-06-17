@@ -15,16 +15,14 @@ fun main() {
             citySeparation = 50,
             minConnections = 3,
             speed = 5.0,
-            planningHorizon = 200,
+            planningHorizon = intArrayOf(200, 200),
             OODALoop = intArrayOf(25, 25),
             minAssaultFactor = doubleArrayOf(2.0, 2.0),
-            blueLanchesterCoeff = 0.05,
-            redLanchesterCoeff = 0.05,
-            blueLanchesterExp = 0.5,
-            redLanchesterExp = 0.5,
+            lanchesterCoeff = doubleArrayOf(0.05, 0.05),
+            lanchesterExp = doubleArrayOf(0.5, 0.5),
             percentFort = 0.25,
-            fortAttackerCoeffDivisor = 2.0,
-            fortDefenderExpIncrease = 0.1)
+            fortAttackerDivisor = 2.0,
+            fortDefenderExpBonus = 0.1)
     val world = World(random = Random(1), params = params)
     val targets = mapOf(PlayerId.Blue to listOf(0, 2, 4, 5), PlayerId.Red to listOf(0, 1, 3, 5))
     val game = LandCombatGame(world, targets = emptyMap())
@@ -47,12 +45,12 @@ fun main() {
     //        SimpleActionEvoAgent(SimpleEvoAgent(name = "OppEA", nEvals = 10, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon))
     val blueAgent = SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40,
             useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = false,
-            horizon = params.planningHorizon, opponentModel = blueOpponentModel)
+            horizon = params.planningHorizon[0], opponentModel = blueOpponentModel)
     )
     game.registerAgent(0, blueAgent)
      val redAgent =
       //      SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon))
-      //      MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon), LandCombatStateFunction)
+      //      MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
             HeuristicAgent(2.0, 1.1)
     game.registerAgent(1, redAgent)
 
