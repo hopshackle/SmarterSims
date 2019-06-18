@@ -13,7 +13,7 @@ fun main() {
             nAttempts = 15,
             citySeparation = 50,
             minConnections = 3,
-            speed = 5.0,
+            speed = doubleArrayOf(5.0, 5.0),
             planningHorizon = intArrayOf(200, 200),
             OODALoop = intArrayOf(25, 25),
             minAssaultFactor = doubleArrayOf(2.0, 2.0),

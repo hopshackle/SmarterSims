@@ -76,13 +76,12 @@ data class Transit(val nPeople: Double, val fromCity: Int, val toCity: Int, val 
         val currentEnemyPosition = otherTransit.currentPosition(currentTime, world.cities)
         val ourPosition = this.currentPosition(currentTime, world.cities)
         val distance = ourPosition.distanceTo(currentEnemyPosition) / 2.0
-        val timeOfCollision = currentTime + (distance / world.params.speed).toInt()
+        val timeOfCollision = currentTime + (distance / world.params.speed[playerIDToNumber(playerId)]).toInt()
         return Event(timeOfCollision, Battle(this, otherTransit))
     }
 }
 
 data class World(var cities: List<City> = ArrayList(), var routes: List<Route> = ArrayList(),
-                 val width: Int = 1000, val height: Int = 600,
                  val random: Random = Random(3),
                  val params: EventGameParams = EventGameParams()) {
 
@@ -149,9 +148,9 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
             redBase = random.nextInt(cities.size)
         }
         cities[blueBase].owner = PlayerId.Blue
-        cities[blueBase].pop = params.blueForce.toDouble()
+        cities[blueBase].pop = params.startingForce[0].toDouble()
         cities[redBase].owner = PlayerId.Red
-        cities[redBase].pop = params.redForce.toDouble()
+        cities[redBase].pop = params.startingForce[1].toDouble()
     }
 
     private fun linkRandomCityTo(cityIndex: Int): Boolean {

@@ -1,11 +1,11 @@
 package games.eventqueuegame
 
-import agents.DoNothingAgent
-import agents.MCTS.MCTSParameters
-import agents.MCTS.MCTSTranspositionTableAgentMaster
 import agents.SimpleEvoAgent
 import utilities.JEasyFrame
+import javax.swing.JFrame
 import kotlin.random.Random
+
+var paused: Boolean = false
 
 fun main() {
     val params = EventGameParams(
@@ -14,7 +14,7 @@ fun main() {
             nAttempts = 15,
             citySeparation = 50,
             minConnections = 3,
-            speed = 5.0,
+            speed = doubleArrayOf(5.0, 5.0),
             planningHorizon = intArrayOf(200, 200),
             OODALoop = intArrayOf(25, 25),
             minAssaultFactor = doubleArrayOf(2.0, 2.0),
@@ -22,11 +22,17 @@ fun main() {
             lanchesterExp = doubleArrayOf(0.5, 0.5),
             percentFort = 0.25,
             fortAttackerDivisor = 2.0,
-            fortDefenderExpBonus = 0.1)
+            fortDefenderExpBonus = 0.1
+    )
+
+    runWithParams(params)
+
+}
+
+fun runWithParams(params: EventGameParams) {
     val world = World(random = Random(1), params = params)
     val targets = mapOf(PlayerId.Blue to listOf(0, 2, 4, 5), PlayerId.Red to listOf(0, 1, 3, 5))
     val game = LandCombatGame(world, targets = emptyMap())
-
 
     game.scoreFunction[PlayerId.Blue] = compositeScoreFunction(
             simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
@@ -40,7 +46,7 @@ fun main() {
     )
     StatsCollator.clear()
     val blueOpponentModel =
-   //         DoNothingAgent()
+            //         DoNothingAgent()
             HeuristicAgent(2.0, 1.1)
     //        SimpleActionEvoAgent(SimpleEvoAgent(name = "OppEA", nEvals = 10, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon))
     val blueAgent = SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40,
@@ -48,9 +54,9 @@ fun main() {
             horizon = params.planningHorizon[0], opponentModel = blueOpponentModel)
     )
     game.registerAgent(0, blueAgent)
-     val redAgent =
-      //      SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon))
-      //      MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
+    val redAgent =
+    //      SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon))
+            //      MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
             HeuristicAgent(2.0, 1.1)
     game.registerAgent(1, redAgent)
 
@@ -64,6 +70,7 @@ fun main() {
     //   val planView = PlanView(game.getAgent(0), game, 0)
 //    multiView.add(planView)
     val frame = JEasyFrame(multiView, "Event Based Game")
+    frame.defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
 
     while (!game.isTerminal()) {
         game.next(1)
@@ -71,8 +78,9 @@ fun main() {
         blueView.game = game.copy(0)
         frame.title = String.format("Time: %d        Blue: %.0f        Red: %.0f", game.nTicks(), game.score(0), game.score(1))
         multiView.repaint()
-        //      planView.refresh()
-        Thread.sleep(50)
+        do {
+            Thread.sleep(50)
+        } while (paused)
     }
 
     println(StatsCollator.summaryString())

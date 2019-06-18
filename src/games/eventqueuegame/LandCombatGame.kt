@@ -24,8 +24,7 @@ data class EventGameParams(
         val width: Int = 1000,
         val height: Int = 600,
         val radius: Int = 25,
-        val blueForce: Int = 100,
-        val redForce: Int = 100,
+        val startingForce: IntArray = intArrayOf(100, 100),
         val citySeparation: Int = 30,
         val seed: Long = 10,
         val autoConnect: Int = 300,
@@ -35,7 +34,7 @@ data class EventGameParams(
         val fogOfWar: Boolean = false,
         val fogStrengthAssumption: DoubleArray = doubleArrayOf(1.0, 1.0),
         // force and combat attributes
-        val speed: Double = 10.0,
+        val speed: DoubleArray = doubleArrayOf(10.0, 10.0),
         val fortAttackerDivisor: Double = 3.0,
         val fortDefenderExpBonus: Double = 0.5,
         val lanchesterCoeff: DoubleArray = doubleArrayOf(0.05, 0.05),
@@ -45,8 +44,8 @@ data class EventGameParams(
         val minAssaultFactor:DoubleArray = doubleArrayOf(0.1, 0.1),
         val planningHorizon: IntArray = intArrayOf(100, 100),
         val maxActionsPerState: Int = 7
-
 )
+
 
 var totalTicks: Long = 0
 

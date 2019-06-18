@@ -34,8 +34,8 @@ class WorldView(var game: LandCombatGame) : JComponent() {
             g.fillRect(0, 0, getWidth(), getHeight())
 
             // now need to work out a scale
-            val xScale = getWidth() / width.toDouble()
-            val yScale = getHeight() / height.toDouble()
+            val xScale = getWidth() / params.width.toDouble()
+            val yScale = getHeight() / params.height.toDouble()
 
             // now scale things accordingly
 

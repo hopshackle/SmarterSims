@@ -163,7 +163,7 @@ data class LaunchExpedition(val player: PlayerId, val from: Int, val toCode: Int
             val to = destinationCity(state)
             if (isValid(state)) {
                 val distance = world.cities[from].location.distanceTo(world.cities[to].location)
-                val arrivalTime = state.nTicks() + (distance / world.params.speed).toInt()
+                val arrivalTime = state.nTicks() + (distance / world.params.speed[playerIDToNumber(player)]).toInt()
                 val forcesSent = forcesSent(state)
                 val transit = Transit(forcesSent, from, to, player, state.nTicks(), arrivalTime)
                 // we execute the troop departure immediately

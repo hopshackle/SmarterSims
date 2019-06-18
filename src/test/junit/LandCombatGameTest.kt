@@ -23,8 +23,8 @@ val routes = listOf(
         Route(2, 1, 10.0, 1.0)
 )
 
-val params = EventGameParams(speed = 5.0)
-val world = World(cities, routes, 20, 20, Random(10), params = params)
+val params = EventGameParams(speed = doubleArrayOf(5.0, 5.0), width = 20, height = 20)
+val world = World(cities, routes, Random(10), params = params)
 val game = LandCombatGame(world)
 
 object TransitTest {
@@ -66,7 +66,7 @@ object TransitTest {
     @Test
     fun TransitCollisionAtHalfwayMark() {
         val gameCopy = game.copy()
-        val arrivalTime = gameCopy.nTicks() + (20.0 / world.params.speed).toInt()
+        val arrivalTime = gameCopy.nTicks() + (20.0 / world.params.speed[0]).toInt()
         assertEquals(arrivalTime, 4)
         assertEquals(gameCopy.nTicks(), 0)
         val oneWay = Transit(5.0, 0, 1, PlayerId.Blue, 0, arrivalTime)
@@ -190,7 +190,7 @@ class MakeDecisionTest() {
         assertEquals(world.params.OODALoop[0], 10);
         val fullInvasion = game.translateGene(0, intArrayOf(0, 1, 2, 5))
         val gameCopy = game.copy()
-        assertEquals(fullInvasion.apply(gameCopy),10)
+        assertEquals(fullInvasion.apply(gameCopy), 10)
     }
 
     @Test
@@ -227,7 +227,7 @@ class MakeDecisionTest() {
         assert(event.action is MakeDecision)
         assertEquals(gameCopy.eventQueue.size, 0)
         event.action.apply(gameCopy)
-        assertEquals(gameCopy.eventQueue.count{e -> e.action is MakeDecision && e.action.playerRef == 0}, 1)
+        assertEquals(gameCopy.eventQueue.count { e -> e.action is MakeDecision && e.action.playerRef == 0 }, 1)
     }
 
 }
@@ -239,6 +239,6 @@ class LandCombatStateRepresentationTests {
         val stateRep = LandCombatStateFunction(game)
         assertTrue(stateRep is String)
         assertFalse(stateRep.isEmpty())
-        assertEquals(stateRep.count{it == '|'}, game.world.cities.size + game.world.routes.size)
+        assertEquals(stateRep.count { it == '|' }, game.world.cities.size + game.world.routes.size)
     }
 }

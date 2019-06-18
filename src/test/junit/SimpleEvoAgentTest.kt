@@ -23,8 +23,8 @@ class SimpleEvoAgentTest {
             Route(2, 0, 10.0, 1.0),
             Route(2, 1, 10.0, 1.0)
     )
-    val gameParams = EventGameParams(OODALoop = intArrayOf(10, 10))
-    val world = World(cities, routes, 20, 20, Random(10), params = gameParams)
+    val gameParams = EventGameParams(OODALoop = intArrayOf(10, 10), width = 20, height = 20)
+    val world = World(cities, routes, Random(10), params = gameParams)
     val game = LandCombatGame(world)
 
     @Test
@@ -114,8 +114,8 @@ class SimpleEvoAgentTest {
         assertFalse(copiedRedAgent is SimpleActionEvoAgent)
         assertTrue(game.getAgent(1) is SimpleActionEvoAgent)
 
-        assertTrue(copy.eventQueue.any{e -> e.action is MakeDecision && e.action.playerRef == 1})
-        assertTrue(copy.eventQueue.any{e -> e.action is MakeDecision && e.action.playerRef == 0})
+        assertTrue(copy.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 1 })
+        assertTrue(copy.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 0 })
     }
 
     @Test
@@ -138,8 +138,8 @@ class SimpleEvoAgentTest {
         assertEquals(game.world.currentTransits.size, 1)
         assertTrue(game.world.currentTransits[0].playerId == PlayerId.Blue)
 
-        assertTrue(game.eventQueue.any{e -> e.action is MakeDecision && e.action.playerRef == 1 && e.tick == 12})
-        assertTrue(game.eventQueue.any{e -> e.action is MakeDecision && e.action.playerRef == 0 && e.tick == 18})
+        assertTrue(game.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 1 && e.tick == 12 })
+        assertTrue(game.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 0 && e.tick == 18 })
     }
 
 }
