@@ -65,8 +65,10 @@ fun runWithParams(params: EventGameParams) {
     val redView = WorldView(game)
     val blueView = WorldView(game)
     multiView.add(omniView)
-    multiView.add(redView)
-    multiView.add(blueView)
+    if (params.fogOfWar) {
+        multiView.add(redView)
+        multiView.add(blueView)
+    }
     //   val planView = PlanView(game.getAgent(0), game, 0)
 //    multiView.add(planView)
     val frame = JEasyFrame(multiView, "Event Based Game")
@@ -74,8 +76,10 @@ fun runWithParams(params: EventGameParams) {
 
     while (!game.isTerminal()) {
         game.next(1)
-        redView.game = game.copy(1)
-        blueView.game = game.copy(0)
+        if (params.fogOfWar) {
+            redView.game = game.copy(1)
+            blueView.game = game.copy(0)
+        }
         frame.title = String.format("Time: %d        Blue: %.0f        Red: %.0f", game.nTicks(), game.score(0), game.score(1))
         multiView.repaint()
         do {
