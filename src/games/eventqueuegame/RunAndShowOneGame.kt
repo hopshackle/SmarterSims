@@ -7,7 +7,7 @@ import kotlin.random.Random
 
 var paused: Boolean = false
 
-fun main() {
+fun main(args: Array<String>) {
     val params = EventGameParams(
             fogOfWar = true,
             fogStrengthAssumption = doubleArrayOf(5.0, 5.0),

@@ -4,7 +4,7 @@ import java.awt.*
 import javax.swing.*
 import kotlin.reflect.full.memberProperties
 
-fun main() {
+fun main(args: Array<String>) {
     val view = ControlView()
     view.create(JFrame())
 }
