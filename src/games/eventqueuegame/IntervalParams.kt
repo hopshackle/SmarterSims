@@ -1,7 +1,7 @@
 package games.eventqueuegame
 
 
-data class IntervalParams(
+data class IntervalParams (
         val startingForce: List<Interval>,
         val fogStrengthAssumption: List<Interval>,
         val speed: List<Interval>,
@@ -40,8 +40,7 @@ data class IntervalParams(
                     lanchesterCoeff = lanchesterCoeff.map { it.sampleFrom().toDouble() }.toDoubleArray(),
                     lanchesterExp = lanchesterExp.map { it.sampleFrom().toDouble() }.toDoubleArray(),
                     OODALoop = OODALoop.map { it.sampleFrom().toInt() }.toIntArray(),
-                    minAssaultFactor = minAssaultFactor.map { it.sampleFrom().toDouble() }.toDoubleArray(),
-                    planningHorizon = planningHorizon.map { it.sampleFrom().toInt() }.toIntArray()
+                    minAssaultFactor = minAssaultFactor.map { it.sampleFrom().toDouble() }.toDoubleArray()
             )
 }
 
@@ -69,7 +68,6 @@ data class EventGameParams(
         // agent behaviour
         val OODALoop: IntArray = intArrayOf(10, 10),
         val minAssaultFactor: DoubleArray = doubleArrayOf(0.1, 0.1),
-        val planningHorizon: IntArray = intArrayOf(100, 100),
         val maxActionsPerState: Int = 7
 )
 

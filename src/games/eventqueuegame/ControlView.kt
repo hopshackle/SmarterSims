@@ -15,7 +15,7 @@ class ControlView {
     val propertyMap: MutableMap<String, Any?> = EventGameParams::class.memberProperties.map { it.name to it.get(params) }.toMap().toMutableMap()
     val parameterNames = listOf("nAttempts", "minConnections", "maxDistance", "width", "height", "startingForce", "lanchesterCoeff", "lanchesterExp",
             "percentFort", "fortAttackerDivisor", "fortDefenderExpBonus", "fogOfWar", "fogStrengthAssumption", "speed",
-            "OODALoop", "minAssaultFactor", "planningHorizon", "seed")
+            "OODALoop", "minAssaultFactor", "seed")
     var runningThread = Thread()
 
     class ParameterSetting(val text: String, val propertyMap: MutableMap<String, Any?>) : JPanel(FlowLayout(FlowLayout.LEFT)) {
@@ -82,7 +82,6 @@ class ControlView {
                         speed = propertyMap["speed"] as DoubleArray,
                         OODALoop = propertyMap["OODALoop"] as IntArray,
                         minAssaultFactor = propertyMap["minAssaultFactor"] as DoubleArray,
-                        planningHorizon = propertyMap["planningHorizon"] as IntArray,
                         seed = propertyMap["seed"] as Long
                 )
                 runningThread = Thread { runWithParams(simParams) }

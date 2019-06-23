@@ -14,7 +14,6 @@ fun main() {
             citySeparation = 50,
             minConnections = 3,
             speed = doubleArrayOf(5.0, 5.0),
-            planningHorizon = intArrayOf(200, 200),
             OODALoop = intArrayOf(25, 25),
             minAssaultFactor = doubleArrayOf(2.0, 2.0),
             lanchesterCoeff = doubleArrayOf(0.05, 0.05),

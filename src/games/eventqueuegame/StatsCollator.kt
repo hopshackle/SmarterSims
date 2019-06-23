@@ -10,8 +10,8 @@ object StatsCollator {
         count = HashMap()
     }
 
-    fun addStatistics(newStats: Map<String, Double>) {
-        newStats.forEach { (k, v) -> addStatistics(k, v) }
+    fun addStatistics(newStats: Map<String, Number>) {
+        newStats.forEach { (k, v) -> addStatistics(k, v.toDouble()) }
     }
 
     fun addStatistics(key: String, value: Double) {

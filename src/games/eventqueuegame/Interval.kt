@@ -8,7 +8,7 @@ interface Interval {
     fun sampleFrom(rnd: Random): Number
 }
 
-fun intervalFrom(from: Number, to: Number): Interval  {
+fun interval(from: Number, to: Number): Interval  {
     return when (from) {
         is Int -> IntegerInterval(from, to.toInt())
         is Double -> DoubleInterval(from, to.toDouble())
@@ -16,7 +16,7 @@ fun intervalFrom(from: Number, to: Number): Interval  {
     }
 }
 
-fun intervalFrom(singleValue: Number): Interval {
+fun interval(singleValue: Number): Interval {
     return when (singleValue) {
         is Int -> IntegerInterval(singleValue)
         is Double -> DoubleInterval(singleValue)
@@ -34,7 +34,7 @@ class IntegerInterval(val startPoint: Int, val endPoint: Int) : Interval {
 }
 
 data class DoubleInterval(val startPoint: Double, val endPoint: Double): Interval {
-    constructor(singlePoint: Double) : this(singlePoint, singlePoint)
+    constructor(singlePoint: Double) : this(singlePoint, singlePoint + 1e-6)
 
     override fun sampleFrom(rnd: Random): Double = rnd.nextDouble(startPoint, endPoint)
     override fun sampleFrom(): Double = sampleFrom(rnd)
