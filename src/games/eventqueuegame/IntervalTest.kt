@@ -14,7 +14,7 @@ fun main(args: Array<String>) {
     // or, better, a file that contains all the parameters and intervals
     // this cna have lines of the form:
     //      minConnections = 2              - a single parameter setting
-    //      OODALoop = 10, [5, 50]          - a single parameter setting for BLUE, and an Interval for RED
+    //      OODALoop = 10 : [5, 50]          - a single parameter setting for BLUE, and an Interval for RED
 
     // initially however I will hard-code this here
     val intervalParams = IntervalParams(

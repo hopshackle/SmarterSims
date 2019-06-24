@@ -1,7 +1,31 @@
 package games.eventqueuegame
 
+fun createIntervalParamsFromString(details: List<String>): IntervalParams {
+    // details needs to lines of the form:
+    //      minConnections = 2              - a single parameter setting
+    //      OODALoop = 10, [5, 50]          - a single parameter setting for BLUE, and an Interval for RED
 
-data class IntervalParams (
+    // firstly we create a map from parameter name to value
+    val paramMap: Map<String, List<Interval>> = details.map {
+        val temp = it.split("=")
+        temp[0].trim() to intervalList(temp[1].trim())
+    }.toMap()
+
+    return IntervalParams(
+            startingForce = paramMap.getOrDefault("startingForce", intervalList("100 : 100")),
+            fogStrengthAssumption = paramMap.getOrDefault("fogStrengthAssumption", intervalList("0 : 0")),
+            speed = paramMap.getOrDefault("speed", intervalList("10.0 : 10.0")),
+            fortAttackerDivisor = paramMap.getOrDefault("fortAttackerDivisor", listOf(interval("2.0")))[0],
+            fortDefenderExpBonus = paramMap.getOrDefault("fortDefenderExpBonus", listOf(interval("0.10")))[0],
+            lanchesterCoeff = paramMap.getOrDefault("lanchesterCoeff", intervalList("0.2 : 0.2")),
+            lanchesterExp = paramMap.getOrDefault("lanchesterExp", intervalList("0.5 : 0.5")),
+            OODALoop = paramMap.getOrDefault("OODALoop", intervalList("10 : 10")),
+            minAssaultFactor = paramMap.getOrDefault("minAssaultFactor", intervalList("1.0 : 1.0")),
+            planningHorizon = paramMap.getOrDefault("planningHorizon", intervalList("100 : 100"))
+    )
+}
+
+data class IntervalParams(
         val startingForce: List<Interval>,
         val fogStrengthAssumption: List<Interval>,
         val speed: List<Interval>,
