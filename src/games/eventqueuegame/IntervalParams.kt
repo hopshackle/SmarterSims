@@ -92,6 +92,8 @@ data class EventGameParams(
         // agent behaviour
         val OODALoop: IntArray = intArrayOf(10, 10),
         val minAssaultFactor: DoubleArray = doubleArrayOf(0.1, 0.1),
+        val planningHorizon: IntArray = intArrayOf(100, 100),
         val maxActionsPerState: Int = 7
 )
+
 

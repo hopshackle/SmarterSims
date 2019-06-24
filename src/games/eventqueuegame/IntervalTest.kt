@@ -1,13 +1,12 @@
 package games.eventqueuegame
 
 import agents.*
+import java.io.BufferedReader
+import java.io.FileReader
 import java.io.FileWriter
 import kotlin.random.Random
-import kotlin.reflect.KClass
-import kotlin.reflect.KType
-import kotlin.reflect.full.createType
-import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.full.memberProperties
+import kotlin.streams.toList
 
 fun main(args: Array<String>) {
     // the args input needs to be the Intervals that we wish to vary
@@ -17,18 +16,29 @@ fun main(args: Array<String>) {
     //      OODALoop = 10 : [5, 50]          - a single parameter setting for BLUE, and an Interval for RED
 
     // initially however I will hard-code this here
-    val intervalParams = IntervalParams(
-            startingForce = listOf(interval(100), interval(100)),
-            fogStrengthAssumption = listOf(interval(10), interval(10)),
-            speed = listOf(interval(10.0), interval(10.0)),
-            fortAttackerDivisor = interval(3.0),
-            fortDefenderExpBonus = interval(0.10),
-            lanchesterCoeff = listOf(interval(0.20), interval(0.10, 0.30)),
-            lanchesterExp = listOf(interval(0.5), interval(0.5)),
-            OODALoop = listOf(interval(10), interval(10)),
-            minAssaultFactor = listOf(interval(2.0), interval(2.0)),
-            planningHorizon = listOf(interval(100), interval(100))
-    )
+
+    val inputFile = if (args.size > 0) args[0] else ""
+    val outputFile = if (args.size > 1) args[1] else "output.txt"
+
+    val intervalParams = if (inputFile == "") {
+        IntervalParams(
+                startingForce = listOf(interval(100), interval(100)),
+                fogStrengthAssumption = listOf(interval(10), interval(10)),
+                speed = listOf(interval(10.0), interval(10.0)),
+                fortAttackerDivisor = interval(3.0),
+                fortDefenderExpBonus = interval(0.10),
+                lanchesterCoeff = listOf(interval(0.20), interval(0.10, 0.30)),
+                lanchesterExp = listOf(interval(0.5), interval(0.5)),
+                OODALoop = listOf(interval(10), interval(10)),
+                minAssaultFactor = listOf(interval(2.0), interval(2.0)),
+                planningHorizon = listOf(interval(100), interval(100))
+        )
+    } else {
+        val fileAsLines = BufferedReader(FileReader(inputFile)).lines().toList()
+        createIntervalParamsFromString(fileAsLines)
+    }
+
+
     val numberFormatter: (Any?) -> String = { it ->
         when (it) {
             null -> "null"
@@ -52,23 +62,28 @@ fun main(args: Array<String>) {
             "COMPLETE_VICTORY" to { g: LandCombatGame -> if (g.nTicks() < 1000) 1 else 0 }
     )
     val statisticKeys = statisticsToKeep.keys.toList()
-    val paramKeys: List<String> = IntervalParams::class.memberProperties.flatMap {
-        when {
-            it.returnType.toString().startsWith("kotlin.collections.List") -> listOf("BLUE_" + it.name, "RED_" + it.name)
-            else -> listOf(it.name)
-        }
-    }
+    val gameParamNames = EventGameParams::class.memberProperties.map { it.name }.toList()
+    val (gameParamKeys, otherKeys) = IntervalParams::class.memberProperties
+            .partition { it.name in gameParamNames }.toList()
+            .map {
+                it.flatMap { x ->
+                    when {
+                        x.returnType.toString().startsWith("kotlin.collections.List") -> listOf("BLUE_" + x.name, "RED_" + x.name)
+                        else -> listOf(x.name)
+                    }
+                }
+            }
 
-    val fileName = if (args.size > 0) args[0] else "output.txt"
+    if (otherKeys.size > 0) throw AssertionError("We have tried to specify an interval for a non-existent game parameter " + otherKeys.toString())
+
     val rnd = Random(1)
-    val fileWriter = FileWriter(fileName)
-    fileWriter.write(paramKeys.joinToString(separator = "\t", postfix = "\t"))
+    val fileWriter = FileWriter(outputFile)
+    fileWriter.write(gameParamKeys.joinToString(separator = "\t", postfix = "\t"))
     fileWriter.write(statisticKeys.joinToString(separator = "\t", postfix = "\n"))
     StatsCollator.clear()
     repeat(100) {
 
         val params = intervalParams.sampleParams(seed = rnd.nextLong())
-        val planningHorizon = intervalParams.planningHorizon.map { it.sampleFrom().toInt() }.toIntArray()
         val game = LandCombatGame(World(params = params))
         game.scoreFunction[PlayerId.Blue] = compositeScoreFunction(
                 simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
@@ -86,13 +101,13 @@ fun main(args: Array<String>) {
         //        SimpleActionEvoAgent(SimpleEvoAgent(name = "OppEA", nEvals = 10, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon))
         val blueAgent = SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, timeLimit = 100, sequenceLength = 40,
                 useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = true,
-                horizon = planningHorizon[0], opponentModel = blueOpponentModel)
+                horizon = params.planningHorizon[0], opponentModel = blueOpponentModel)
         )
         game.registerAgent(0, blueAgent)
         val redAgent =
                 SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, timeLimit = 100, sequenceLength = 40,
                         useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = true,
-                        horizon = planningHorizon[1]))
+                        horizon = params.planningHorizon[1]))
         //      MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
         //       HeuristicAgent(params.minAssaultFactor[1], 1.1)
         game.registerAgent(1, redAgent)
@@ -100,7 +115,7 @@ fun main(args: Array<String>) {
         game.next(1000)
 
 
-        val propertyMap = EventGameParams::class.memberProperties.map { it.name to it.get(params) }.toMap()
+        val propertyMap = EventGameParams::class.memberProperties.map { it.name to it.get(params) }.toMap().toMutableMap()
         fun propertyValue(key: String, position: Int): Number {
             return when (val array = (propertyMap[key])) {
                 is IntArray -> array[position]
@@ -109,7 +124,7 @@ fun main(args: Array<String>) {
             }
         }
 
-        fileWriter.write(paramKeys.map { key ->
+        fileWriter.write(gameParamKeys.map { key ->
             when {
                 key.startsWith("BLUE_") -> propertyValue(key.removePrefix("BLUE_"), 0)
                 key.startsWith("RED_") -> propertyValue(key.removePrefix("RED_"), 1)
