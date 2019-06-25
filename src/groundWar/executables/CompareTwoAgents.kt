@@ -1,8 +1,11 @@
-package groundWar
+package groundWar.executables
 
 import agents.*
-import agents.MCTS.*
+import ggi.SimpleActionDoNothing
+import ggi.SimpleActionEvoAgent
 import ggi.SimpleActionPlayerInterface
+import groundWar.*
+import utilities.StatsCollator
 import kotlin.random.Random
 
 fun main() {

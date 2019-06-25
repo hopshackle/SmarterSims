@@ -1,5 +1,9 @@
 package groundWar
 
+import intervals.Interval
+import intervals.interval
+import intervals.intervalList
+
 fun createIntervalParamsFromString(details: List<String>): IntervalParams {
     // details needs to lines of the form:
     //      minConnections = 2              - a single parameter setting

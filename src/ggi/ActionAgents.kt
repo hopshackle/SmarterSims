@@ -1,10 +1,7 @@
-package groundWar
+package ggi
 
 import agents.SimpleEvoAgent
-import ggi.SimpleActionPlayerInterface
-import ggi.Action
-import ggi.ActionAbstractGameState
-import java.lang.AssertionError
+import groundWar.LandCombatGame
 
 object NoAction : Action {
     override fun apply(state: ActionAbstractGameState): Int {

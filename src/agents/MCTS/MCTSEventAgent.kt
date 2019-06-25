@@ -2,6 +2,7 @@ package agents.MCTS
 
 import groundWar.*
 import ggi.*
+import utilities.StatsCollator
 import java.util.*
 
 class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,

@@ -1,7 +1,11 @@
 package test
 
 import agents.*
-import groundWar.*import math.Vec2d
+import ggi.SimpleActionEvoAgent
+import ggi.SimpleActionEvoAgentRollForward
+import groundWar.*
+import groundWar.EventGameParams
+import math.Vec2d
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.random.Random

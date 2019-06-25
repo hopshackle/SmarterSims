@@ -1,4 +1,4 @@
-package groundWar
+package utilities
 
 object StatsCollator {
 

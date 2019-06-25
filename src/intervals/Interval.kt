@@ -1,4 +1,4 @@
-package groundWar
+package intervals
 
 import java.lang.AssertionError
 import kotlin.random.Random

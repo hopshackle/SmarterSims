@@ -1,6 +1,7 @@
 package test
 
 import groundWar.*
+import groundWar.EventGameParams
 import math.Vec2d
 import org.junit.jupiter.api.*
 import kotlin.random.Random

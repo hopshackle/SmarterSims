@@ -1,7 +1,7 @@
 package agents
 
-import groundWar.*
 import ggi.*
+import utilities.StatsCollator
 import kotlin.random.Random
 
 fun evaluateSequenceDelta(gameState: AbstractGameState,

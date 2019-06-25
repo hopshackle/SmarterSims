@@ -3,6 +3,7 @@ package groundWar
 import ggi.SimpleActionPlayerInterface
 import ggi.Action
 import ggi.ActionAbstractGameState
+import ggi.NoAction
 import kotlin.random.Random
 
 enum class HeuristicOptions {

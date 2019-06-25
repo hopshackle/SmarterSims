@@ -1,6 +1,7 @@
 package test
 
-import groundWar.*
+import intervals.interval
+import intervals.intervalList
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
