@@ -15,7 +15,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import forwardmodels.decisiontree.conditions.Condition;
 import forwardmodels.decisiontree.conditions.EqualCondition;
-import games.gridgame.Pattern;
 
 
 /**
@@ -56,20 +55,6 @@ public class DecisionTree {
 	public String classify(String row) {
 
 		String[] attrs = row.split(",");
-
-		return classify(attrs, rootNode);
-	}
-
-	/**
-	 * @param pattern
-	 * @return
-	 * Classify new patterns encoded as SimplePattern object
-	 */
-	public String classify(Pattern pattern) {
-
-		String[] attrs = new String[pattern.getIp().size()];
-		for (int i = 0; i < pattern.getIp().size(); i++)
-			attrs[i] = "" + pattern.getIp().get(i);
 
 		return classify(attrs, rootNode);
 	}

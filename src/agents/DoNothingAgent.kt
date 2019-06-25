@@ -1,10 +1,7 @@
 package agents
 
 import ggi.AbstractGameState
-import ggi.SimpleActionPlayerInterface
 import ggi.SimplePlayerInterface
-import ggi.game.Action
-import ggi.game.ActionAbstractGameState
 
 
 data class DoNothingAgent (var action: Int = 0) : SimplePlayerInterface {
@@ -12,7 +9,7 @@ data class DoNothingAgent (var action: Int = 0) : SimplePlayerInterface {
         return "DoNothingAgent"
     }
 
-    override fun getAction(gameState: AbstractGameState, playerId: Int): Int {
+    override fun getAction(gameState: AbstractGameState, playerRef: Int): Int {
         // return zero without knowing what this will do
         return action
     }

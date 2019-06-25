@@ -1,6 +1,6 @@
 package agents.MCTS
 
-import ggi.game.Action
+import ggi.Action
 import java.lang.AssertionError
 
 data class MCTSParameters(
@@ -57,8 +57,8 @@ class TTNode(
     }
 
     fun update(action: Action, possibleActions: List<Action>, reward: Double) {
-        actionMap.filter { (k, v) -> possibleActions.contains(k) }
-                .mapNotNull { (k, v) -> v }
+        actionMap.filter { (k, _) -> possibleActions.contains(k) }
+                .mapNotNull { (_, v) -> v }
                 .forEach { it.validVisitCount++ }
         val stats = actionMap[action]
         if (stats != null) {

@@ -13,7 +13,7 @@ class RandomAgent : SimplePlayerInterface {
     }
 
     val random = Random()
-    override fun getAction(gameState: AbstractGameState, playerId: Int): Int {
+    override fun getAction(gameState: AbstractGameState, playerRef: Int): Int {
         return random.nextInt(gameState.nActions())
     }
 

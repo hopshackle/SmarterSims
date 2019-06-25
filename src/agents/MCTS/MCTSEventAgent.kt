@@ -1,8 +1,7 @@
 package agents.MCTS
 
-import games.eventqueuegame.*
+import groundWar.*
 import ggi.*
-import ggi.game.*
 import java.util.*
 
 class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
@@ -17,18 +16,18 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
         return "MCTSTranspositionTableAgentMaster"
     }
 
-    override fun getAction(gameState: ActionAbstractGameState, playerId: Int): Action {
+    override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
 
         val startTime = System.currentTimeMillis()
         var iteration = 0
 
-        resetTree(gameState, playerId)
+        resetTree(gameState, playerRef)
         do {
             val clonedState = gameState.copy() as ActionAbstractGameState
             // TODO: At some point, we may then resample state here for IS-MCTS
-            clonedState.registerAgent(playerId, getForwardModelInterface())
+            clonedState.registerAgent(playerRef, getForwardModelInterface())
             (0 until clonedState.playerCount()).forEach {
-                if (it != playerId)
+                if (it != playerRef)
                     clonedState.registerAgent(it, opponentModel)
                 // TODO: When we have more interesting opponent models (e.g. MCTS agents), we need to instantiate/initialise them
             }
@@ -60,15 +59,15 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
         return chosenAction ?: NoAction
     }
 
-    fun resetTree(root: ActionAbstractGameState, playerId: Int) {
+    fun resetTree(root: ActionAbstractGameState, playerRef: Int) {
         // may be overridden to prune tree
         tree.clear()
         LandCombatGame.stateToActionMap.clear()
         val key = stateFunction(root)
-        tree[key] = TTNode(params, root.possibleActions(playerId))
+        tree[key] = TTNode(params, root.possibleActions(playerRef))
     }
 
-    override fun getPlan(gameState: ActionAbstractGameState, playerId: Int): List<Action> {
+    override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
@@ -108,9 +107,9 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         return "MCTSTranspositionTableAgentChild"
     }
 
-    override fun getAction(gameState: ActionAbstractGameState, playerId: Int): Action {
+    override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
         val currentState = stateFunction(gameState)
-        val possibleActions = gameState.possibleActions(playerId)
+        val possibleActions = gameState.possibleActions(playerRef)
         val node = tree[currentState]
         val actionChosen = when {
             node == null -> rolloutPolicy(gameState, possibleActions)
@@ -134,7 +133,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
     }
 
 
-    override fun getPlan(gameState: ActionAbstractGameState, playerId: Int): List<Action> {
+    override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 

@@ -50,10 +50,10 @@ data class MutationTransducer (var mutProb: Double = 0.2, var repeatProb: Double
     }
 
     fun randSeq(n: Int, range: Int) : IntArray {
-        return IntArray(n, {x -> random.nextInt(range)})
+        return IntArray(n, {random.nextInt(range)})
     }
     fun repSeq(n: Int, v: Int) : IntArray {
-        return IntArray(n, {x -> v})
+        return IntArray(n, {v})
     }
 }
 

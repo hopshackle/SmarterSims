@@ -1,16 +1,8 @@
 package agents
 
-import games.eventqueuegame.SimpleActionDoNothing
-import games.eventqueuegame.SimpleActionEvoAgentRollForward
-import games.eventqueuegame.StatsCollator
-import ggi.AbstractGameState
-import ggi.SimpleActionPlayerInterface
-import ggi.SimplePlayerInterface
-import ggi.game.ActionAbstractGameState
-
-
-import java.util.Random
-
+import groundWar.*
+import ggi.*
+import kotlin.random.Random
 
 fun evaluateSequenceDelta(gameState: AbstractGameState,
                           seq: IntArray,
@@ -59,7 +51,7 @@ fun evaluateSequenceDelta(gameState: AbstractGameState,
         -delta
 }
 
-fun shiftLeftAndRandomAppend(startingArray: IntArray, nShift: Int, nActions: Int): IntArray {
+fun shiftLeftAndRandomAppend(startingArray: IntArray, nShift: Int, nActions: Int, random: Random = Random(System.currentTimeMillis())): IntArray {
     val p = IntArray(startingArray.size)
     for (i in 0 until p.size)
         p[i] = when {
@@ -88,7 +80,7 @@ data class SimpleEvoAgent(
         return "SimpleEvoAgent"
     }
 
-    internal var random = Random()
+    internal var random = Random(System.currentTimeMillis())
 
     // these are all the parameters that control the agend
     internal var buffer: IntArray? = null // randomPoint(sequenceLength)
@@ -107,12 +99,8 @@ data class SimpleEvoAgent(
         val startTime = System.currentTimeMillis()
         var solution = buffer ?: randomPoint(gameState.nActions())
         if (useShiftBuffer) {
-            if (solution == null) {
-                solution = randomPoint(gameState.nActions())
-            } else {
-                val numberToShiftLeft = gameState.codonsPerAction()
-                solution = shiftLeftAndRandomAppend(solution, numberToShiftLeft, gameState.nActions())
-            }
+            val numberToShiftLeft = gameState.codonsPerAction()
+            solution = shiftLeftAndRandomAppend(solution, numberToShiftLeft, gameState.nActions(), random)
         } else {
             // System.out.println("New random solution with nActions = " + gameState.nActions())
             solution = randomPoint(gameState.nActions())
@@ -134,7 +122,7 @@ data class SimpleEvoAgent(
             solutions.add(solution)
             iterations++
         } while (iterations < nEvals && System.currentTimeMillis() - startTime < timeLimit)
-        StatsCollator.addStatistics("${name}Time",  System.currentTimeMillis() - startTime)
+        StatsCollator.addStatistics("${name}Time", System.currentTimeMillis() - startTime)
         StatsCollator.addStatistics("${name}Evals", iterations)
         buffer = solution
         return solution
@@ -197,8 +185,8 @@ data class SimpleEvoAgent(
         return "SEA: $nEvals : $sequenceLength : $opponentModel"
     }
 
-    override fun getAction(gameState: AbstractGameState, playerId: Int): Int {
-        return getActions(gameState, playerId)[0]
+    override fun getAction(gameState: AbstractGameState, playerRef: Int): Int {
+        return getActions(gameState, playerRef)[0]
     }
 
     fun getSolutionsCopy(): ArrayList<IntArray> {
