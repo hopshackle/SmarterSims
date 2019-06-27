@@ -12,6 +12,7 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
 ) : SimpleActionPlayerInterface {
 
     val tree: MutableMap<String, TTNode> = mutableMapOf()
+    val stateLinks: MutableMap<String, MutableSet<String>> = mutableMapOf()
 
     override fun getAgentType(): String {
         return "MCTSTranspositionTableAgentMaster"
@@ -42,9 +43,9 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
             iteration++
         } while (iteration < params.maxPlayouts && System.currentTimeMillis() < startTime + params.timeLimit)
 
-        StatsCollator.addStatistics("${name}Time",  System.currentTimeMillis() - startTime)
+        StatsCollator.addStatistics("${name}Time", System.currentTimeMillis() - startTime)
         StatsCollator.addStatistics("${name}Iterations", iteration)
-    //    println("$iteration iterations executed for player $playerId")
+        //    println("$iteration iterations executed for player $playerId")
         return getBestAction(gameState)
     }
 
@@ -61,11 +62,33 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
     }
 
     fun resetTree(root: ActionAbstractGameState, playerRef: Int) {
-        // may be overridden to prune tree
-        tree.clear()
-        LandCombatGame.stateToActionMap.clear()
-        val key = stateFunction(root)
-        tree[key] = TTNode(params, root.possibleActions(playerRef))
+        if (params.pruneTree && tree.containsKey(stateFunction(root))) {
+            val keysToKeep = mutableSetOf<String>()
+            val unprocessedKeys = TreeSet<String>()
+            unprocessedKeys.add(stateFunction(root))
+            do {
+                val nextKey = unprocessedKeys.first()
+                keysToKeep.add(nextKey)
+                stateLinks[nextKey]?.let {
+                    it.removeAll(keysToKeep)
+                    unprocessedKeys.addAll(it)
+                }
+                unprocessedKeys.remove(nextKey)
+            } while (unprocessedKeys.isNotEmpty())
+
+            val keysToRemove = tree.keys - keysToKeep
+            keysToRemove.forEach{
+                tree.remove(it)
+                stateLinks.remove(it)
+            }
+            LandCombatGame.stateToActionMap[playerRef] = tree.keys.associateWith { LandCombatGame.stateToActionMap[playerRef].getOrDefault(it, emptyList()) }.toMutableMap()
+        } else {
+            tree.clear()
+            stateLinks.clear()
+            LandCombatGame.stateToActionMap[playerRef].clear()
+            val key = stateFunction(root)
+            tree[key] = TTNode(params, root.possibleActions(playerRef))
+        }
     }
 
     override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
@@ -75,11 +98,12 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
     override fun reset(): SimpleActionPlayerInterface {
         tree.clear()
         opponentModel.reset()
+        stateLinks.clear()
         return this
     }
 
     override fun getForwardModelInterface(): SimpleActionPlayerInterface {
-        return MCTSTranspositionTableAgentChild(tree, params, stateFunction)
+        return MCTSTranspositionTableAgentChild(tree, stateLinks, params, stateFunction)
     }
 
     override fun backPropagate(finalScore: Double) {
@@ -91,8 +115,9 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
 
 
 open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>,
-                                       val params: MCTSParameters,
-                                       val stateFunction: StateSummarizer) : SimpleActionPlayerInterface {
+                                            val stateLinks: MutableMap<String, MutableSet<String>>,
+                                            val params: MCTSParameters,
+                                            val stateFunction: StateSummarizer) : SimpleActionPlayerInterface {
 
     // node, possibleActions from node, action taken
 
@@ -142,7 +167,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         tree.clear()
         trajectory.clear()
         nodesToExpand = nodesPerIteration
-        return MCTSTranspositionTableAgentChild(tree, params, stateFunction)
+        return MCTSTranspositionTableAgentChild(tree, mutableMapOf(), params, stateFunction)
     }
 
     override fun getForwardModelInterface(): SimpleActionPlayerInterface {
@@ -154,6 +179,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         // we decrement nodesExpanded as we need to expand a node
         // We can discount if needed
         var totalDiscount = Math.pow(params.discountRate, trajectory.size.toDouble())
+        var previousState = ""
         trajectory.forEach { (state, possibleActions, action) ->
             totalDiscount /= params.discountRate
             val node = tree[state]
@@ -166,6 +192,11 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
                 node == null -> Unit // do nothing
                 else -> node.update(action, possibleActions, finalScore * totalDiscount)
             }
+            if (tree.contains(previousState)) {
+                val nextStates = stateLinks.getOrPut(previousState, { mutableSetOf() })
+                nextStates.add(state)
+            }
+            previousState = state
         }
         nodesToExpand = nodesPerIteration
     }

@@ -25,8 +25,14 @@ data class Event(val tick: Int, val action: Action) : Comparable<Event> {
 
 class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List<Int>> = emptyMap()) : ActionAbstractGameState {
     companion object {
-        val stateToActionMap: MutableMap<String, List<Action>> = mutableMapOf()
+        val stateToActionMap: ArrayList<MutableMap<String, List<Action>>> = ArrayList(2)
         val rnd: Random = Random(10)
+
+        init {
+            repeat(2) {
+                stateToActionMap.add(mutableMapOf())
+            }
+        }
     }
 
     val eventQueue = EventQueue()
@@ -74,13 +80,13 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     override fun possibleActions(player: Int): List<Action> {
         val stateRep = LandCombatStateFunction(this)
         // we create X random actions on the same lines as an EvoAgent would
-        if (!stateToActionMap.containsKey(stateRep)) {
+        if (!stateToActionMap[player].containsKey(stateRep)) {
             val randomActions = (0 until world.params.maxActionsPerState).map {
                 translateGene(player, IntArray(codonsPerAction()) { rnd.nextInt(nActions()) })
             }.distinct()
-            stateToActionMap[stateRep] = randomActions
+            stateToActionMap[player][stateRep] = randomActions
         }
-        return stateToActionMap[stateRep] ?: emptyList()
+        return stateToActionMap[player][stateRep] ?: emptyList()
     }
 
     override fun translateGene(player: Int, gene: IntArray): Action {

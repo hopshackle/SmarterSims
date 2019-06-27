@@ -1,11 +1,16 @@
 package groundWar.executables
 
+import agents.MCTS.MCTSParameters
+import agents.MCTS.MCTSTranspositionTableAgentMaster
 import agents.SimpleEvoAgent
 import ggi.SimpleActionEvoAgent
 import groundWar.*
 import groundWar.views.WorldView
 import utilities.JEasyFrame
 import utilities.StatsCollator
+import java.awt.Color
+import java.awt.FlowLayout
+import javax.swing.JComponent
 import javax.swing.JFrame
 import kotlin.random.Random
 
@@ -52,16 +57,25 @@ fun runWithParams(params: EventGameParams) {
             //         DoNothingAgent()
             HeuristicAgent(2.0, 1.1)
     //        SimpleActionEvoAgent(SimpleEvoAgent(name = "OppEA", nEvals = 10, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon))
-    val blueAgent = SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40,
-            useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = false,
-            horizon = 200, opponentModel = blueOpponentModel)
-    )
+    val blueAgent =
+    //    SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40,
+    //    useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = false,
+            //    horizon = 200, opponentModel = blueOpponentModel))
+            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[0]), LandCombatStateFunction)
+
     game.registerAgent(0, blueAgent)
     val redAgent =
-    //      SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon))
-            //      MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
-            HeuristicAgent(2.0, 1.1)
+            //   SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon[1]))
+            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
+    // HeuristicAgent(2.0, 1.1)
     game.registerAgent(1, redAgent)
+
+    class ListComponent : JComponent() {
+        init {
+            background = Color.getHSBColor(0.7f, 1.0f, 1.0f)
+            layout = FlowLayout(FlowLayout.CENTER, 5, 5)
+        }
+    }
 
     val multiView = ListComponent()
     val omniView = WorldView(game)

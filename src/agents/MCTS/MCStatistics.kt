@@ -9,7 +9,8 @@ data class MCTSParameters(
         val maxPlayouts: Int = 100,
         val timeLimit: Int = 1000,
         val horizon: Int = 2000,     // limit of actions taken across both tree and rollout policies
-        val discountRate: Double = 1.0
+        val discountRate: Double = 1.0,
+        val pruneTree: Boolean = false
 )
 
 enum class MCTSSelectionMethod { ROBUST, SIMPLE }
@@ -38,14 +39,16 @@ class TTNode(
         val params: MCTSParameters = MCTSParameters(),
         val actions: List<Action>
 ) {
-    val actionMap: Map<Action, MCStatistics> = actions.map { it to MCStatistics() }.toMap()
+    val actionMap: Map<Action, MCStatistics> = actions.associateWith { MCStatistics() }
 
     fun hasUnexploredActions(): Boolean {
         return actionMap.values.any { it.visitCount == 0 }
     }
 
     fun getRandomUnexploredAction(validOptions: List<Action>): Action {
-        if ((validOptions - actions).isNotEmpty()) TODO("Need to cater for previously unknown options")
+        if ((validOptions - actions).isNotEmpty()) {
+            TODO("Need to cater for previously unknown options")
+        }
         val filteredOptions = validOptions.filter { actionMap[it]!!.visitCount == 0 }
         return if (filteredOptions.isEmpty()) throw AssertionError("No unexplored options to choose from")
         else filteredOptions.random()

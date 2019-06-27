@@ -1,8 +1,6 @@
-package groundWar.views
+package groundWar.executables
 
 import groundWar.EventGameParams
-import groundWar.executables.paused
-import groundWar.executables.runWithParams
 import java.awt.*
 import javax.swing.*
 import kotlin.reflect.full.memberProperties

@@ -1,14 +1,12 @@
 package groundWar.executables
 
-import agents.*
-import ggi.SimpleActionDoNothing
-import ggi.SimpleActionEvoAgent
-import ggi.SimpleActionPlayerInterface
+import agents.MCTS.*
+import ggi.*
 import groundWar.*
 import utilities.StatsCollator
 import kotlin.random.Random
 
-fun main() {
+fun main(args: Array<String>) {
     StatsCollator.clear()
     val params = EventGameParams(
             fogOfWar = true,
@@ -25,10 +23,14 @@ fun main() {
             fortAttackerDivisor = 2.0,
             fortDefenderExpBonus = 0.1)
     val agents = HashMap<PlayerId, SimpleActionPlayerInterface>()
-    agents[PlayerId.Blue] = SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40, horizon = 100, useMutationTransducer = false, probMutation = 0.25, name = "BLUE")
-            , opponentModel = HeuristicAgent(2.0, 1.0))
-    agents[PlayerId.Red] = SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40, horizon = 100, useMutationTransducer = false, probMutation = 0.25, name = "RED"))
-//    agents[PlayerId.Red] = MCTSTranspositionTableAgentMaster(MCTSParameters(maxPlayouts = 1000, timeLimit = 50, horizon = 100), LandCombatStateFunction)
+    agents[PlayerId.Blue] =
+            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[0], pruneTree = true), LandCombatStateFunction)
+          //  SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40, horizon = 100, useMutationTransducer = false, probMutation = 0.25, name = "BLUE")
+          //  , opponentModel = HeuristicAgent(2.0, 1.0))
+
+    agents[PlayerId.Red] =
+            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
+ //   SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40, horizon = 100, useMutationTransducer = false, probMutation = 0.25, name = "RED"))
 
     val scoreFunction = compositeScoreFunction(
             simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
@@ -39,7 +41,7 @@ fun main() {
     var redWins = 0
     var draws = 0
     var blueScore = 0.0
-    val maxGames = 1000
+    val maxGames = if (args.size > 0) args[0].toInt() else 100
 
     val startTime = java.util.Calendar.getInstance().timeInMillis
     val useConstantWorld = false

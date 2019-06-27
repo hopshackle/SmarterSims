@@ -92,7 +92,8 @@ class MCTSMasterTest {
             maxPlayouts = 100,
             timeLimit = 1000,
             horizon = 20,     // limit of actions taken across both tree and rollout policies
-            discountRate = 1.0
+            discountRate = 1.0,
+            pruneTree = false
     )
     val simpleMazeGame = SimpleMazeGame(3, 10)
     val agents = arrayListOf(
@@ -148,7 +149,33 @@ class MCTSMasterTest {
         agents[2].resetTree(simpleMazeGame.copy() as ActionAbstractGameState, 2)
         assertEquals(agents[2].tree.size, 1)
         assertEquals(agents[2].tree.values.flatMap { it.actionMap.values }.sumBy(MCStatistics::visitCount), 0)
+    }
 
+    @Test
+    fun resetTreeWithPruneOptionLeavesNodes() {
+        agents[2] = MCTSTranspositionTableAgentMaster(params = params.copy(pruneTree = true), stateFunction = MazeStateFunction)
+        bestActionWithSimpleSelection()
+        assertEquals(agents[2].tree.size, 1)
+        assertEquals(agents[2].tree.values.flatMap { it.actionMap.values }.sumBy(MCStatistics::visitCount), 4)
+        assertEquals(agents[1].tree.values.flatMap { it.actionMap.values }.sumBy(MCStatistics::visitCount), 0)
+        assertEquals(agents[0].tree.values.flatMap { it.actionMap.values }.sumBy(MCStatistics::visitCount), 0)
+        agents[2].resetTree(simpleMazeGame.copy() as ActionAbstractGameState, 2)
+        assertEquals(agents[2].tree.size, 1)
+        assertEquals(agents[2].tree.values.flatMap { it.actionMap.values }.sumBy(MCStatistics::visitCount), 4)
+    }
+
+    @Test
+    fun resetTreeWithPruneOnUsesCorrectState() {
+        agents[2] = MCTSTranspositionTableAgentMaster(params = params.copy(pruneTree = true), stateFunction = MazeStateFunction)
+        val chosenAction = agents[2].getAction(simpleMazeGame.copy() as ActionAbstractGameState, 2)
+        assertEquals(agents[2].tree.size, 101)
+        val nextState = simpleMazeGame.copy() as ActionAbstractGameState
+        chosenAction.apply(nextState)
+        nextState.next(1)
+        assertTrue(agents[2].tree.containsKey(MazeStateFunction(nextState)))
+        assertEquals(agents[2].tree.size, 101)
+        agents[2].resetTree(nextState, 2)
+        assertEquals(agents[2].tree.size.toDouble(), 92.0, 2.0)
     }
 
     @Test
@@ -189,9 +216,10 @@ class MCTSMasterTest {
     }
 }
 
+
 class MCTSChildTest {
-    class MCTSChildTestAgent(tree: MutableMap<String, TTNode>, params: MCTSParameters, stateFunction: MazeStateFunction)
-        : MCTSTranspositionTableAgentChild(tree, params, stateFunction) {
+    class MCTSChildTestAgent(tree: MutableMap<String, TTNode>, stateLinks: MutableMap<String, MutableSet<String>>, params: MCTSParameters, stateFunction: MazeStateFunction)
+        : MCTSTranspositionTableAgentChild(tree, stateLinks, params, stateFunction) {
 
 
         var rolloutCalls = 0
@@ -220,13 +248,13 @@ class MCTSChildTest {
     var simpleMazeGame = SimpleMazeGame(3, 10)
     val tree = mutableMapOf<String, TTNode>()
     val params = MCTSParameters()
-    var childAgent = MCTSChildTestAgent(tree, params, MazeStateFunction)
+    var childAgent = MCTSChildTestAgent(tree, mutableMapOf(), params, MazeStateFunction)
 
     @BeforeEach
     fun setup() {
         simpleMazeGame = SimpleMazeGame(3, 10)
         tree.clear()
-        childAgent = MCTSChildTestAgent(tree, params, MazeStateFunction)
+        childAgent = MCTSChildTestAgent(tree, mutableMapOf(), params, MazeStateFunction)
     }
 
     @Test
@@ -289,9 +317,9 @@ class MCTSChildTest {
         repeat(100) {
             rolloutActions.add(childAgent.rolloutPolicy(simpleMazeGame, simpleMazeGame.possibleActions(0)))
         }
-        assertEquals(rolloutActions.count{it == NoAction }.toDouble(), 33.0, 12.0)
-        assertEquals(rolloutActions.count{it == Move(0, Direction.LEFT) }.toDouble(), 33.0, 12.0)
-        assertEquals(rolloutActions.count{it == Move(0, Direction.RIGHT) }.toDouble(), 33.0, 12.0)
+        assertEquals(rolloutActions.count { it == NoAction }.toDouble(), 33.0, 12.0)
+        assertEquals(rolloutActions.count { it == Move(0, Direction.LEFT) }.toDouble(), 33.0, 12.0)
+        assertEquals(rolloutActions.count { it == Move(0, Direction.RIGHT) }.toDouble(), 33.0, 12.0)
         assertEquals(childAgent.treeCalls, 0)
         assertEquals(childAgent.expansionCalls, 0)
         assertEquals(childAgent.rolloutCalls, 100)
