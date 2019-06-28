@@ -2,6 +2,7 @@ package intervals
 
 import java.lang.AssertionError
 import kotlin.random.Random
+import kotlin.reflect.KFunction
 
 interface Interval {
     fun sampleFrom(): Number
@@ -42,7 +43,11 @@ fun interval(stringRepresentation: String): Interval {
     // [a, b]
 
     val intervalEnds = stringRepresentation.filterNot { c -> c in "[]" }.split(",")
-    val funToApply: (String) -> Number = if (stringRepresentation.contains(".")) String::toDouble else String::toInt
+    val funToApply: (String) -> Number = when {
+        stringRepresentation.contains("true") || stringRepresentation.contains("false") -> { s -> if (s == "true") 1 else 0 }
+        stringRepresentation.contains(".") -> {s -> s.toDouble()}
+        else -> String::toInt
+    }
     return when (intervalEnds.size) {
         1 -> interval(funToApply(intervalEnds[0].trim()))
         2 -> interval(funToApply(intervalEnds[0].trim()), funToApply(intervalEnds[1].trim()))

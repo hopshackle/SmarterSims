@@ -1,8 +1,9 @@
 package groundWar
 
-import intervals.Interval
-import intervals.interval
-import intervals.intervalList
+import agents.*
+import agents.MCTS.*
+import ggi.*
+import intervals.*
 
 fun createIntervalParamsFromString(details: List<String>): IntervalParams {
     // details needs to lines of the form:
@@ -25,7 +26,17 @@ fun createIntervalParamsFromString(details: List<String>): IntervalParams {
             lanchesterExp = paramMap.getOrDefault("lanchesterExp", intervalList("0.5 : 0.5")),
             OODALoop = paramMap.getOrDefault("OODALoop", intervalList("10 : 10")),
             minAssaultFactor = paramMap.getOrDefault("minAssaultFactor", intervalList("1.0 : 1.0")),
-            planningHorizon = paramMap.getOrDefault("planningHorizon", intervalList("100 : 100"))
+            planningHorizon = paramMap.getOrDefault("planningHorizon", intervalList("100 : 100")),
+            nAttempts = paramMap.getOrDefault("nAttempts", listOf(interval("20")))[0],
+            width = paramMap.getOrDefault("width", listOf(interval("1000")))[0],
+            height = paramMap.getOrDefault("height", listOf(interval("600")))[0],
+            citySeparation = paramMap.getOrDefault("citySeparation", listOf(interval("30")))[0],
+            seed = paramMap.getOrDefault("seed", listOf(interval("1, 1000000")))[0],
+            autoConnect = paramMap.getOrDefault("autoConnect", listOf(interval("300")))[0],
+            minConnections = paramMap.getOrDefault("minConnections", listOf(interval("2")))[0],
+            maxDistance = paramMap.getOrDefault("maxDistance", listOf(interval("1000")))[0],
+            percentFort = paramMap.getOrDefault("percentFort", listOf(interval("0.2")))[0],
+            fogOfWar = paramMap.getOrDefault("fogOfWar", listOf(interval("1")))[0] == IntegerInterval(1)
     )
 }
 
@@ -39,27 +50,32 @@ data class IntervalParams(
         val lanchesterExp: List<Interval>,
         val OODALoop: List<Interval>,
         val minAssaultFactor: List<Interval>,
-        val planningHorizon: List<Interval>
+        val planningHorizon: List<Interval>,
+        val nAttempts: Interval,
+        val width: Interval,
+        val height: Interval,
+        val citySeparation: Interval,
+        val seed: Interval,
+        val autoConnect: Interval,
+        val minConnections: Interval,
+        val maxDistance: Interval,
+        val percentFort: Interval,
+        val fogOfWar: Boolean = true
 ) {
-    fun sampleParams(
-            nAttempts: Int = 10,
-            width: Int = 1000,
-            height: Int = 600,
-            radius: Int = 25,
-            citySeparation: Int = 30,
-            seed: Long = 10,
-            autoConnect: Int = 300,
-            minConnections: Int = 2,
-            maxDistance: Int = 1000,
-            percentFort: Double = 0.25,
-            fogOfWar: Boolean = false,
-            maxActionsPerState: Int = 7
-    ): EventGameParams =
+    fun sampleParams(): EventGameParams =
             EventGameParams(
                     // world set up
-                    nAttempts = 10, width = 1000, height = 600, radius = 25, citySeparation = 30, fogOfWar = true,
-                    seed = 10, autoConnect = 300, minConnections = 2, maxDistance = 1000, percentFort = 0.25,
-                    maxActionsPerState = 7,
+                    nAttempts = nAttempts.sampleFrom().toInt(),
+                    width = width.sampleFrom().toInt(),
+                    height = height.sampleFrom().toInt(),
+                    radius = 25,
+                    citySeparation = citySeparation.sampleFrom().toInt(),
+                    fogOfWar = fogOfWar,
+                    seed = seed.sampleFrom().toLong(),
+                    autoConnect = autoConnect.sampleFrom().toInt(),
+                    minConnections = minConnections.sampleFrom().toInt(),
+                    maxDistance = maxDistance.sampleFrom().toInt(),
+                    percentFort = percentFort.sampleFrom().toDouble(),
                     startingForce = startingForce.map { it.sampleFrom().toInt() }.toIntArray(),
                     fogStrengthAssumption = fogStrengthAssumption.map { it.sampleFrom().toDouble() }.toDoubleArray(),
                     speed = speed.map { it.sampleFrom().toDouble() }.toDoubleArray(),
@@ -96,8 +112,74 @@ data class EventGameParams(
         // agent behaviour
         val OODALoop: IntArray = intArrayOf(10, 10),
         val minAssaultFactor: DoubleArray = doubleArrayOf(0.1, 0.1),
-        val planningHorizon: IntArray = intArrayOf(100, 100),
-        val maxActionsPerState: Int = 7
+        val planningHorizon: IntArray = intArrayOf(100, 100)
 )
+
+data class AgentParams(
+        val blueAgent: String = "MCTS",
+        val redAgent: String = "RHEA",
+        val timeBudget: Int = 50,
+        val evalBudget: Int = 500,
+        val maxDepth: Int = 10,
+        val blueParams: String = "pruneTree, C:1.0, maxActions:20",
+        val redParams: String = "useShiftBuffer, probMutation:0.25",
+        val blueOpponentModel: String = "",
+        val redOpponentModel: String = ""
+) {
+    fun createAgent(colour: String, horizon: Int): SimpleActionPlayerInterface {
+        val (type, params, opponent) = when (colour.toUpperCase()) {
+            "BLUE" -> Triple(blueAgent, blueParams.split(","), blueOpponentModel)
+            "RED" -> Triple(redAgent, redParams.split(""), redOpponentModel)
+            else -> throw AssertionError("Unknown colour " + colour)
+        }
+        fun getParam(name: String): String {
+            return params.firstOrNull { it.contains(name) }?.let { it.split(":")[1] } ?: "0"
+        }
+        return when (type) {
+            "RHEA" -> SimpleActionEvoAgent(
+                    underlyingAgent = SimpleEvoAgent(nEvals = evalBudget, timeLimit = timeBudget, sequenceLength = maxDepth, horizon = horizon,
+                            useMutationTransducer = params.contains("useMutationTransducer"), useShiftBuffer = params.contains("useShiftBuffer"),
+                            probMutation = getParam("probMutation").toDouble(), name = colour + "_RHEA"),
+                    opponentModel = SimpleActionDoNothing)
+            "MCTS" -> MCTSTranspositionTableAgentMaster(MCTSParameters(C = getParam("C").toDouble(), maxPlayouts = evalBudget, timeLimit = timeBudget,
+                    maxDepth = maxDepth, horizon = horizon, pruneTree = params.contains("pruneTree")),
+                    stateFunction = LandCombatStateFunction,
+                    rolloutPolicy = when (getParam("rolloutPolicy")) {
+                        "DoNothing" -> { _, _ -> NoAction }
+                        "random", "" -> { _, actions -> actions.random() }
+                        else -> { _, actions -> throw AssertionError("Unknown rollout policy " + getParam("rolloutPolicy")) }
+                    },
+                    opponentModel = SimpleActionDoNothing,
+                    name = colour + "_MCTS")
+            else -> throw AssertionError("Unknown agent type: " + type)
+        }
+    }
+
+}
+
+
+fun createAgentParamsFromString(details: List<String>): AgentParams {
+    // details needs to lines of the form:
+    //      minConnections = 2              - a single parameter setting
+    //      OODALoop = 10, [5, 50]          - a single parameter setting for BLUE, and an Interval for RED
+
+    // firstly we create a map from parameter name to value
+    val paramMap: Map<String, String> = details.map {
+        val temp = it.split("=")
+        temp[0].trim() to temp[1].trim()
+    }.toMap()
+
+    return AgentParams(
+            blueAgent = paramMap.getOrDefault("blueAgent", "RHEA"),
+            redAgent = paramMap.getOrDefault("redAgent", "RHEA"),
+            timeBudget = paramMap.getOrDefault("timeBudget", "50").toInt(),
+            evalBudget = paramMap.getOrDefault("evalBudget", "500").toInt(),
+            maxDepth = paramMap.getOrDefault("maxDepth", "10").toInt(),
+            blueParams = paramMap.getOrDefault("blueParams", ""),
+            redParams = paramMap.getOrDefault("redParams", ""),
+            blueOpponentModel = paramMap.getOrDefault("blueOpponentModel", ""),
+            redOpponentModel = paramMap.getOrDefault("redOpponentModel", "")
+    )
+}
 
 

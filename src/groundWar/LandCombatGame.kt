@@ -23,17 +23,8 @@ data class Event(val tick: Int, val action: Action) : Comparable<Event> {
     }
 }
 
+val LCG_rnd = Random(10)
 class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List<Int>> = emptyMap()) : ActionAbstractGameState {
-    companion object {
-        val stateToActionMap: ArrayList<MutableMap<String, List<Action>>> = ArrayList(2)
-        val rnd: Random = Random(10)
-
-        init {
-            repeat(2) {
-                stateToActionMap.add(mutableMapOf())
-            }
-        }
-    }
 
     val eventQueue = EventQueue()
     override fun registerAgent(player: Int, agent: SimpleActionPlayerInterface) = eventQueue.registerAgent(player, agent, nTicks())
@@ -77,16 +68,10 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
 
     override fun nActions() = world.cities.size
 
-    override fun possibleActions(player: Int): List<Action> {
-        val stateRep = LandCombatStateFunction(this)
-        // we create X random actions on the same lines as an EvoAgent would
-        if (!stateToActionMap[player].containsKey(stateRep)) {
-            val randomActions = (0 until world.params.maxActionsPerState).map {
-                translateGene(player, IntArray(codonsPerAction()) { rnd.nextInt(nActions()) })
-            }.distinct()
-            stateToActionMap[player][stateRep] = randomActions
-        }
-        return stateToActionMap[player][stateRep] ?: emptyList()
+    override fun possibleActions(player: Int, max: Int): List<Action> {
+        return (0 until max * 10).asSequence().map {
+            translateGene(player, IntArray(codonsPerAction()) { LCG_rnd.nextInt(nActions()) })
+        }.distinct().take(max).toList()
     }
 
     override fun translateGene(player: Int, gene: IntArray): Action {

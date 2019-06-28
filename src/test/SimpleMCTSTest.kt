@@ -27,7 +27,7 @@ class SimpleMazeGame(val playerCount: Int, val target: Int) : ActionAbstractGame
 
     override fun playerCount() = playerCount
 
-    override fun possibleActions(player: Int) = listOf(
+    override fun possibleActions(player: Int, max: Int) = listOf(
             Move(player, Direction.LEFT),
             Move(player, Direction.RIGHT),
             NoAction)
@@ -219,7 +219,7 @@ class MCTSMasterTest {
 
 class MCTSChildTest {
     class MCTSChildTestAgent(tree: MutableMap<String, TTNode>, stateLinks: MutableMap<String, MutableSet<String>>, params: MCTSParameters, stateFunction: MazeStateFunction)
-        : MCTSTranspositionTableAgentChild(tree, stateLinks, params, stateFunction) {
+        : MCTSTranspositionTableAgentChild(tree, stateLinks, mutableMapOf(), params, stateFunction, { _, actions -> actions.random() }) {
 
 
         var rolloutCalls = 0
@@ -228,9 +228,9 @@ class MCTSChildTest {
         // to make trajectory visible for testing
         fun trajectory() = trajectory
 
-        override fun rolloutPolicy(state: ActionAbstractGameState, possibleActions: List<Action>): Action {
+        override fun rollout(state: ActionAbstractGameState, possibleActions: List<Action>): Action {
             rolloutCalls++
-            return super.rolloutPolicy(state, possibleActions)
+            return super.rollout(state, possibleActions)
         }
 
         override fun expansionPolicy(node: TTNode, state: ActionAbstractGameState, possibleActions: List<Action>): Action {

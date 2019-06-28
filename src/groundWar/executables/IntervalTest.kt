@@ -25,23 +25,9 @@ fun main(args: Array<String>) {
     val inputFile = if (args.size > 1) args[1] else ""
     val outputFile = if (args.size > 2) args[2] else "output.txt"
 
-    val intervalParams = if (inputFile == "") {
-        IntervalParams(
-                startingForce = listOf(interval(100), interval(100)),
-                fogStrengthAssumption = listOf(interval(10), interval(10)),
-                speed = listOf(interval(10.0), interval(10.0)),
-                fortAttackerDivisor = interval(3.0),
-                fortDefenderExpBonus = interval(0.10),
-                lanchesterCoeff = listOf(interval(0.20), interval(0.10, 0.30)),
-                lanchesterExp = listOf(interval(0.5), interval(0.5)),
-                OODALoop = listOf(interval(10), interval(10)),
-                minAssaultFactor = listOf(interval(2.0), interval(2.0)),
-                planningHorizon = listOf(interval(100), interval(100))
-        )
-    } else {
-        val fileAsLines = BufferedReader(FileReader(inputFile)).lines().toList()
-        createIntervalParamsFromString(fileAsLines)
-    }
+    if (inputFile == "") throw AssertionError("Must provide input file for intervals as second parameter")
+    val fileAsLines = BufferedReader(FileReader(inputFile)).lines().toList()
+    val intervalParams = createIntervalParamsFromString(fileAsLines)
 
 
     val numberFormatter: (Any?) -> String = { it ->
@@ -81,14 +67,13 @@ fun main(args: Array<String>) {
 
     if (otherKeys.size > 0) throw AssertionError("We have tried to specify an interval for a non-existent game parameter " + otherKeys.toString())
 
-    val rnd = Random(1)
     val fileWriter = FileWriter(outputFile)
     fileWriter.write(gameParamKeys.joinToString(separator = "\t", postfix = "\t"))
     fileWriter.write(statisticKeys.joinToString(separator = "\t", postfix = "\n"))
     StatsCollator.clear()
     repeat(simsToRun) {
 
-        val params = intervalParams.sampleParams(seed = rnd.nextLong())
+        val params = intervalParams.sampleParams()
         val game = LandCombatGame(World(params = params))
         game.scoreFunction[PlayerId.Blue] = compositeScoreFunction(
                 simpleScoreFunction(5.0, 1.0, 0.0, -0.5),

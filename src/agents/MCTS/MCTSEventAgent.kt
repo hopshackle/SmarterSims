@@ -8,11 +8,13 @@ import java.util.*
 class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
                                         val stateFunction: StateSummarizer,
                                         val opponentModel: SimpleActionPlayerInterface = SimpleActionDoNothing,
+                                        val rolloutPolicy: (ActionAbstractGameState, List<Action>) -> Action = { _, actions -> actions.random() },
                                         val name: String = "MCTS"
 ) : SimpleActionPlayerInterface {
 
     val tree: MutableMap<String, TTNode> = mutableMapOf()
     val stateLinks: MutableMap<String, MutableSet<String>> = mutableMapOf()
+    val stateToActionMap: MutableMap<String, List<Action>> = mutableMapOf()
 
     override fun getAgentType(): String {
         return "MCTSTranspositionTableAgentMaster"
@@ -77,17 +79,20 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
             } while (unprocessedKeys.isNotEmpty())
 
             val keysToRemove = tree.keys - keysToKeep
-            keysToRemove.forEach{
+            keysToRemove.forEach {
                 tree.remove(it)
                 stateLinks.remove(it)
             }
-            LandCombatGame.stateToActionMap[playerRef] = tree.keys.associateWith { LandCombatGame.stateToActionMap[playerRef].getOrDefault(it, emptyList()) }.toMutableMap()
+            stateToActionMap.clear()
+            // we can rebuild from the tree nodes
+            stateToActionMap.putAll(tree.keys.associateWith { tree[it]!!.actions })
         } else {
             tree.clear()
             stateLinks.clear()
-            LandCombatGame.stateToActionMap[playerRef].clear()
+            stateToActionMap.clear()
             val key = stateFunction(root)
-            tree[key] = TTNode(params, root.possibleActions(playerRef))
+            stateToActionMap[key] = root.possibleActions(playerRef, params.maxActions)
+            tree[key] = TTNode(params, stateToActionMap[key] ?: emptyList())
         }
     }
 
@@ -103,7 +108,7 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
     }
 
     override fun getForwardModelInterface(): SimpleActionPlayerInterface {
-        return MCTSTranspositionTableAgentChild(tree, stateLinks, params, stateFunction)
+        return MCTSTranspositionTableAgentChild(tree, stateLinks, stateToActionMap, params, stateFunction, rolloutPolicy)
     }
 
     override fun backPropagate(finalScore: Double) {
@@ -116,14 +121,18 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
 
 open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>,
                                             val stateLinks: MutableMap<String, MutableSet<String>>,
+                                            val stateToActionMap: MutableMap<String, List<Action>>,
                                             val params: MCTSParameters,
-                                            val stateFunction: StateSummarizer) : SimpleActionPlayerInterface {
+                                            val stateFunction: StateSummarizer,
+                                            val rolloutPolicy: (ActionAbstractGameState, List<Action>) -> Action)
+    : SimpleActionPlayerInterface {
 
     // node, possibleActions from node, action taken
 
     protected val trajectory: Deque<Triple<String, List<Action>, Action>> = ArrayDeque()
 
     private val nodesPerIteration = 1
+    private var actionsTaken = 0
     var nodesToExpand = nodesPerIteration
         protected set(n) {
             field = n
@@ -135,15 +144,26 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
 
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
         val currentState = stateFunction(gameState)
-        val possibleActions = gameState.possibleActions(playerRef)
+        actionsTaken += gameState.codonsPerAction()  // for comparability with RHEA
+
+        // we create X random actions on the same lines as an EvoAgent would
+        if (!stateToActionMap.containsKey(currentState)) {
+            stateToActionMap[currentState] = gameState.possibleActions(playerRef, params.maxActions)
+        }
+
+        val possibleActions = stateToActionMap[currentState] ?: emptyList()
         val node = tree[currentState]
         val actionChosen = when {
-            node == null -> rolloutPolicy(gameState, possibleActions)
+            node == null || actionsTaken > params.maxDepth -> rollout(gameState, possibleActions)
             node.hasUnexploredActions() -> expansionPolicy(node, gameState, possibleActions)
             else -> treePolicy(node, gameState, possibleActions)
         }
         trajectory.addLast(Triple(currentState, possibleActions, actionChosen))
         return actionChosen
+    }
+
+    open fun rollout(state: ActionAbstractGameState, possibleActions: List<Action>): Action {
+        return rolloutPolicy(state, possibleActions)
     }
 
     open fun expansionPolicy(node: TTNode, state: ActionAbstractGameState, possibleActions: List<Action>): Action {
@@ -154,11 +174,6 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         return node.getUCTAction(possibleActions)
     }
 
-    open fun rolloutPolicy(state: ActionAbstractGameState, possibleActions: List<Action>): Action {
-        return possibleActions.random()
-    }
-
-
     override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
@@ -166,8 +181,11 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
     override fun reset(): SimpleActionPlayerInterface {
         tree.clear()
         trajectory.clear()
+        stateToActionMap.clear()
+        stateLinks.clear()
         nodesToExpand = nodesPerIteration
-        return MCTSTranspositionTableAgentChild(tree, mutableMapOf(), params, stateFunction)
+        actionsTaken = 0
+        return MCTSTranspositionTableAgentChild(tree, mutableMapOf(), mutableMapOf(), params, stateFunction, rolloutPolicy)
     }
 
     override fun getForwardModelInterface(): SimpleActionPlayerInterface {

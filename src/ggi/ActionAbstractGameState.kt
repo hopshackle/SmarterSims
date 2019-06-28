@@ -27,7 +27,7 @@ interface ActionAbstractGameState : AbstractGameState {
 
     fun playerCount(): Int
 
-    fun possibleActions(player: Int): List<Action>
+    fun possibleActions(player: Int, max: Int = Int.MAX_VALUE): List<Action>
 
     fun translateGene(player: Int, gene: IntArray) : Action
 
