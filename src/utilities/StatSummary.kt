@@ -195,9 +195,9 @@ class StatSummary @JvmOverloads constructor(// following line can cause prog to 
 
     }
 
-    override fun compareTo(o: StatSummary): Int {
-        if (mean() > o.mean()) return 1
-        return if (mean() < o.mean()) -1 else 0
+    override fun compareTo(other: StatSummary): Int {
+        if (mean() > other.mean()) return 1
+        return if (mean() < other.mean()) -1 else 0
     }
 
     companion object {

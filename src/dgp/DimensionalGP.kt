@@ -154,7 +154,6 @@ fun main() {
 
     val d1 = DynaType()
     d1[FUnit.metre] = 1
-    val d2 = d1.clone() as DynaType
 
     val t1 = DynaType()
     t1[FUnit.second] = 1

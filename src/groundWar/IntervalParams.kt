@@ -147,7 +147,7 @@ data class AgentParams(
                     rolloutPolicy = when (getParam("rolloutPolicy")) {
                         "DoNothing" -> { _, _ -> NoAction }
                         "random", "" -> { _, actions -> actions.random() }
-                        else -> { _, actions -> throw AssertionError("Unknown rollout policy " + getParam("rolloutPolicy")) }
+                        else -> { _, _ -> throw AssertionError("Unknown rollout policy " + getParam("rolloutPolicy")) }
                     },
                     opponentModel = SimpleActionDoNothing,
                     name = colour + "_MCTS")

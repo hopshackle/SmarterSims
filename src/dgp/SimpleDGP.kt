@@ -27,7 +27,6 @@ fun makeMinus (x: SimpleNode, y: SimpleNode ) :SimpleNode? {
 }
 
 fun main() {
-    println(::makeTimes is BinaryMaker)
     val m = SimpleInputNode(massType)
     val g = SimpleInputNode(accelType)
     val h = SimpleInputNode(distanceType)
@@ -59,12 +58,10 @@ fun main() {
     println(m.type())
     println(g.type())
 
-    var mg = SimpleTimes(m, g)
-
     // may need the reflect package for this to work ...
     // val simpleTimesConsBroken : KFunction2<SimpleNode,SimpleNode,SimpleTimes> = ::SimpleTimes
     val simpleTimesCons = ::SimpleTimes
-    mg = simpleTimesCons(g, h)
+    var mg = simpleTimesCons(g, h)
 
     mg.update()
     println(mg.type())
@@ -85,16 +82,16 @@ fun produceNodes(nodes: ArrayList<SimpleNode>, makers: ArrayList<BinaryMaker>) :
     return productions
 }
 
-open abstract class SimpleNode(var t: DynaType) {
+abstract class SimpleNode(var t: DynaType) {
     var v : Double = 0.0
     // var t = DynaType
-    open abstract fun update()
+    abstract fun update()
     fun value() = v
     fun type() = t
 }
 
-open abstract class BinaryNode (t: DynaType) : SimpleNode(t) {
-    open abstract fun check(x: DynaType, y: DynaType) : Boolean
+abstract class BinaryNode (t: DynaType) : SimpleNode(t) {
+    abstract fun check(x: DynaType, y: DynaType) : Boolean
 }
 
 class SimpleInputNode (t: DynaType): SimpleNode(t) {

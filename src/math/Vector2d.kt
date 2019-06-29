@@ -10,9 +10,9 @@ class Vector2d : Serializable {
     var x: Double = 0.toDouble()
     var y: Double = 0.toDouble()
 
-    override fun equals(o: Any?): Boolean {
-        if (o is Vector2d) {
-            val v = o as Vector2d?
+    override fun equals(other: Any?): Boolean {
+        if (other is Vector2d) {
+            val v = other as Vector2d?
             return x == v!!.x && y == v.y
         } else {
             return false

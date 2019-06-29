@@ -85,7 +85,8 @@ fun main(args: Array<String>) {
             gameScore < 0.0 -> redWins++
             else -> draws++
         }
+        StatsCollator.addStatistics("BLUE_SCORE", gameScore)
     }
-    println("$blueWins wins for Blue (Avg Score of ${String.format("%.2f", blueScore / maxGames)}, $redWins for Red and $draws draws out of $maxGames in ${(java.util.Calendar.getInstance().timeInMillis - startTime) / maxGames} ms per game")
+    println("$blueWins wins for Blue, $redWins for Red and $draws draws out of $maxGames in ${(java.util.Calendar.getInstance().timeInMillis - startTime) / maxGames} ms per game")
     println(StatsCollator.summaryString())
 }

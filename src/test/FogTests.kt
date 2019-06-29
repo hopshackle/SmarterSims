@@ -134,6 +134,7 @@ class FogTests {
                     when (c.owner) {
                         PlayerId.Blue -> assert(fogCopyBlue.cities[i] == fullCopy.cities[i])
                         PlayerId.Red -> assert(fogCopyRed.cities[i] == fullCopy.cities[i])
+                        else -> Unit
                     }
                     when (Pair(fullCopy.checkVisible(i, PlayerId.Red), fullCopy.checkVisible(i, PlayerId.Blue))) {
                         Pair(false, false) -> {

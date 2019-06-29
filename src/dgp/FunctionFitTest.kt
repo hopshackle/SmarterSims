@@ -2,6 +2,7 @@ package dgp
 
 import utilities.ElapsedTimer
 import utilities.StatSummary
+import kotlin.math.abs
 import kotlin.random.Random
 
 fun main() {
@@ -89,7 +90,7 @@ class Tester(val n: Int) {
 // write a basic kinetic energy test to begin with
 
 interface PKE {
-    fun f(h: Double, m: Double, v: Double): Double
+    fun f(height: Double, mass: Double, velocity: Double): Double
 }
 
 fun testFunction(n: Int, net: PKE): Double {
@@ -218,7 +219,7 @@ class RandNetPKE : PKE {
     }
 
     fun absPowers(t: DynaType): Int {
-        return t.values.sumBy { t -> Math.abs(t) }
+        return t.values.sumBy { abs(it) }
     }
 
     override fun f(height: Double, mass: Double, velocity: Double): Double {
@@ -240,7 +241,6 @@ fun randomBinaryNode(nodes: ArrayList<SimpleNode>, makers: ArrayList<BinaryMaker
     val x = nodes[Random.nextInt(nodes.size)]
     val y = nodes[Random.nextInt(nodes.size)]
     val maker = makers[Random.nextInt(makers.size)]
-    val node = maker
     return maker(x, y)
 }
 
