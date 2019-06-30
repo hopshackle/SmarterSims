@@ -45,10 +45,32 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
             iteration++
         } while (iteration < params.maxPlayouts && System.currentTimeMillis() < startTime + params.timeLimit)
 
-        StatsCollator.addStatistics("${name}Time", System.currentTimeMillis() - startTime)
-        StatsCollator.addStatistics("${name}Iterations", iteration)
+        StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
+        StatsCollator.addStatistics("${name}_Iterations", iteration)
+        val (meanDepth, maxDepth)  = getDepth(gameState)
+        StatsCollator.addStatistics("${name}_MeanDepth", meanDepth)
+        StatsCollator.addStatistics("${name}_MaxDepth", maxDepth)
+        StatsCollator.addStatistics("${name}_States", tree.size)
         //    println("$iteration iterations executed for player $playerId")
         return getBestAction(gameState)
+    }
+
+    // returns (meanDepth, maxDepth)
+    fun getDepth(gameState: ActionAbstractGameState): Pair<Double, Int> {
+        var keysToProcess = setOf(stateFunction(gameState))
+        val processedKeys = mutableSetOf<String>()
+        var depths = IntArray(50) {0}
+        var currentDepth = 0
+        do {
+            depths[currentDepth] = keysToProcess.size
+            keysToProcess = keysToProcess.flatMap{
+                stateLinks[it]?.toList() ?: emptyList()
+            }.filterNot(processedKeys::contains).toSet()
+            currentDepth++
+            processedKeys.addAll(keysToProcess)
+        } while (currentDepth < 50 && keysToProcess.isNotEmpty())
+        val meanDepth = depths.mapIndexed{i, d -> i * d}.sum().toDouble() / depths.sum()
+        return Pair(meanDepth, currentDepth - 1)
     }
 
     fun getBestAction(state: ActionAbstractGameState): Action {
@@ -132,7 +154,10 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
     protected val trajectory: Deque<Triple<String, List<Action>, Action>> = ArrayDeque()
 
     private val nodesPerIteration = 1
-    private var actionsTaken = 0
+    var actionsTaken = 0
+        protected set (n) {
+            field = n
+        }
     var nodesToExpand = nodesPerIteration
         protected set(n) {
             field = n
