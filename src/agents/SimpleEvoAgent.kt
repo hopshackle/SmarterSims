@@ -24,7 +24,7 @@ fun evaluateSequenceDelta(gameState: AbstractGameState,
     }
 
     if (gameState is ActionAbstractGameState) {
-        val mutatedAgent = SimpleActionEvoAgentRollForward(seq)
+        val mutatedAgent = SimpleActionEvoAgentRollForward(seq, horizon)
         gameState.registerAgent(playerId, mutatedAgent)
         if (opponentModel is SimpleActionPlayerInterface)
             gameState.registerAgent(1 - playerId, opponentModel)

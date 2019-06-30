@@ -3,10 +3,10 @@ package ggi
 import agents.SimpleEvoAgent
 import groundWar.LandCombatGame
 
-object NoAction : Action {
+class NoAction(val waitTime: Int = 1) : Action {
     override fun apply(state: ActionAbstractGameState): Int {
         // Do absolutely nothing
-        return state.nTicks() + 1
+        return state.nTicks() + waitTime
     }
 
     override fun visibleTo(player: Int, state: ActionAbstractGameState) = true
@@ -39,7 +39,7 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
     }
 
     override fun getForwardModelInterface(): SimpleActionPlayerInterface {
-        return SimpleActionEvoAgentRollForward((underlyingAgent.buffer ?: intArrayOf()).copyOf())
+        return SimpleActionEvoAgentRollForward((underlyingAgent.buffer ?: intArrayOf()).copyOf(), underlyingAgent.horizon)
     }
 
     override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
@@ -65,7 +65,7 @@ fun convertGenomeToActionList(genome: IntArray?, gameState: ActionAbstractGameSt
 /*
 Will take actions using a specified genome...until the sequence runs out
  */
-class SimpleActionEvoAgentRollForward(var genome: IntArray) : SimpleActionPlayerInterface {
+class SimpleActionEvoAgentRollForward(var genome: IntArray, val horizon: Int = 1) : SimpleActionPlayerInterface {
 
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
         val intPerAction = gameState.codonsPerAction()
@@ -74,7 +74,7 @@ class SimpleActionEvoAgentRollForward(var genome: IntArray) : SimpleActionPlayer
             genome = genome.sliceArray(intPerAction until genome.size)
             return gameState.translateGene(playerRef, gene)
         } else {
-            return NoAction
+            return NoAction(horizon)
         }
     }
 
@@ -87,14 +87,14 @@ class SimpleActionEvoAgentRollForward(var genome: IntArray) : SimpleActionPlayer
     override fun getAgentType() = "SimpleActionEvoAgentRollForward"
 
     override fun getForwardModelInterface(): SimpleActionPlayerInterface {
-        return SimpleActionEvoAgentRollForward(genome.copyOf())
+        return SimpleActionEvoAgentRollForward(genome.copyOf(), horizon)
     }
 
     override fun backPropagate(finalScore: Double) {}
 }
 
 object SimpleActionDoNothing : SimpleActionPlayerInterface {
-    override fun getAction(gameState: ActionAbstractGameState, playerRef: Int) = NoAction
+    override fun getAction(gameState: ActionAbstractGameState, playerRef: Int) = NoAction(gameState.nTicks())
     override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int) = emptyList<Action>()
     override fun reset() = this
     override fun getAgentType() = "SimpleActionDoNothing"

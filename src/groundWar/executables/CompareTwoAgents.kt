@@ -63,14 +63,12 @@ fun main(args: Array<String>) {
     var blueScore = 0.0
 
     val startTime = java.util.Calendar.getInstance().timeInMillis
-    val useConstantWorld = false
-    val constantWorld = 1
     for (r in 1..maxGames) {
 
         agents[PlayerId.Blue]?.reset()
         agents[PlayerId.Red]?.reset()
 
-        val world = World(random = Random(if (useConstantWorld) constantWorld else r), params = params)
+        val world = World(random = Random(seed = params.seed), params = params)
         val game = LandCombatGame(world)
         game.scoreFunction[PlayerId.Blue] = scoreFunction
         game.scoreFunction[PlayerId.Red] = scoreFunction

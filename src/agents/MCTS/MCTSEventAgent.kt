@@ -60,7 +60,7 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
                 MCTSSelectionMethod.ROBUST -> it.value.visitCount.toDouble()
             }
         }?.key
-        return chosenAction ?: NoAction
+        return chosenAction ?: NoAction(1)
     }
 
     fun resetTree(root: ActionAbstractGameState, playerRef: Int) {

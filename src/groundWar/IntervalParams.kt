@@ -145,7 +145,7 @@ data class AgentParams(
                     maxDepth = maxDepth, horizon = horizon, pruneTree = params.contains("pruneTree")),
                     stateFunction = LandCombatStateFunction,
                     rolloutPolicy = when (getParam("rolloutPolicy")) {
-                        "DoNothing" -> { _, _ -> NoAction }
+                        "DoNothing" -> { _, _ -> NoAction(horizon) }
                         "random", "" -> { _, actions -> actions.random() }
                         else -> { _, _ -> throw AssertionError("Unknown rollout policy " + getParam("rolloutPolicy")) }
                     },
