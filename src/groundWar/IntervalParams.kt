@@ -111,8 +111,7 @@ data class EventGameParams(
         val lanchesterExp: DoubleArray = doubleArrayOf(1.0, 1.0),    // should be between 0.0 and 1.0
         // agent behaviour
         val OODALoop: IntArray = intArrayOf(10, 10),
-        val minAssaultFactor: DoubleArray = doubleArrayOf(0.1, 0.1),
-        val planningHorizon: IntArray = intArrayOf(100, 100)
+        val minAssaultFactor: DoubleArray = doubleArrayOf(0.1, 0.1)
 )
 
 data class AgentParams(
@@ -120,13 +119,14 @@ data class AgentParams(
         val redAgent: String = "RHEA",
         val timeBudget: Int = 50,
         val evalBudget: Int = 500,
-        val maxDepth: Int = 10,
+        val sequenceLength: Int = 40,
+        val planningHorizon: Int = 100,
         val blueParams: String = "pruneTree, C:1.0, maxActions:20",
         val redParams: String = "useShiftBuffer, probMutation:0.25",
         val blueOpponentModel: String = "",
         val redOpponentModel: String = ""
 ) {
-    fun createAgent(colour: String, horizon: Int): SimpleActionPlayerInterface {
+    fun createAgent(colour: String): SimpleActionPlayerInterface {
         val (type, params, opponent) = when (colour.toUpperCase()) {
             "BLUE" -> Triple(blueAgent, blueParams.split(","), blueOpponentModel)
             "RED" -> Triple(redAgent, redParams.split(""), redOpponentModel)
@@ -137,15 +137,15 @@ data class AgentParams(
         }
         return when (type) {
             "RHEA" -> SimpleActionEvoAgent(
-                    underlyingAgent = SimpleEvoAgent(nEvals = evalBudget, timeLimit = timeBudget, sequenceLength = maxDepth, horizon = horizon,
+                    underlyingAgent = SimpleEvoAgent(nEvals = evalBudget, timeLimit = timeBudget, sequenceLength = sequenceLength, horizon = planningHorizon,
                             useMutationTransducer = params.contains("useMutationTransducer"), useShiftBuffer = params.contains("useShiftBuffer"),
                             probMutation = getParam("probMutation").toDouble(), name = colour + "_RHEA"),
                     opponentModel = SimpleActionDoNothing)
             "MCTS" -> MCTSTranspositionTableAgentMaster(MCTSParameters(C = getParam("C").toDouble(), maxPlayouts = evalBudget, timeLimit = timeBudget,
-                    maxDepth = maxDepth, horizon = horizon, pruneTree = params.contains("pruneTree")),
+                    maxDepth = sequenceLength, horizon = planningHorizon, pruneTree = params.contains("pruneTree")),
                     stateFunction = LandCombatStateFunction,
                     rolloutPolicy = when (getParam("rolloutPolicy")) {
-                        "DoNothing" -> { _, _ -> NoAction(horizon) }
+                        "DoNothing" -> { _, _ -> NoAction(planningHorizon) }
                         "random", "" -> { _, actions -> actions.random() }
                         else -> { _, _ -> throw AssertionError("Unknown rollout policy " + getParam("rolloutPolicy")) }
                     },
@@ -174,7 +174,8 @@ fun createAgentParamsFromString(details: List<String>): AgentParams {
             redAgent = paramMap.getOrDefault("redAgent", "RHEA"),
             timeBudget = paramMap.getOrDefault("timeBudget", "50").toInt(),
             evalBudget = paramMap.getOrDefault("evalBudget", "500").toInt(),
-            maxDepth = paramMap.getOrDefault("maxDepth", "10").toInt(),
+            sequenceLength = paramMap.getOrDefault("sequenceLength", "40").toInt(),
+            planningHorizon = paramMap.getOrDefault("planningHorizon", "100").toInt(),
             blueParams = paramMap.getOrDefault("blueParams", ""),
             redParams = paramMap.getOrDefault("redParams", ""),
             blueOpponentModel = paramMap.getOrDefault("blueOpponentModel", ""),

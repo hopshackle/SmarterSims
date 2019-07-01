@@ -36,18 +36,17 @@ fun main(args: Array<String>) {
             lanchesterExp = doubleArrayOf(0.5, 0.5),
             percentFort = 0.25,
             fortAttackerDivisor = 2.0,
-            fortDefenderExpBonus = 0.1,
-            planningHorizon = intArrayOf(100, 100)
+            fortDefenderExpBonus = 0.1
     )
 
     val agents = HashMap<PlayerId, SimpleActionPlayerInterface>()
-    agents[PlayerId.Blue] = agentParams.createAgent("BLUE", params.planningHorizon[0])
+    agents[PlayerId.Blue] = agentParams.createAgent("BLUE")
       //      MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = agentParams.timeBudget, maxPlayouts = agentParams.evalBudget, horizon = params.planningHorizon[0], pruneTree = true), LandCombatStateFunction)
     //  SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40, horizon = 100, useMutationTransducer = false, probMutation = 0.25, name = "BLUE")
     //  , opponentModel = HeuristicAgent(2.0, 1.0))
     //    HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))
 
-    agents[PlayerId.Red] = agentParams.createAgent("RED", params.planningHorizon[1])
+    agents[PlayerId.Red] = agentParams.createAgent("RED")
             //        MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
    //         SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 10000, timeLimit = 500, sequenceLength = 40, horizon = params.planningHorizon[1], useMutationTransducer = false, useShiftBuffer = true, probMutation = 0.25, name = "RED"))
     //    HeuristicAgent(3.0, 1.0, listOf( HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))

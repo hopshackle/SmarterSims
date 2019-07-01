@@ -91,13 +91,13 @@ fun main(args: Array<String>) {
         //        SimpleActionEvoAgent(SimpleEvoAgent(name = "OppEA", nEvals = 10, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon))
         val blueAgent = SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, timeLimit = 100, sequenceLength = 40,
                 useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = true,
-                horizon = params.planningHorizon[0], opponentModel = blueOpponentModel)
+                horizon = 100, opponentModel = blueOpponentModel)
         )
         game.registerAgent(0, blueAgent)
         val redAgent =
                 SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, timeLimit = 100, sequenceLength = 40,
                         useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = true,
-                        horizon = params.planningHorizon[1]))
+                        horizon = 100))
         //      MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
         //       HeuristicAgent(params.minAssaultFactor[1], 1.1)
         game.registerAgent(1, redAgent)

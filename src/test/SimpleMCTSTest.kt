@@ -315,7 +315,7 @@ class MCTSChildTest {
     fun rolloutPolicy() {
         val rolloutActions = mutableListOf<Action>()
         repeat(100) {
-            rolloutActions.add(childAgent.rolloutPolicy(simpleMazeGame, simpleMazeGame.possibleActions(0)))
+            rolloutActions.add(childAgent.rollout(simpleMazeGame, simpleMazeGame.possibleActions(0)))
         }
         assertEquals(rolloutActions.count { it == NoAction()}.toDouble(), 33.0, 12.0)
         assertEquals(rolloutActions.count { it == Move(0, Direction.LEFT) }.toDouble(), 33.0, 12.0)
@@ -325,7 +325,6 @@ class MCTSChildTest {
         assertEquals(childAgent.rolloutCalls, 100)
 
     }
-
 }
 
 class MCStatisticsTest {

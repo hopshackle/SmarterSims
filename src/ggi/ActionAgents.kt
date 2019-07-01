@@ -2,6 +2,7 @@ package ggi
 
 import agents.SimpleEvoAgent
 import groundWar.LandCombatGame
+import kotlin.math.max
 
 class NoAction(val waitTime: Int = 1) : Action {
     override fun apply(state: ActionAbstractGameState): Int {
@@ -10,6 +11,14 @@ class NoAction(val waitTime: Int = 1) : Action {
     }
 
     override fun visibleTo(player: Int, state: ActionAbstractGameState) = true
+
+    override fun equals(other: Any?): Boolean {
+        return (other is NoAction && other.waitTime == waitTime)
+    }
+
+    override fun hashCode(): Int {
+        return waitTime * 67 + 3
+    }
 }
 
 class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(),
@@ -94,7 +103,7 @@ class SimpleActionEvoAgentRollForward(var genome: IntArray, val horizon: Int = 1
 }
 
 object SimpleActionDoNothing : SimpleActionPlayerInterface {
-    override fun getAction(gameState: ActionAbstractGameState, playerRef: Int) = NoAction(gameState.nTicks())
+    override fun getAction(gameState: ActionAbstractGameState, playerRef: Int) = NoAction(max(1, gameState.nTicks()))
     override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int) = emptyList<Action>()
     override fun reset() = this
     override fun getAgentType() = "SimpleActionDoNothing"

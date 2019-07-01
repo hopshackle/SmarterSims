@@ -61,12 +61,12 @@ fun runWithParams(params: EventGameParams) {
     //    SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40,
     //    useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = false,
             //    horizon = 200, opponentModel = blueOpponentModel))
-            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[0]), LandCombatStateFunction)
+            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = 100), LandCombatStateFunction)
 
     game.registerAgent(0, blueAgent)
     val redAgent =
             //   SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon[1]))
-            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
+            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = 100), LandCombatStateFunction)
     // HeuristicAgent(2.0, 1.1)
     game.registerAgent(1, redAgent)
 

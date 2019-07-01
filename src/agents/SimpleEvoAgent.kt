@@ -72,7 +72,7 @@ data class SimpleEvoAgent(
         var useMutationTransducer: Boolean = true,
         var repeatProb: Double = 0.5,  // only used with mutation transducer
         var discountFactor: Double? = null,
-        val horizon: Int = -1,
+        val horizon: Int = 1,
         var opponentModel: SimplePlayerInterface = DoNothingAgent(),
         val name: String = "EA"
 ) : SimplePlayerInterface {
