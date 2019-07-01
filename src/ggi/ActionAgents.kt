@@ -4,21 +4,13 @@ import agents.SimpleEvoAgent
 import groundWar.LandCombatGame
 import kotlin.math.max
 
-class NoAction(val waitTime: Int = 1) : Action {
+data class NoAction(val playerRef: Int, val waitTime: Int = 1) : Action {
     override fun apply(state: ActionAbstractGameState): Int {
         // Do absolutely nothing
         return state.nTicks() + waitTime
     }
-
-    override fun visibleTo(player: Int, state: ActionAbstractGameState) = true
-
-    override fun equals(other: Any?): Boolean {
-        return (other is NoAction && other.waitTime == waitTime)
-    }
-
-    override fun hashCode(): Int {
-        return waitTime * 67 + 3
-    }
+    // only visible to planning player
+    override fun visibleTo(player: Int, state: ActionAbstractGameState) = player == playerRef
 }
 
 class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(),
@@ -48,27 +40,50 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
     }
 
     override fun getForwardModelInterface(): SimpleActionPlayerInterface {
-        return SimpleActionEvoAgentRollForward((underlyingAgent.buffer ?: intArrayOf()).copyOf(), underlyingAgent.horizon)
+        return SimpleActionEvoAgentRollForward((underlyingAgent.buffer
+                ?: intArrayOf()).copyOf(), underlyingAgent.horizon)
     }
 
     override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
         val genome = underlyingAgent.buffer
-        return convertGenomeToActionList(genome, gameState, playerRef)
+        return convertGenomeToActionList(genome, gameState.copy(), playerRef)
     }
 
     override fun backPropagate(finalScore: Double) {}
 }
 
-fun convertGenomeToActionList(genome: IntArray?, gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
+fun convertGenomeToActionList(genome: IntArray?, gameState: AbstractGameState, playerRef: Int): List<Action> {
     val intPerAction = gameState.codonsPerAction()
     if (genome == null || genome.isEmpty()) return listOf()
-    val retValue = (0 until (genome.size / intPerAction)).map { i ->
-        val gene = genome.sliceArray(i * intPerAction until (i + 1) * intPerAction)
-        gameState.translateGene(playerRef, gene)
+    if (gameState is ActionAbstractGameState) {
+        val retValue = (0 until (genome.size / intPerAction)).map { i ->
+            val gene = genome.sliceArray(i * intPerAction until (i + 1) * intPerAction)
+            val action = gameState.translateGene(playerRef, gene)
+            val finishTime = action.apply(gameState)
+            gameState.next(finishTime - gameState.nTicks())
+            action
+        }
+        return retValue
     }
-    return retValue
-    // TODO: This does not roll the gameState forward yet, which it should do, but assumes all actions are
-    // given from the current state...which is fine while I get the visualisation working
+    return emptyList()
+}
+
+fun elapsedLengthOfPlan(genome: IntArray, gameState: AbstractGameState, playerRef: Int): Int {
+    val intPerAction = gameState.codonsPerAction()
+    val startingTime = gameState.nTicks()
+    if (gameState is ActionAbstractGameState) {
+        gameState.registerAgent(0, SimpleActionDoNothing)
+        gameState.registerAgent(1, SimpleActionDoNothing)
+        var i = 0
+        do {
+            val gene = genome.sliceArray(i * intPerAction until (i + 1) * intPerAction)
+            val action = gameState.translateGene(playerRef, gene)
+            val finishTime = action.apply(gameState)
+            gameState.next(finishTime - gameState.nTicks())
+            i++
+        } while (i < genome.size / intPerAction)
+    }
+    return gameState.nTicks() - startingTime
 }
 
 /*
@@ -83,7 +98,7 @@ class SimpleActionEvoAgentRollForward(var genome: IntArray, val horizon: Int = 1
             genome = genome.sliceArray(intPerAction until genome.size)
             return gameState.translateGene(playerRef, gene)
         } else {
-            return NoAction(horizon)
+            return NoAction(playerRef, horizon)
         }
     }
 

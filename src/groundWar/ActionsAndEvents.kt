@@ -136,14 +136,6 @@ data class Battle(val transit1: Transit, val transit2: Transit) : Action {
     }
 }
 
-// Almost the same as NoAction, except for visibility
-data class Wait(val playerRef: Int, val wait: Int) : Action {
-    override fun apply(state: ActionAbstractGameState) = state.nTicks() + wait
-
-    // only visible to planning player
-    override fun visibleTo(player: Int, state: ActionAbstractGameState) = player == playerRef
-}
-
 data class LaunchExpedition(val player: PlayerId, val from: Int, val toCode: Int, val proportion: Int, val wait: Int) : Action {
 
     fun forcesSent(state: ActionAbstractGameState): Double {

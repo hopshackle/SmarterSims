@@ -2,6 +2,7 @@ package groundWar
 
 import ggi.Action
 import ggi.ActionAbstractGameState
+import ggi.NoAction
 import kotlin.math.*
 import kotlin.collections.*
 import kotlin.random.Random
@@ -24,6 +25,7 @@ data class Event(val tick: Int, val action: Action) : Comparable<Event> {
 }
 
 val LCG_rnd = Random(10)
+
 class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List<Int>> = emptyMap()) : ActionAbstractGameState {
 
     val eventQueue = EventQueue()
@@ -80,7 +82,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         val playerId = numberToPlayerID(player)
         val proposedAction = LaunchExpedition(playerId, gene[0], gene[1], gene[2], max(gene[3], world.params.OODALoop[player]))
         if (!proposedAction.isValid(this))
-            return Wait(player, max(gene[3], 1))
+            return NoAction(player, max(gene[3], 1))
         return proposedAction
     }
 

@@ -122,8 +122,9 @@ data class SimpleEvoAgent(
             solutions.add(solution)
             iterations++
         } while (iterations < nEvals && System.currentTimeMillis() - startTime < timeLimit)
-        StatsCollator.addStatistics("${name}Time", System.currentTimeMillis() - startTime)
-        StatsCollator.addStatistics("${name}Evals", iterations)
+        StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
+        StatsCollator.addStatistics("${name}_Evals", iterations)
+        StatsCollator.addStatistics("${name}_HorizonUsed", elapsedLengthOfPlan(solution, gameState.copy(), playerId))
         buffer = solution
         return solution
     }

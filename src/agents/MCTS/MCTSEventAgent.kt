@@ -1,6 +1,5 @@
 package agents.MCTS
 
-import groundWar.*
 import ggi.*
 import utilities.StatsCollator
 import java.util.*
@@ -44,7 +43,6 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
             }
             iteration++
         } while (iteration < params.maxPlayouts && System.currentTimeMillis() < startTime + params.timeLimit)
-
         StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
         StatsCollator.addStatistics("${name}_Iterations", iteration)
         val (meanDepth, maxDepth)  = getDepth(gameState)
@@ -82,7 +80,7 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
                 MCTSSelectionMethod.ROBUST -> it.value.visitCount.toDouble()
             }
         }?.key
-        return chosenAction ?: NoAction(1)
+        return chosenAction ?: NoAction(0)
     }
 
     fun resetTree(root: ActionAbstractGameState, playerRef: Int) {

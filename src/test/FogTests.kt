@@ -1,5 +1,6 @@
 package test
 
+import ggi.NoAction
 import groundWar.*
 import groundWar.EventGameParams
 import org.junit.jupiter.api.Test
@@ -203,8 +204,8 @@ class FogTests {
         val redForce = Transit(2.0, 3, 1, PlayerId.Red, 10, 20)
         game.world.addTransit(blueForce); game.world.addTransit(redForce)
         game.eventQueue.add(Event(11, Battle(blueForce, redForce))) // RB
-        game.eventQueue.add(Event(20, Wait(1, 5)))  // R
-        game.eventQueue.add(Event(20, Wait(0, 5))) // B
+        game.eventQueue.add(Event(20, NoAction(1, 5)))  // R
+        game.eventQueue.add(Event(20, NoAction(0, 5))) // B
         game.eventQueue.add(Event(13, LaunchExpedition(PlayerId.Red, 3, 1, 3, 10))) // R
         game.eventQueue.add(Event(13, LaunchExpedition(PlayerId.Blue, 8, 1, 3, 10))) // B
 
@@ -219,7 +220,7 @@ class FogTests {
         assert(redVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Red, 10.0, 1, 3))))
         assert(redVersion.eventQueue.contains(Event(14, TransitEnd(PlayerId.Blue, 1, 3, 20))))
         assert(redVersion.eventQueue.contains(Event(11, Battle(blueForce, redForce)))) // RB
-        assert(redVersion.eventQueue.contains(Event(20, Wait(1, 5))))  // R
+        assert(redVersion.eventQueue.contains(Event(20, NoAction(1, 5))))  // R
         assert(redVersion.eventQueue.contains(Event(13, LaunchExpedition(PlayerId.Red, 3, 1, 3, 10)))) // R
         assertEquals(redVersion.eventQueue.size, 7)
 
@@ -231,7 +232,7 @@ class FogTests {
         assert(blueVersion.eventQueue.contains(Event(10, TransitEnd(PlayerId.Blue, 4, 2, 20)))) // B
         assert(blueVersion.eventQueue.contains(Event(10, TransitEnd(PlayerId.Blue, 4, 1, 20)))) // RB
         assert(blueVersion.eventQueue.contains(Event(11, Battle(blueForce, redForce)))) // RB
-        assert(blueVersion.eventQueue.contains(Event(20, Wait(0, 5)))) // B
+        assert(blueVersion.eventQueue.contains(Event(20, NoAction(0, 5)))) // B
         assert(blueVersion.eventQueue.contains(Event(13, LaunchExpedition(PlayerId.Blue, 8, 1, 3, 10)))) // B
         assert(blueVersion.eventQueue.contains(Event(14, TransitEnd(PlayerId.Blue, 1, 3, 20))))
         assertEquals(blueVersion.eventQueue.size, 11)
