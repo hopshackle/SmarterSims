@@ -65,7 +65,7 @@ fun main(args: Array<String>) {
                 }
             }
 
-    if (otherKeys.size > 0) throw AssertionError("We have tried to specify an interval for a non-existent game parameter " + otherKeys.toString())
+    if (otherKeys.size > 0) throw AssertionError("We have not specified an interval for some game parameters " + otherKeys.toString())
 
     val fileWriter = FileWriter(outputFile)
     fileWriter.write(gameParamKeys.joinToString(separator = "\t", postfix = "\t"))
@@ -89,13 +89,13 @@ fun main(args: Array<String>) {
                 DoNothingAgent()
         //HeuristicAgent(2.0, 1.1)
         //        SimpleActionEvoAgent(SimpleEvoAgent(name = "OppEA", nEvals = 10, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon))
-        val blueAgent = SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, timeLimit = 100, sequenceLength = 40,
+        val blueAgent = SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 2000, timeLimit = 100, sequenceLength = 40,
                 useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = true,
                 horizon = 100, opponentModel = blueOpponentModel)
         )
         game.registerAgent(0, blueAgent)
         val redAgent =
-                SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, timeLimit = 100, sequenceLength = 40,
+                SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 2000, timeLimit = 100, sequenceLength = 40,
                         useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = true,
                         horizon = 100))
         //      MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
