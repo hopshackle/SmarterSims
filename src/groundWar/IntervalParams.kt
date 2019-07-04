@@ -127,29 +127,42 @@ data class AgentParams(
     fun createAgent(colour: String): SimpleActionPlayerInterface {
         val (type, params, opponent) = when (colour.toUpperCase()) {
             "BLUE" -> Triple(blueAgent, blueParams.split(","), blueOpponentModel)
-            "RED" -> Triple(redAgent, redParams.split(""), redOpponentModel)
+            "RED" -> Triple(redAgent, redParams.split(","), redOpponentModel)
             else -> throw AssertionError("Unknown colour " + colour)
         }
         fun getParam(name: String): String {
             return params.firstOrNull { it.contains(name) }?.let { it.split(":")[1] } ?: "0"
         }
+
+        val oppParams = opponent.split(":")
+        val opponentModel = when (oppParams[0]) {
+            "Heuristic" -> {
+                val options = oppParams.subList(3, oppParams.size).map(HeuristicOptions::valueOf)
+                HeuristicAgent(oppParams[1].toDouble(), oppParams[2].toDouble(), options)
+            }
+            else -> SimpleActionDoNothing
+        }
         return when (type) {
+            "Heuristic" -> {
+                val options = getParam("options").split("|").map(HeuristicOptions::valueOf)
+                HeuristicAgent(getParam("attack").toDouble(), getParam("defence").toDouble(), options)
+            }
             "RHEA" -> SimpleActionEvoAgent(
                     underlyingAgent = SimpleEvoAgent(nEvals = evalBudget, timeLimit = timeBudget, sequenceLength = sequenceLength, horizon = planningHorizon,
                             useMutationTransducer = params.contains("useMutationTransducer"), useShiftBuffer = params.contains("useShiftBuffer"),
+                            flipAtLeastOneValue = params.contains("flipAtLeastOneValue"),
                             probMutation = getParam("probMutation").toDouble(), name = colour + "_RHEA"),
-                    opponentModel = SimpleActionDoNothing)
+                    opponentModel = opponentModel)
             "MCTS" -> MCTSTranspositionTableAgentMaster(MCTSParameters(C = getParam("C").toDouble(), maxPlayouts = evalBudget, timeLimit = timeBudget,
                     maxDepth = sequenceLength, horizon = planningHorizon, pruneTree = params.contains("pruneTree")),
                     stateFunction = LandCombatStateFunction,
                     rolloutPolicy = when (getParam("rolloutPolicy")) {
-                        "DoNothing" -> { _, actions -> NoAction(0, planningHorizon) }
-                        // a bit of a hack for DoNothing, as we do not know the playerRef to use .... but should be fine as we push any MakeDecision out
-                        // beyond the planningHorizon
-                        "random", "" -> { _, actions -> actions.random() }
-                        else -> { _, _ -> throw AssertionError("Unknown rollout policy " + getParam("rolloutPolicy")) }
+                        "Heuristic" -> HeuristicAgent(3.0, 1.0, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
+                        "DoNothing" -> SimpleActionDoNothing
+                        "random", "" -> SimpleActionRandom
+                        else -> throw AssertionError("Unknown rollout policy " + getParam("rolloutPolicy"))
                     },
-                    opponentModel = SimpleActionDoNothing,
+                    opponentModel = opponentModel,
                     name = colour + "_MCTS")
             else -> throw AssertionError("Unknown agent type: " + type)
         }

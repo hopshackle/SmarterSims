@@ -9,6 +9,7 @@ data class NoAction(val playerRef: Int, val waitTime: Int = 1) : Action {
         // Do absolutely nothing
         return state.nTicks() + waitTime
     }
+
     // only visible to planning player
     override fun visibleTo(player: Int, state: ActionAbstractGameState) = player == playerRef
 }
@@ -122,6 +123,18 @@ object SimpleActionDoNothing : SimpleActionPlayerInterface {
     override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int) = emptyList<Action>()
     override fun reset() = this
     override fun getAgentType() = "SimpleActionDoNothing"
+    override fun getForwardModelInterface() = this
+    override fun backPropagate(finalScore: Double) {}
+}
+
+object SimpleActionRandom : SimpleActionPlayerInterface {
+    override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
+        val allActions = gameState.possibleActions(playerRef, 1)
+        return allActions.random()
+    }
+    override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int) = emptyList<Action>()
+    override fun reset() = this
+    override fun getAgentType() = "SimpleActionRandom"
     override fun getForwardModelInterface() = this
     override fun backPropagate(finalScore: Double) {}
 }

@@ -7,7 +7,7 @@ import java.util.*
 class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
                                         val stateFunction: StateSummarizer,
                                         val opponentModel: SimpleActionPlayerInterface = SimpleActionDoNothing,
-                                        val rolloutPolicy: (ActionAbstractGameState, List<Action>) -> Action = { _, actions -> actions.random() },
+                                        val rolloutPolicy: SimpleActionPlayerInterface = SimpleActionDoNothing,
                                         val name: String = "MCTS"
 ) : SimpleActionPlayerInterface {
 
@@ -45,7 +45,7 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
         } while (iteration < params.maxPlayouts && System.currentTimeMillis() < startTime + params.timeLimit)
         StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
         StatsCollator.addStatistics("${name}_Iterations", iteration)
-        val (meanDepth, maxDepth)  = getDepth(gameState)
+        val (meanDepth, maxDepth) = getDepth(gameState)
         StatsCollator.addStatistics("${name}_MeanDepth", meanDepth)
         StatsCollator.addStatistics("${name}_MaxDepth", maxDepth)
         StatsCollator.addStatistics("${name}_States", tree.size)
@@ -57,17 +57,17 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
     fun getDepth(gameState: ActionAbstractGameState): Pair<Double, Int> {
         var keysToProcess = setOf(stateFunction(gameState))
         val processedKeys = mutableSetOf<String>()
-        var depths = IntArray(50) {0}
+        var depths = IntArray(50) { 0 }
         var currentDepth = 0
         do {
             depths[currentDepth] = keysToProcess.size
-            keysToProcess = keysToProcess.flatMap{
+            keysToProcess = keysToProcess.flatMap {
                 stateLinks[it]?.toList() ?: emptyList()
             }.filterNot(processedKeys::contains).toSet()
             currentDepth++
             processedKeys.addAll(keysToProcess)
         } while (currentDepth < 50 && keysToProcess.isNotEmpty())
-        val meanDepth = depths.mapIndexed{i, d -> i * d}.sum().toDouble() / depths.sum()
+        val meanDepth = depths.mapIndexed { i, d -> i * d }.sum().toDouble() / depths.sum()
         return Pair(meanDepth, currentDepth - 1)
     }
 
@@ -144,7 +144,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
                                             val stateToActionMap: MutableMap<String, List<Action>>,
                                             val params: MCTSParameters,
                                             val stateFunction: StateSummarizer,
-                                            val rolloutPolicy: (ActionAbstractGameState, List<Action>) -> Action)
+                                            val rolloutPolicy: SimpleActionPlayerInterface)
     : SimpleActionPlayerInterface {
 
     // node, possibleActions from node, action taken
@@ -153,7 +153,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
 
     private val nodesPerIteration = 1
     var actionsTaken = 0
-        protected set (n) {
+        protected set(n) {
             field = n
         }
     var nodesToExpand = nodesPerIteration
@@ -169,24 +169,27 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         val currentState = stateFunction(gameState)
         actionsTaken += gameState.codonsPerAction()  // for comparability with RHEA
 
+        val node = tree[currentState]
+        val actionChosen = when {
+            node == null || actionsTaken > params.maxDepth -> rollout(gameState, playerRef)
+            node.hasUnexploredActions() -> expansionPolicy(node, gameState, possibleActions(gameState, currentState, playerRef))
+            else -> treePolicy(node, gameState, possibleActions(gameState, currentState, playerRef))
+        }
+        trajectory.addLast(Triple(currentState, possibleActions(gameState, currentState, playerRef), actionChosen))
+        return actionChosen
+    }
+
+    private fun possibleActions(gameState: ActionAbstractGameState, currentState: String, playerRef: Int): List<Action> {
         // we create X random actions on the same lines as an EvoAgent would
         if (!stateToActionMap.containsKey(currentState)) {
             stateToActionMap[currentState] = gameState.possibleActions(playerRef, params.maxActions)
         }
 
-        val possibleActions = stateToActionMap[currentState] ?: emptyList()
-        val node = tree[currentState]
-        val actionChosen = when {
-            node == null || actionsTaken > params.maxDepth -> rollout(gameState, possibleActions)
-            node.hasUnexploredActions() -> expansionPolicy(node, gameState, possibleActions)
-            else -> treePolicy(node, gameState, possibleActions)
-        }
-        trajectory.addLast(Triple(currentState, possibleActions, actionChosen))
-        return actionChosen
+        return stateToActionMap[currentState] ?: emptyList()
     }
 
-    open fun rollout(state: ActionAbstractGameState, possibleActions: List<Action>): Action {
-        return rolloutPolicy(state, possibleActions)
+    open fun rollout(state: ActionAbstractGameState, playerRef: Int): Action {
+        return rolloutPolicy.getAction(state, playerRef)
     }
 
     open fun expansionPolicy(node: TTNode, state: ActionAbstractGameState, possibleActions: List<Action>): Action {
