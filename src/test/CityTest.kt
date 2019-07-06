@@ -102,3 +102,76 @@ object CityCopyTest {
         assert(neighbours.all { i -> world.checkVisible(i, PlayerId.Blue) })
     }
 }
+
+class WorldCreationTests {
+
+    @Test
+    fun createWorldFromMap() {
+        val mapString = """
+            ------
+            -C----
+            -M---C
+            -C--F-
+        """.trimIndent()
+        val world = createWorld(mapString, EventGameParams())
+        world.cities.forEach { it.pop = 0.0; it.owner = PlayerId.Neutral }
+        assertEquals(world.cities.size, 4)
+        assertEquals(world.cities[0], City(Vec2d(75.0, 75.0), name = "City_1"))
+        assertEquals(world.cities[1], City(Vec2d(275.0, 125.0), name = "City_2"))
+        assertEquals(world.cities[2], City(Vec2d(75.0, 175.0), name = "City_3"))
+        assertEquals(world.cities[3], City(Vec2d(225.0, 175.0), name = "City_4", fort = true))
+
+        assertEquals(world.routes.size, 8)
+        assertEquals(world.allRoutesFromCity[0]?.size, 2)
+        assertEquals(world.allRoutesFromCity[1]?.size, 2)
+        assertEquals(world.allRoutesFromCity[2]?.size, 1)
+        assertEquals(world.allRoutesFromCity[3]?.size, 3)
+    }
+
+    @Test
+    fun createWorldFromJSON() {
+        val jsonString = """{
+            "height" : 500,
+            "width" : 700,
+            "cities" : [
+            {   "name" : "Waterdeep",
+                "x" : 100,
+                "y" : 150,
+                "fort" : false
+            }, 
+            {   "name" : "Tulan",
+                "x" : 200,
+                "y" : 350,
+                "fort" : false
+            }, 
+            {   "name" : "Greyhawk",
+                "x" : 400,
+                "y" : 150,
+                "fort" : false
+            }],
+            "routes" : [
+            {
+                "from" : "Waterdeep",
+                "to" : "Greyhawk"
+            },
+            {
+                "from" : "Greyhawk",
+                "to" : "Tulan"
+            }]
+            }"""
+
+        val world = createWorld(jsonString, EventGameParams())
+        assertEquals(world.cities.size, 3)
+        assertEquals(world.routes.size, 4)
+        assertEquals(world.params.height, 500)
+        assertEquals(world.params.width, 700)
+        assertEquals(world.cities[0].name, "Waterdeep")
+        assertEquals(world.cities[1].name, "Tulan")
+        assertEquals(world.cities[2].name, "Greyhawk")
+        assertEquals(world.cities[1].location, Vec2d(200.0, 350.0))
+        assertEquals(world.routes[0], Route(0, 2, 300.0, 1.0))
+        assertEquals(world.routes[1], Route(2, 0, 300.0, 1.0))
+        assertEquals(world.routes[2], Route(2, 1, Math.sqrt(2.0 * 200.0 * 200.0), 1.0))
+        assertEquals(world.routes[3], Route(1, 2, Math.sqrt(2.0 * 200.0 * 200.0), 1.0))
+    }
+}

@@ -2,6 +2,8 @@ package groundWar
 
 import math.Vec2d
 import kotlin.random.Random
+import org.json.*
+import test.routes
 
 enum class PlayerId {
     Blue, Red, Neutral, Fog
@@ -25,13 +27,19 @@ fun numberToPlayerID(player: Int): PlayerId {
 }
 
 
-data class City(val location: Vec2d, val radius: Int = 40, var pop: Double = 100.0,
+data class City(val location: Vec2d, val radius: Int = 25, var pop: Double = 0.0,
                 var owner: PlayerId = PlayerId.Neutral, val name: String = "", val fort: Boolean = false)
 
 data class Route(val fromCity: Int, val toCity: Int, val length: Double, val terrainDifficulty: Double)
 
 fun routesCross(start: Vec2d, end: Vec2d, routesToCheck: List<Route>, cities: List<City>): Boolean {
     return routesToCheck.any { r -> routesCross(start, end, cities[r.fromCity].location, cities[r.toCity].location) }
+}
+
+fun routesCross(start: Vec2d, end: Vec2d, pathsToCheck: List<Pair<Vec2d, Vec2d>>): Boolean {
+    val result = pathsToCheck.any { p -> routesCross(start, end, p.first, p.second) }
+ //   println("$start to $end : $result")
+    return result
 }
 
 fun allCitiesConnected(routes: List<Route>, cities: List<City>): Boolean {
@@ -60,10 +68,9 @@ fun routesCross(start1: Vec2d, end1: Vec2d, start2: Vec2d, end2: Vec2d): Boolean
 
     val t2 = ((start2.y - start1.y) * (end1.x - start1.x) - (start2.x - start1.x) * (end1.y - start1.y)) /
             ((end2.x - start2.x) * (end1.y - start1.y) - (end2.y - start2.y) * (end1.x - start1.x))
-    val t1 = ((start2.x - start1.x) + t2 * (end2.x - start2.x)) / (end1.x - start1.x)
-
-    //   println("\tt1 = $t1 and t2 = $t2")
-    return (t2 in 0.001..0.999 && t1 in 0.001..0.999)
+    val t1 = ((start2.x - start1.x) + t2 * (end2.x - start2.x)) / if (end1.x == start1.x) 0.001 else (end1.x - start1.x)
+    //   println("$start1 -> $end1 with $start2 -> $end2 : $t1, $t2")
+    return (t2 in 0.001..0.999 && t1 in 0.001..0.999) || (t1 == 0.0 && t2 in 0.001..0.999)
 }
 
 data class Transit(val nPeople: Double, val fromCity: Int, val toCity: Int, val playerId: PlayerId, val startTime: Int, val endTime: Int) {
@@ -95,6 +102,7 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
     init {
         if (cities.isEmpty()) initialise()
         allRoutesFromCity = routes.groupBy(Route::fromCity)
+        if (cities.none { it.owner == PlayerId.Blue || it.owner == PlayerId.Red }) setPlayerBases()
     }
 
     private fun initialise() {
@@ -140,7 +148,10 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
                 throw AssertionError("WTF")
             }
         }
+    }
 
+    private fun setPlayerBases() {
+        if (cities.size == 1) return
         var blueBase = 0
         var redBase = 0
         while (blueBase == redBase) {
@@ -205,9 +216,10 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
                 routes.any { r -> r.toCity == city && cities[r.fromCity].owner == perspective } ||
                 currentTransits.any { t -> t.playerId == perspective && (t.toCity == city || t.fromCity == city) }
     }
+
     fun checkVisible(route: Route, perspective: PlayerId): Boolean {
         if (!params.fogOfWar) return true
-        return (cities.withIndex().any{ (i, c) -> c.owner == perspective && (route.toCity == i || route.fromCity == i)})
+        return (cities.withIndex().any { (i, c) -> c.owner == perspective && (route.toCity == i || route.fromCity == i) })
     }
 
     fun checkVisible(transit: Transit, perspective: PlayerId): Boolean {
@@ -253,3 +265,74 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
     }
 
 }
+
+
+fun createWorld(data: String, params: EventGameParams): World {
+    return if (data.trim().startsWith("{"))
+        createWorldFromJSON(data, params)
+    else
+        createWorldFromMap(data, params)
+}
+
+fun createWorldFromJSON(data: String, params: EventGameParams): World {
+
+    val json = JSONObject(data)
+    val height = json.getInt("height")
+    val width = json.getInt("width")
+    val cities = json.getJSONArray("cities").map {
+        val c = it as JSONObject
+        City(Vec2d(c.getDouble("x"), c.getDouble("y")), radius = params.radius, pop = 0.0, fort = c.getBoolean("fort"), name = c.getString("name"))
+    }
+    // name, x, y, fort are expected values
+    val routes = json.getJSONArray("routes").flatMap {
+        val r = it as JSONObject
+        val from: Int = cities.indexOfFirst { it.name == r.getString("from") }
+        val to: Int = cities.indexOfFirst { it.name == r.getString("to") }
+        val length = cities[from].location.distanceTo(cities[to].location)
+        listOf(Route(from, to, length, 1.0),
+                Route(to, from, length, 1.0))
+    }
+    // from, to are expected values (referring to city names)
+
+    return World(cities, routes, params = params.copy(height = height, width = width))
+}
+
+fun createWorldFromMap(data: String, params: EventGameParams): World {
+    val lines = data.split("\n").toList()
+    if (lines.any { it.length != lines[0].length })
+        throw AssertionError("All lines in map file must have same length")
+
+    var cityCount = 0
+    val cities: List<City> = lines.withIndex().flatMap { (y, line) ->
+        line.withIndex().filter { it.value in listOf('C', 'F') }.map { (x, char) ->
+            cityCount++
+            City(Vec2d(x * 50.0 + 25, y * 50.0 + 25), params.radius, 0.0, name = "City_$cityCount", fort = char == 'F')
+        }.toList()
+    }
+
+    // for each mountain square, we create two paths to block routes - one between each diagonally opposite pair of corners
+    val mountains: List<Pair<Vec2d, Vec2d>> = lines.withIndex().flatMap { (y, line) ->
+        line.withIndex().filter { it.value == 'M' }.flatMap { (x, char) ->
+            listOf(Pair(Vec2d(x * 50.0, y * 50.0), Vec2d(x * 50.0 + 50, y * 50.0 + 50)),
+                    Pair(Vec2d(x * 50.0 + 50, y * 50.0), Vec2d(x * 50.0, y * 50.0 + 50)))
+        }.toList()
+    }
+
+    val routes: List<Route> = cities.withIndex().fold(emptyList(), { acc1: List<Route>, city1 ->
+        acc1 + cities.withIndex().fold(emptyList(), { acc2: List<Route>, city2 ->
+      //      println("Processing cities ${city1.value.name} and ${city2.value.name}; ${acc1.size}:${acc2.size} routes")
+            acc2 + if (city1.index < city2.index && !routesCross(city1.value.location, city2.value.location, acc1, cities)
+                    && !routesCross(city1.value.location, city2.value.location, mountains)) {
+         //       println("Route between cities $city1 and $city2; ${acc1.size} routes")
+                val length = city1.value.location.distanceTo(city2.value.location)
+                listOf(Route(city1.index, city2.index, length, 1.0),
+                        Route(city2.index, city1.index, length, 1.0))
+            } else {
+                emptyList()
+            }
+        })
+    })
+
+    return World(cities, routes, params = params.copy(height = lines.size * 50, width = lines[0].length * 50))
+}
+

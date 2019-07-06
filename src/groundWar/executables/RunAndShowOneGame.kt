@@ -1,17 +1,14 @@
 package groundWar.executables
 
-import agents.MCTS.MCTSParameters
-import agents.MCTS.MCTSTranspositionTableAgentMaster
+import agents.MCTS.*
 import agents.SimpleEvoAgent
 import ggi.SimpleActionEvoAgent
 import groundWar.*
 import groundWar.views.WorldView
-import utilities.JEasyFrame
-import utilities.StatsCollator
-import java.awt.Color
-import java.awt.FlowLayout
-import javax.swing.JComponent
-import javax.swing.JFrame
+import utilities.*
+import java.awt.*
+import java.io.*
+import javax.swing.*
 import kotlin.random.Random
 
 var paused: Boolean = false
@@ -33,12 +30,13 @@ fun main(args: Array<String>) {
             fortDefenderExpBonus = 0.1
     )
 
-    runWithParams(params)
+    val fileAsLines = if (args.size > 0) BufferedReader(FileReader(args[0])).readLines().joinToString("\n") else ""
+    runWithParams(params, fileAsLines)
 
 }
 
-fun runWithParams(params: EventGameParams) {
-    val world = World(random = Random(1), params = params)
+fun runWithParams(params: EventGameParams, worldAsJSON: String = "") {
+    val world = if (worldAsJSON == "") World(random = Random(1), params = params) else createWorld(worldAsJSON, params)
     val targets = mapOf(PlayerId.Blue to listOf(0, 2, 4, 5), PlayerId.Red to listOf(0, 1, 3, 5))
     val game = LandCombatGame(world, targets = emptyMap())
 
