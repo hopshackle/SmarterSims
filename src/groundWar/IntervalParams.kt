@@ -106,7 +106,7 @@ data class EventGameParams(
         val fortAttackerDivisor: Double = 3.0,
         val fortDefenderExpBonus: Double = 0.5,
         val lanchesterCoeff: DoubleArray = doubleArrayOf(0.05, 0.05),
-        val lanchesterExp: DoubleArray = doubleArrayOf(1.0, 1.0),    // should be between 0.0 and 1.0
+        val lanchesterExp: DoubleArray = doubleArrayOf(0.5, 0.5),    // should be between 0.0 and 1.0
         // agent behaviour
         val OODALoop: IntArray = intArrayOf(10, 10),
         val minAssaultFactor: DoubleArray = doubleArrayOf(0.1, 0.1)

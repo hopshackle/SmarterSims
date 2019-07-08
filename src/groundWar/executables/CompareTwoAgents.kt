@@ -1,7 +1,5 @@
 package groundWar.executables
 
-import agents.MCTS.*
-import agents.*
 import ggi.*
 import groundWar.*
 import utilities.*
