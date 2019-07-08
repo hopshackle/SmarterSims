@@ -38,7 +38,7 @@ fun routesCross(start: Vec2d, end: Vec2d, routesToCheck: List<Route>, cities: Li
 
 fun routesCross(start: Vec2d, end: Vec2d, pathsToCheck: List<Pair<Vec2d, Vec2d>>): Boolean {
     val result = pathsToCheck.any { p -> routesCross(start, end, p.first, p.second) }
- //   println("$start to $end : $result")
+    //   println("$start to $end : $result")
     return result
 }
 
@@ -264,6 +264,27 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
         return collidingTransit
     }
 
+    fun toJSON(): JSONObject {
+        val json = JSONObject()
+        json.put("height", params.height)
+        json.put("width", params.width)
+        json.put("cities", cities.map {
+            JSONObject(mapOf(
+                    "name" to it.name,
+                    "x" to it.location.x,
+                    "y" to it.location.y,
+                    "fort" to it.fort
+            ))
+        })
+
+        json.put("routes", routes.filter { it.fromCity < it.toCity }.map {
+            JSONObject(mapOf(
+                    "from" to cities[it.fromCity].name,
+                    "to" to cities[it.toCity].name
+            ))
+        })
+        return json
+    }
 }
 
 
@@ -320,10 +341,10 @@ fun createWorldFromMap(data: String, params: EventGameParams): World {
 
     val routes: List<Route> = cities.withIndex().fold(emptyList(), { acc1: List<Route>, city1 ->
         acc1 + cities.withIndex().fold(emptyList(), { acc2: List<Route>, city2 ->
-      //      println("Processing cities ${city1.value.name} and ${city2.value.name}; ${acc1.size}:${acc2.size} routes")
+            //      println("Processing cities ${city1.value.name} and ${city2.value.name}; ${acc1.size}:${acc2.size} routes")
             acc2 + if (city1.index < city2.index && !routesCross(city1.value.location, city2.value.location, acc1, cities)
                     && !routesCross(city1.value.location, city2.value.location, mountains)) {
-         //       println("Route between cities $city1 and $city2; ${acc1.size} routes")
+                //       println("Route between cities $city1 and $city2; ${acc1.size} routes")
                 val length = city1.value.location.distanceTo(city2.value.location)
                 listOf(Route(city1.index, city2.index, length, 1.0),
                         Route(city2.index, city1.index, length, 1.0))
