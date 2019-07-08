@@ -216,7 +216,7 @@ class MakeDecisionTest() {
         assertEquals(gameCopy.eventQueue.size, 0)         // no MakeDecision created
         gameCopy.registerAgent(0, SimpleActionEvoAgent())
         assertEquals(gameCopy.eventQueue.size, 1)           // Make Decision now added
-        gameCopy.registerAgent(0, SimpleActionDoNothing)
+        gameCopy.registerAgent(0, SimpleActionDoNothing(1000))
         assertEquals(gameCopy.eventQueue.size, 0)           // Make Decision removed
     }
 

@@ -15,7 +15,7 @@ data class NoAction(val playerRef: Int, val waitTime: Int = 1) : Action {
 }
 
 class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(),
-                           val opponentModel: SimpleActionPlayerInterface = SimpleActionDoNothing
+                           val opponentModel: SimpleActionPlayerInterface = SimpleActionDoNothing(underlyingAgent.horizon)
 ) : SimpleActionPlayerInterface {
 
     override fun reset(): SimpleActionPlayerInterface {
@@ -73,8 +73,8 @@ fun elapsedLengthOfPlan(genome: IntArray, gameState: AbstractGameState, playerRe
     val intPerAction = gameState.codonsPerAction()
     val startingTime = gameState.nTicks()
     if (gameState is ActionAbstractGameState) {
-        gameState.registerAgent(0, SimpleActionDoNothing)
-        gameState.registerAgent(1, SimpleActionDoNothing)
+        gameState.registerAgent(0, SimpleActionDoNothing(1000))
+        gameState.registerAgent(1, SimpleActionDoNothing(1000))
         var i = 0
         do {
             val gene = genome.sliceArray(i * intPerAction until (i + 1) * intPerAction)
@@ -118,8 +118,8 @@ class SimpleActionEvoAgentRollForward(var genome: IntArray, val horizon: Int = 1
     override fun backPropagate(finalScore: Double) {}
 }
 
-object SimpleActionDoNothing : SimpleActionPlayerInterface {
-    override fun getAction(gameState: ActionAbstractGameState, playerRef: Int) = NoAction(max(1, gameState.nTicks()))
+class SimpleActionDoNothing(val defaultWait: Int) : SimpleActionPlayerInterface {
+    override fun getAction(gameState: ActionAbstractGameState, playerRef: Int) = NoAction(playerRef, defaultWait)
     override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int) = emptyList<Action>()
     override fun reset() = this
     override fun getAgentType() = "SimpleActionDoNothing"
@@ -132,6 +132,7 @@ object SimpleActionRandom : SimpleActionPlayerInterface {
         val allActions = gameState.possibleActions(playerRef, 1)
         return allActions.random()
     }
+
     override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int) = emptyList<Action>()
     override fun reset() = this
     override fun getAgentType() = "SimpleActionRandom"

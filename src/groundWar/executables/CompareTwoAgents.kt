@@ -71,8 +71,8 @@ fun main(args: Array<String>) {
         val game = LandCombatGame(world)
         game.scoreFunction[PlayerId.Blue] = scoreFunction
         game.scoreFunction[PlayerId.Red] = scoreFunction
-        game.registerAgent(0, agents[PlayerId.Blue] ?: SimpleActionDoNothing)
-        game.registerAgent(1, agents[PlayerId.Red] ?: SimpleActionDoNothing)
+        game.registerAgent(0, agents[PlayerId.Blue] ?: SimpleActionDoNothing(1000))
+        game.registerAgent(1, agents[PlayerId.Red] ?: SimpleActionDoNothing(1000))
         game.next(1000)
         val gameScore = simpleScoreFunction(5.0, 1.0, -5.0, -1.0)(game, 0)
         blueScore += gameScore

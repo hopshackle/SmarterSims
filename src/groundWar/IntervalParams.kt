@@ -140,7 +140,7 @@ data class AgentParams(
                 val options = oppParams.subList(3, oppParams.size).map(HeuristicOptions::valueOf)
                 HeuristicAgent(oppParams[1].toDouble(), oppParams[2].toDouble(), options)
             }
-            else -> SimpleActionDoNothing
+            else -> SimpleActionDoNothing(1000)
         }
         return when (type) {
             "Heuristic" -> {
@@ -158,7 +158,7 @@ data class AgentParams(
                     stateFunction = LandCombatStateFunction,
                     rolloutPolicy = when (getParam("rolloutPolicy")) {
                         "Heuristic" -> HeuristicAgent(3.0, 1.0, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
-                        "DoNothing" -> SimpleActionDoNothing
+                        "DoNothing" -> SimpleActionDoNothing(1000)
                         "random", "" -> SimpleActionRandom
                         else -> throw AssertionError("Unknown rollout policy " + getParam("rolloutPolicy"))
                     },

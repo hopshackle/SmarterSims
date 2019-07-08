@@ -29,7 +29,7 @@ fun evaluateSequenceDelta(gameState: AbstractGameState,
         if (opponentModel is SimpleActionPlayerInterface)
             gameState.registerAgent(1 - playerId, opponentModel)
         else
-            gameState.registerAgent(1 - playerId, SimpleActionDoNothing)
+            gameState.registerAgent(1 - playerId, SimpleActionDoNothing(horizon))
         if (discountFactor < 1.0) {
             throw AssertionError("Discount not currently implemented for ActionAbstractGameState")
             // TODO: need to get vector of future rewards back, along with the times at which they occur to calculate this

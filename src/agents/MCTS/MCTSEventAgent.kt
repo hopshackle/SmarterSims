@@ -6,8 +6,8 @@ import java.util.*
 
 class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
                                         val stateFunction: StateSummarizer,
-                                        val opponentModel: SimpleActionPlayerInterface = SimpleActionDoNothing,
-                                        val rolloutPolicy: SimpleActionPlayerInterface = SimpleActionDoNothing,
+                                        val opponentModel: SimpleActionPlayerInterface = SimpleActionDoNothing(params.horizon),
+                                        val rolloutPolicy: SimpleActionPlayerInterface = SimpleActionDoNothing(params.horizon),
                                         val name: String = "MCTS"
 ) : SimpleActionPlayerInterface {
 

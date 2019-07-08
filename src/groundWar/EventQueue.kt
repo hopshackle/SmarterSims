@@ -30,7 +30,7 @@ class EventQueue(val eventQueue: Queue<Event> = PriorityQueue<Event>()) : Queue<
         }
     }
 
-    fun getAgent(player: Int) = playerAgentMap[player] ?: SimpleActionDoNothing
+    fun getAgent(player: Int) = playerAgentMap[player] ?: SimpleActionDoNothing(1000)
 
     inline fun addAll(oldQueue: EventQueue, filterLogic: (Event) -> Boolean) {
         eventQueue.addAll(oldQueue.eventQueue.filter(filterLogic))
