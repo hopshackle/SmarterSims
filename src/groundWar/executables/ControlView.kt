@@ -3,9 +3,11 @@ package groundWar.executables
 import groundWar.EventGameParams
 import java.awt.*
 import javax.swing.*
+import kotlin.random.Random
 import kotlin.reflect.full.memberProperties
 
 fun main(args: Array<String>) {
+    val rnd = Random(6)
     val view = ControlView()
     view.create(JFrame())
 }

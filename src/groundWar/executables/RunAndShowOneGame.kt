@@ -30,7 +30,7 @@ fun main(args: Array<String>) {
             fortDefenderExpBonus = 0.1
     )
 
-    runWithParams(params, args[0])
+    runWithParams(params, if (args.size > 0) args[0] else "")
 }
 
 fun runWithParams(params: EventGameParams, worldAsJSON: String = "") {
@@ -67,8 +67,8 @@ fun runWithParams(params: EventGameParams, worldAsJSON: String = "") {
 
     game.registerAgent(0, blueAgent)
     val redAgent =
-            //   SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon[1]))
-            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = 100), LandCombatStateFunction)
+               SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = 100))
+         //   MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = 100), LandCombatStateFunction)
     // HeuristicAgent(2.0, 1.1)
     game.registerAgent(1, redAgent)
 

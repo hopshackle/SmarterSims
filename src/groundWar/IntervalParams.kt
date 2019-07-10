@@ -119,7 +119,7 @@ data class AgentParams(
         val evalBudget: Int = 500,
         val sequenceLength: Int = 40,
         val planningHorizon: Int = 100,
-        val blueParams: String = "pruneTree, C:1.0, maxActions:20",
+        val blueParams: String = "pruneTree, C:1.0, maxActions:20, rolloutPolicy:DoNothing",
         val redParams: String = "useShiftBuffer, probMutation:0.25",
         val blueOpponentModel: String = "",
         val redOpponentModel: String = ""
