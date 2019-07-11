@@ -169,7 +169,7 @@ class FogTests {
         val game = LandCombatGame(foggyWorld)
         // We should now have cities 4 and 8 as Blue, and 3 as Red
         // If Red invades 1 (which is visible to 8), then Blue's projection will not see the result
-        LaunchExpedition(PlayerId.Red, 3, 1, 3, 10).apply(game)
+        LaunchExpedition(PlayerId.Red, 3, 1, 1.0, 10).apply(game)
         val blueVersion = game.copy(0).next(50)
         assertEquals(blueVersion.world.cities[1].owner, PlayerId.Neutral)
         val redVersion = game.copy(1).next(50)
@@ -206,8 +206,8 @@ class FogTests {
         game.eventQueue.add(Event(11, Battle(blueForce, redForce))) // RB
         game.eventQueue.add(Event(20, NoAction(1, 5)))  // R
         game.eventQueue.add(Event(20, NoAction(0, 5))) // B
-        game.eventQueue.add(Event(13, LaunchExpedition(PlayerId.Red, 3, 1, 3, 10))) // R
-        game.eventQueue.add(Event(13, LaunchExpedition(PlayerId.Blue, 8, 1, 3, 10))) // B
+        game.eventQueue.add(Event(13, LaunchExpedition(PlayerId.Red, 3, 1, 1.0, 10))) // R
+        game.eventQueue.add(Event(13, LaunchExpedition(PlayerId.Blue, 8, 1, 1.0, 10))) // B
 
         val blueVersion = game.copy(0).next(5)
         val redVersion = game.copy(1).next(5)
@@ -221,7 +221,7 @@ class FogTests {
         assert(redVersion.eventQueue.contains(Event(14, TransitEnd(PlayerId.Blue, 1, 3, 20))))
         assert(redVersion.eventQueue.contains(Event(11, Battle(blueForce, redForce)))) // RB
         assert(redVersion.eventQueue.contains(Event(20, NoAction(1, 5))))  // R
-        assert(redVersion.eventQueue.contains(Event(13, LaunchExpedition(PlayerId.Red, 3, 1, 3, 10)))) // R
+        assert(redVersion.eventQueue.contains(Event(13, LaunchExpedition(PlayerId.Red, 3, 1, 1.0, 10)))) // R
         assertEquals(redVersion.eventQueue.size, 7)
 
         assert(blueVersion.eventQueue.contains(Event(10, MakeDecision(0)))) // B
@@ -233,7 +233,7 @@ class FogTests {
         assert(blueVersion.eventQueue.contains(Event(10, TransitEnd(PlayerId.Blue, 4, 1, 20)))) // RB
         assert(blueVersion.eventQueue.contains(Event(11, Battle(blueForce, redForce)))) // RB
         assert(blueVersion.eventQueue.contains(Event(20, NoAction(0, 5)))) // B
-        assert(blueVersion.eventQueue.contains(Event(13, LaunchExpedition(PlayerId.Blue, 8, 1, 3, 10)))) // B
+        assert(blueVersion.eventQueue.contains(Event(13, LaunchExpedition(PlayerId.Blue, 8, 1, 1.0, 10)))) // B
         assert(blueVersion.eventQueue.contains(Event(14, TransitEnd(PlayerId.Blue, 1, 3, 20))))
         assertEquals(blueVersion.eventQueue.size, 11)
     }

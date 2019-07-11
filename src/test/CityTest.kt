@@ -7,7 +7,7 @@ import org.junit.jupiter.api.*
 import kotlin.random.Random
 import kotlin.test.*
 
-object CityLocationTest {
+class CityLocationTest {
 
     @Test
     fun routeCrossingDetectionTest() {
@@ -32,7 +32,7 @@ object CityLocationTest {
     }
 }
 
-object CityCreationTest {
+class CityCreationTest {
 
     val cityCreationParams = EventGameParams(seed = 3, minConnections = 2, autoConnect = 300, maxDistance = 1000)
     val cityCreationWorld = World(params = cityCreationParams)
@@ -72,9 +72,31 @@ object CityCreationTest {
             assertEquals(routes.size, routes.distinct().size)
         }
     }
+
+    @Test
+    fun geneLocationCalculation() {
+        val game1 = LandCombatGame(cityCreationWorld)
+        assertEquals(game1.cityGenes, 1)
+        assertEquals(game1.routeGenes, 1)
+        assertEquals(game1.nActions(), 10)
+        assertEquals(game1.codonsPerAction(), 4)
+
+        val game2 = LandCombatGame(World(params = cityCreationParams.copy(nAttempts = 100)))
+        assertEquals(game2.cityGenes, 2)
+        assertEquals(game2.routeGenes, 2)
+        assertEquals(game2.nActions(), 10)
+        assertEquals(game2.codonsPerAction(), 6)
+
+        val game3 = LandCombatGame(World(params = cityCreationParams.copy(nAttempts = 50)))
+        assertEquals(game3.cityGenes, 2)
+        assertEquals(game3.routeGenes, 1)
+        assertEquals(game3.nActions(), 10)
+        assertEquals(game3.codonsPerAction(), 5)
+    }
+
 }
 
-object CityCopyTest {
+class CityCopyTest {
 
     val cityCreationParams = EventGameParams(seed = 6, minConnections = 2, autoConnect = 300, maxDistance = 1000)
     val world = World(params = cityCreationParams)

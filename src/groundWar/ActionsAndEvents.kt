@@ -2,6 +2,7 @@ package groundWar
 
 import ggi.Action
 import ggi.ActionAbstractGameState
+import kotlin.math.min
 
 data class TransitStart(val transit: Transit) : Action {
     override fun apply(state: ActionAbstractGameState): Int {
@@ -136,14 +137,14 @@ data class Battle(val transit1: Transit, val transit2: Transit) : Action {
     }
 }
 
-data class LaunchExpedition(val player: PlayerId, val from: Int, val toCode: Int, val proportion: Int, val wait: Int) : Action {
+data class LaunchExpedition(val player: PlayerId, val from: Int, val toCode: Int, val proportion: Double, val wait: Int) : Action {
 
     fun forcesSent(state: ActionAbstractGameState): Double {
         if (state is LandCombatGame) {
             with(state.world) {
                 val sourceCityPop = cities[from].pop
-                var forcesSent = ((proportion + 1.0) / state.nActions() * sourceCityPop)
-                if (forcesSent < 1.0) forcesSent = Math.min(1.0, sourceCityPop)
+                var forcesSent = proportion * sourceCityPop
+                if (forcesSent < 1.0) forcesSent = min(1.0, sourceCityPop)
                 return forcesSent
             }
         }

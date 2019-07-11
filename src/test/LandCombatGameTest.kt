@@ -7,16 +7,18 @@ import groundWar.*
 import groundWar.EventGameParams
 import math.Vec2d
 import org.junit.jupiter.api.Test
+import kotlin.math.abs
+import kotlin.math.exp
 import kotlin.random.Random
 import kotlin.test.*
 
 // we create a simple world of 3 cities. One Blue and one Red, with a Neutral world sandwiched between them
-val cities = listOf(
+private val cities = listOf(
         City(Vec2d(0.0, 0.0), 0, 10.0, PlayerId.Blue),
         City(Vec2d(0.0, 20.0), 0, 10.0, PlayerId.Red),
         City(Vec2d(0.0, 10.0), 0, 0.0, PlayerId.Neutral)
 )
-val routes = listOf(
+private val routes = listOf(
         Route(0, 1, 20.0, 1.0),
         Route(0, 2, 10.0, 1.0),
         Route(1, 0, 20.0, 1.0),
@@ -33,7 +35,7 @@ object TransitTest {
 
     @Test
     fun TransitHasMaxForce() {
-        val fullInvasion = game.translateGene(0, intArrayOf(0, 1, 2, 1))
+        val fullInvasion = game.translateGene(0, intArrayOf(0, 1, 9, 1))
         // 0 = cityFrom, 1 = 2nd route (hence to 2)
         assert(fullInvasion is LaunchExpedition)
         val gameCopy = game.copy()
@@ -106,9 +108,9 @@ object BattleTest {
     @Test
     fun BattleEventRemovesAndCreatesTransitsCorrectly() {
         val gameCopy = game.copy()
-        val fullInvasion = gameCopy.translateGene(0, intArrayOf(0, 0, 2, 1))
+        val fullInvasion = gameCopy.translateGene(0, intArrayOf(0, 0, 9, 1))
         // 0 = cityFrom, 0 = 1st route (hence to 1)
-        val opposingForce = gameCopy.translateGene(1, intArrayOf(1, 0, 1, 1))
+        val opposingForce = gameCopy.translateGene(1, intArrayOf(1, 0, 5, 1))
         // 1 = cityFrom, 0 = 1st route (hence to 0)
         fullInvasion.apply(gameCopy)
         opposingForce.apply(gameCopy)
@@ -117,12 +119,12 @@ object BattleTest {
         val startingTransits = gameCopy.world.currentTransits.toList()
         assertEquals(startingTransits.size, 2)
         assertEquals(startingTransits[0], Transit(10.0, 0, 1, PlayerId.Blue, 0, 4))
-        assert(Math.abs(startingTransits[1].nPeople - 6.666) < 0.01)
+        assert(Math.abs(startingTransits[1].nPeople - 6.0) < 0.01)
         assertEquals(startingTransits[1], Transit(startingTransits[1].nPeople, 1, 0, PlayerId.Red, 0, 4))
         nextEvent.action.apply(gameCopy)
         val endingTransits = gameCopy.world.currentTransits.toList()
         assertEquals(endingTransits.size, 1)
-        assert(Math.abs(endingTransits[0].nPeople - 7.453) < 0.01)
+        assert(Math.abs(endingTransits[0].nPeople - 6.592) < 0.01)
         assertEquals(endingTransits[0], Transit(endingTransits[0].nPeople, 0, 1, PlayerId.Blue, 0, 4))
         assert(endingTransits[0] !== startingTransits[0])
     }
@@ -130,16 +132,16 @@ object BattleTest {
     @Test
     fun BattleEventCreatesNextBattleCorrectly() {
         val gameCopy = game.copy()
-        val fullInvasion = gameCopy.translateGene(0, intArrayOf(0, 0, 2, 1))
+        val fullInvasion = gameCopy.translateGene(0, intArrayOf(0, 0, 9, 1))
         // 0 = cityFrom, 0 = 1st route (hence to 1)
-        val opposingForce = gameCopy.translateGene(1, intArrayOf(1, 0, 1, 1))
+        val opposingForce = gameCopy.translateGene(1, intArrayOf(1, 0, 5, 1))
         // 1 = cityFrom, 0 = 1st route (hence to 0)
         fullInvasion.apply(gameCopy)
         opposingForce.apply(gameCopy)
         assertEquals(gameCopy.eventQueue.filter { e -> e.action is Battle }.size, 1)
 
         gameCopy.next(1)
-        val opposingForce2 = gameCopy.translateGene(1, intArrayOf(1, 0, 2, 1))
+        val opposingForce2 = gameCopy.translateGene(1, intArrayOf(1, 0, 9, 1))
         // 1 = cityFrom, 0 = 1st route (hence to 0)
         opposingForce2.apply(gameCopy)
         assertEquals(gameCopy.eventQueue.filter { e -> e.action is Battle }.size, 1)
@@ -149,23 +151,23 @@ object BattleTest {
         val startingTransits = gameCopy.world.currentTransits.toList()
         assertEquals(startingTransits.size, 3)
         assertEquals(startingTransits[0], Transit(10.0, 0, 1, PlayerId.Blue, 0, 4))
-        assert(Math.abs(startingTransits[1].nPeople - 6.666) < 0.01)
+        assert(abs(startingTransits[1].nPeople - 6.0) < 0.01)
         assertEquals(startingTransits[1], Transit(startingTransits[1].nPeople, 1, 0, PlayerId.Red, 0, 4))
-        assert(Math.abs(startingTransits[2].nPeople - 3.333) < 0.01)
+        assert(abs(startingTransits[2].nPeople - 4.0) < 0.01)
         assertEquals(startingTransits[2], Transit(startingTransits[2].nPeople, 1, 0, PlayerId.Red, 1, 5))
         gameCopy.eventQueue.poll()
         nextEvent.action.apply(gameCopy)
         val endingTransits = gameCopy.world.currentTransits.toList()
         assertEquals(endingTransits.size, 2)
-        assert(Math.abs(endingTransits[1].nPeople - 7.453) < 0.01)
+        assert(abs(endingTransits[1].nPeople - 6.592) < 0.01)
         assertEquals(endingTransits[1], Transit(endingTransits[1].nPeople, 0, 1, PlayerId.Blue, 0, 4))
-        assert(Math.abs(endingTransits[0].nPeople - 3.333) < 0.01)
+        assert(abs(endingTransits[0].nPeople - 4.0) < 0.01)
         assertEquals(endingTransits[0], Transit(endingTransits[0].nPeople, 1, 0, PlayerId.Red, 1, 5))
         assertEquals(gameCopy.eventQueue.filter { e -> e.action is Battle }.size, 1)
     }
 }
 
-class MakeDecisionTest() {
+class MakeDecisionTest {
 
     @Test
     fun makeDecisionSpawnedOnAgentRegistrationNotLaunchExpedition() {
@@ -241,5 +243,81 @@ class LandCombatStateRepresentationTests {
         val stateRep = LandCombatStateFunction(game)
         assertFalse(stateRep.isEmpty())
         assertEquals(stateRep.count { it == '|' }, game.world.cities.size + game.world.routes.size)
+    }
+}
+
+class TranslateGeneTests {
+
+    val cityCreationParams = EventGameParams(seed = 3, minConnections = 2, autoConnect = 300, maxDistance = 1000)
+
+    @Test
+    fun basicTranslateGeneWithFewerThanTenCities() {
+        val game1 = LandCombatGame(World(params = cityCreationParams.copy(nAttempts = 8)))
+        assertTrue(game1.world.cities.size <= 8)
+
+        game1.world.cities[1].pop = 10.0
+        game1.world.cities[1].owner = PlayerId.Blue
+        val destinations = game1.world.allRoutesFromCity[1]?.size ?: 0
+        var expedition = game1.translateGene(0, intArrayOf(1, 1, 9, 3)) as LaunchExpedition
+        assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 1, 1, 1.0, 10))
+        assertEquals(expedition.destinationCity(game1), game1.world.allRoutesFromCity[1]!![1].toCity)
+
+        expedition = game1.translateGene(0, intArrayOf(1, 1 + destinations, 9, 3)) as LaunchExpedition
+        assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 1, 1 + destinations, 1.0, 10))
+        assertEquals(expedition.destinationCity(game1), game1.world.allRoutesFromCity[1]!![1].toCity)
+
+        expedition = game1.translateGene(0, intArrayOf(1 + game1.world.cities.size, 1 + destinations, 9, 3)) as LaunchExpedition
+        assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 1, 1 + destinations, 1.0, 10))
+        assertEquals(expedition.destinationCity(game1), game1.world.allRoutesFromCity[1]!![1].toCity)
+    }
+
+    @Test
+    fun translateGeneWithMoreThanTenCities() {
+        val game2 = LandCombatGame(World(params = cityCreationParams.copy(nAttempts = 50)))
+        assertTrue(game2.world.cities.size > 10)
+        assertTrue(game2.world.allRoutesFromCity.all { (_, v) -> v.size <= 10 })
+
+        game2.world.cities[12].pop = 10.0
+        game2.world.cities[12].owner = PlayerId.Blue
+        val destinations = game2.world.allRoutesFromCity[12]?.size ?: 0
+        assertTrue(destinations <= 8)
+
+        var expedition = game2.translateGene(0, intArrayOf(1, 2, 1, 9, 3)) as LaunchExpedition
+        assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 12, 1, 1.0, 10))
+        assertEquals(expedition.destinationCity(game2), game2.world.allRoutesFromCity[12]!![1].toCity)
+
+        expedition = game2.translateGene(0, intArrayOf(1, 2, 1 + destinations, 9, 3)) as LaunchExpedition
+        assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 12, 1 + destinations, 1.0, 10))
+        assertEquals(expedition.destinationCity(game2), game2.world.allRoutesFromCity[12]!![1].toCity)
+
+        val totalCityCode = 12 + 2 * game2.world.cities.size
+        expedition = game2.translateGene(0, intArrayOf(totalCityCode / 10, totalCityCode % 10, 1 + destinations, 9, 3)) as LaunchExpedition
+        assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 12, 1 + destinations, 1.0, 10))
+        assertEquals(expedition.destinationCity(game2), game2.world.allRoutesFromCity[12]!![1].toCity)
+    }
+
+    @Test
+    fun translateGeneWithMoreThanTenCitiesAndMoreThanTenRoutes() {
+        val game3 = LandCombatGame(World(params = cityCreationParams.copy(nAttempts = 100)))
+        assertTrue(game3.world.cities.size > 10)
+        assertTrue(game3.world.allRoutesFromCity.any { (_, v) -> v.size > 10 })
+
+        game3.world.cities[2].pop = 10.0
+        game3.world.cities[2].owner = PlayerId.Blue
+        val destinations = game3.world.allRoutesFromCity[2]?.size ?: 0
+
+        var expedition = game3.translateGene(0, intArrayOf(0, 2, 0, 1, 9, 3)) as LaunchExpedition
+        assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 2, 1, 1.0, 10))
+        assertEquals(expedition.destinationCity(game3), game3.world.allRoutesFromCity[2]!![1].toCity)
+
+        val totalRouteCode = 1 + destinations * 6
+        expedition = game3.translateGene(0, intArrayOf(0, 2, totalRouteCode / 10, totalRouteCode % 10, 9, 3)) as LaunchExpedition
+        assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 2, totalRouteCode, 1.0, 10))
+        assertEquals(expedition.destinationCity(game3), game3.world.allRoutesFromCity[2]!![1].toCity)
+
+        val totalCityCode = 2 + game3.world.cities.size
+        expedition = game3.translateGene(0, intArrayOf(totalCityCode / 10, totalCityCode % 10, totalRouteCode / 10, totalRouteCode % 10, 9, 3)) as LaunchExpedition
+        assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 2, totalRouteCode, 1.0, 10))
+        assertEquals(expedition.destinationCity(game3), game3.world.allRoutesFromCity[2]!![1].toCity)
     }
 }

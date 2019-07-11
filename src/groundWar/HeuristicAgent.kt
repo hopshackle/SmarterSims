@@ -53,7 +53,7 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
                 return LaunchExpedition(playerId,
                         attackRef,
                         targetCityCode(this, attackRef, targetRef),
-                        proportion.toInt(),
+                        proportion,
                         gameState.world.params.OODALoop[player])
             }
         }
@@ -78,7 +78,7 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
                         playerId,
                         fromRef,
                         targetCityCode(this, fromRef, toRef),
-                        gameState.nActions() - 1,
+                        1.0,
                         gameState.world.params.OODALoop[player])
             }
         }

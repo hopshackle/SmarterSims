@@ -53,7 +53,7 @@ class LanchesterTest {
                 City(Vec2d(20.0, 20.0), pop = 20.0, owner = PlayerId.Red, fort = false))
         val routes = listOf(Route(0, 1, 15.0, 1.0),
                 Route(1, 0, 15.0, 1.0))
-        val world = World(cities, routes)
+        val world = World(cities, routes, params = EventGameParams(lanchesterExp = doubleArrayOf(1.0, 1.0)))
         assertEquals(world.routes.size, 2)
         val state = LandCombatGame(world)
 
@@ -73,7 +73,7 @@ class LanchesterTest {
                 City(Vec2d(20.0, 20.0), pop = 20.0, owner = PlayerId.Blue, fort = false))
         val routes = listOf(Route(0, 1, 15.0, 1.0),
                 Route(1, 0, 15.0, 1.0))
-        val world = World(cities, routes)
+        val world = World(cities, routes, params = EventGameParams(lanchesterExp = doubleArrayOf(1.0, 1.0)))
         assertEquals(world.routes.size, 2)
         val state = LandCombatGame(world)
 

@@ -3,7 +3,6 @@ package groundWar
 import math.Vec2d
 import kotlin.random.Random
 import org.json.*
-import test.routes
 
 enum class PlayerId {
     Blue, Red, Neutral, Fog

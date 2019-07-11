@@ -15,7 +15,7 @@ class ObjectiveFunctionTest {
         assertEquals(startState.score(0), 5.0)
         assertEquals(startState.score(1), 5.0)
 
-        LaunchExpedition(PlayerId.Red, 1, 1, 1, 0).apply(startState)
+        LaunchExpedition(PlayerId.Red, 1, 1, 0.5, 0).apply(startState)
         startState.next(5)
         assertEquals(startState.score(0), 5.0)
         assertEquals(startState.score(1), 10.0)

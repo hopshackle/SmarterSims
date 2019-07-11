@@ -11,7 +11,6 @@ import java.lang.AssertionError
 import kotlin.random.Random
 
 fun main(args: Array<String>) {
-    val rnd = kotlin.random.Random(45)
     val ntbea = NTupleBanditEA(30.0, 50)
     ntbea.banditLandscapeModel = NTupleSystemOverride()
     ntbea.banditLandscapeModel.searchSpace = if (args[0] == "RHEA") RHEASearchSpace else MCTSSearchSpace
