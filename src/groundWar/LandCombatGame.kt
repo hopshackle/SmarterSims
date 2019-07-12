@@ -35,6 +35,8 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     val routeGenes = Math.log10((world.allRoutesFromCity.map { (_, v) -> v.size }.max() ?: 2).toDouble() - 1.0).toInt() + 1
 
     val eventQueue = EventQueue()
+    val waitCoeff = 5
+
     override fun registerAgent(player: Int, agent: SimpleActionPlayerInterface) = eventQueue.registerAgent(player, agent, nTicks())
     override fun getAgent(player: Int) = eventQueue.getAgent(player)
     override fun planEvent(time: Int, action: Action) {
@@ -89,10 +91,10 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         val rawFromGene = gene.take(cityGenes).reversed().mapIndexed{i, v -> 10.0.pow(i.toDouble()) * v }.sum().toInt()
         val rawToGene = gene.takeLast(gene.size - cityGenes).take(routeGenes).reversed().mapIndexed{i, v -> 10.0.pow(i.toDouble()) * v }.sum().toInt()
         val proportion = 0.1 * (gene[cityGenes+routeGenes] + 1)
-        val wait =  max(gene[cityGenes + routeGenes + 1], world.params.OODALoop[player])
+        val wait =  max(gene[cityGenes + routeGenes + 1] * waitCoeff, world.params.OODALoop[player])
         val proposedAction = LaunchExpedition(playerId, rawFromGene % world.cities.size, rawToGene, proportion, wait)
         if (!proposedAction.isValid(this))
-            return NoAction(player, max(gene[3], 1))
+            return NoAction(player, max(wait, 1))
         return proposedAction
     }
 

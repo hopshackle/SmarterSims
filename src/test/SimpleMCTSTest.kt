@@ -228,9 +228,9 @@ class MCTSChildTest {
         // to make trajectory visible for testing
         fun trajectory() = trajectory
 
-        override fun rollout(state: ActionAbstractGameState, player: Int): Action {
+        override fun rollout(state: ActionAbstractGameState, playerRef: Int): Action {
             rolloutCalls++
-            return super.rollout(state, player)
+            return super.rollout(state, playerRef)
         }
 
         override fun expansionPolicy(node: TTNode, state: ActionAbstractGameState, possibleActions: List<Action>): Action {

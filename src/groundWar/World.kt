@@ -332,7 +332,7 @@ fun createWorldFromMap(data: String, params: EventGameParams): World {
 
     // for each mountain square, we create two paths to block routes - one between each diagonally opposite pair of corners
     val mountains: List<Pair<Vec2d, Vec2d>> = lines.withIndex().flatMap { (y, line) ->
-        line.withIndex().filter { it.value == 'M' }.flatMap { (x, char) ->
+        line.withIndex().filter { it.value == 'M' }.flatMap { (x, _) ->
             listOf(Pair(Vec2d(x * 50.0, y * 50.0), Vec2d(x * 50.0 + 50, y * 50.0 + 50)),
                     Pair(Vec2d(x * 50.0 + 50, y * 50.0), Vec2d(x * 50.0, y * 50.0 + 50)))
         }.toList()

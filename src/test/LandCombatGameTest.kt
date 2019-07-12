@@ -171,7 +171,7 @@ class MakeDecisionTest {
 
     @Test
     fun makeDecisionSpawnedOnAgentRegistrationNotLaunchExpedition() {
-        val fullInvasion = game.translateGene(0, intArrayOf(0, 1, 2, 15))
+        val fullInvasion = game.translateGene(0, intArrayOf(0, 1, 2, 3))
         // 0 = cityFrom, 1 = 2nd route (hence to 2)
         assert(fullInvasion is LaunchExpedition)
         val gameCopy = game.copy()
@@ -192,7 +192,7 @@ class MakeDecisionTest {
     @Test
     fun timeUntilNextDecisionObeysDefaultOODALoop() {
         assertEquals(world.params.OODALoop[0], 10);
-        val fullInvasion = game.translateGene(0, intArrayOf(0, 1, 2, 5))
+        val fullInvasion = game.translateGene(0, intArrayOf(0, 1, 2, 1))
         val gameCopy = game.copy()
         assertEquals(fullInvasion.apply(gameCopy), 10)
     }
@@ -258,15 +258,15 @@ class TranslateGeneTests {
         game1.world.cities[1].pop = 10.0
         game1.world.cities[1].owner = PlayerId.Blue
         val destinations = game1.world.allRoutesFromCity[1]?.size ?: 0
-        var expedition = game1.translateGene(0, intArrayOf(1, 1, 9, 3)) as LaunchExpedition
+        var expedition = game1.translateGene(0, intArrayOf(1, 1, 9, 0)) as LaunchExpedition
         assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 1, 1, 1.0, 10))
         assertEquals(expedition.destinationCity(game1), game1.world.allRoutesFromCity[1]!![1].toCity)
 
-        expedition = game1.translateGene(0, intArrayOf(1, 1 + destinations, 9, 3)) as LaunchExpedition
+        expedition = game1.translateGene(0, intArrayOf(1, 1 + destinations, 9, 0)) as LaunchExpedition
         assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 1, 1 + destinations, 1.0, 10))
         assertEquals(expedition.destinationCity(game1), game1.world.allRoutesFromCity[1]!![1].toCity)
 
-        expedition = game1.translateGene(0, intArrayOf(1 + game1.world.cities.size, 1 + destinations, 9, 3)) as LaunchExpedition
+        expedition = game1.translateGene(0, intArrayOf(1 + game1.world.cities.size, 1 + destinations, 9, 0)) as LaunchExpedition
         assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 1, 1 + destinations, 1.0, 10))
         assertEquals(expedition.destinationCity(game1), game1.world.allRoutesFromCity[1]!![1].toCity)
     }
@@ -282,16 +282,16 @@ class TranslateGeneTests {
         val destinations = game2.world.allRoutesFromCity[12]?.size ?: 0
         assertTrue(destinations <= 8)
 
-        var expedition = game2.translateGene(0, intArrayOf(1, 2, 1, 9, 3)) as LaunchExpedition
+        var expedition = game2.translateGene(0, intArrayOf(1, 2, 1, 9, 1)) as LaunchExpedition
         assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 12, 1, 1.0, 10))
         assertEquals(expedition.destinationCity(game2), game2.world.allRoutesFromCity[12]!![1].toCity)
 
-        expedition = game2.translateGene(0, intArrayOf(1, 2, 1 + destinations, 9, 3)) as LaunchExpedition
+        expedition = game2.translateGene(0, intArrayOf(1, 2, 1 + destinations, 9, 1)) as LaunchExpedition
         assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 12, 1 + destinations, 1.0, 10))
         assertEquals(expedition.destinationCity(game2), game2.world.allRoutesFromCity[12]!![1].toCity)
 
         val totalCityCode = 12 + 2 * game2.world.cities.size
-        expedition = game2.translateGene(0, intArrayOf(totalCityCode / 10, totalCityCode % 10, 1 + destinations, 9, 3)) as LaunchExpedition
+        expedition = game2.translateGene(0, intArrayOf(totalCityCode / 10, totalCityCode % 10, 1 + destinations, 9, 2)) as LaunchExpedition
         assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 12, 1 + destinations, 1.0, 10))
         assertEquals(expedition.destinationCity(game2), game2.world.allRoutesFromCity[12]!![1].toCity)
     }
@@ -306,18 +306,18 @@ class TranslateGeneTests {
         game3.world.cities[2].owner = PlayerId.Blue
         val destinations = game3.world.allRoutesFromCity[2]?.size ?: 0
 
-        var expedition = game3.translateGene(0, intArrayOf(0, 2, 0, 1, 9, 3)) as LaunchExpedition
+        var expedition = game3.translateGene(0, intArrayOf(0, 2, 0, 1, 9, 1)) as LaunchExpedition
         assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 2, 1, 1.0, 10))
         assertEquals(expedition.destinationCity(game3), game3.world.allRoutesFromCity[2]!![1].toCity)
 
         val totalRouteCode = 1 + destinations * 6
-        expedition = game3.translateGene(0, intArrayOf(0, 2, totalRouteCode / 10, totalRouteCode % 10, 9, 3)) as LaunchExpedition
+        expedition = game3.translateGene(0, intArrayOf(0, 2, totalRouteCode / 10, totalRouteCode % 10, 9, 1)) as LaunchExpedition
         assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 2, totalRouteCode, 1.0, 10))
         assertEquals(expedition.destinationCity(game3), game3.world.allRoutesFromCity[2]!![1].toCity)
 
         val totalCityCode = 2 + game3.world.cities.size
-        expedition = game3.translateGene(0, intArrayOf(totalCityCode / 10, totalCityCode % 10, totalRouteCode / 10, totalRouteCode % 10, 9, 3)) as LaunchExpedition
-        assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 2, totalRouteCode, 1.0, 10))
+        expedition = game3.translateGene(0, intArrayOf(totalCityCode / 10, totalCityCode % 10, totalRouteCode / 10, totalRouteCode % 10, 9, 4)) as LaunchExpedition
+        assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 2, totalRouteCode, 1.0, 20))
         assertEquals(expedition.destinationCity(game3), game3.world.allRoutesFromCity[2]!![1].toCity)
     }
 }

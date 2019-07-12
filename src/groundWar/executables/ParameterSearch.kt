@@ -6,13 +6,13 @@ import evodef.*
 import ggi.*
 import groundWar.*
 import ntbea.*
-import ntbeaOverride.*
 import java.lang.AssertionError
+import kotlin.math.min
 import kotlin.random.Random
 
 fun main(args: Array<String>) {
     val ntbea = NTupleBanditEA(30.0, 50)
-    ntbea.banditLandscapeModel = NTupleSystemOverride()
+    ntbea.banditLandscapeModel = NTupleSystem()
     ntbea.banditLandscapeModel.searchSpace = if (args[0] == "RHEA") RHEASearchSpace else MCTSSearchSpace
     ntbea.resetModelEachRun = false
     val opponentModel = when {
@@ -21,22 +21,23 @@ fun main(args: Array<String>) {
         else -> HeuristicAgent(args[2].toDouble(), args[3].toDouble(),
                 args.withIndex().filter { it.index > 3 }.map { it.value }.map(HeuristicOptions::valueOf).toList())
     }
-    val reportEvery = Math.min(1000, args[1].toInt())
+    val reportEvery = min(1000, args[1].toInt())
     val logger = EvolutionLogger()
-    repeat (args[1].toInt() / reportEvery) {
+    repeat(args[1].toInt() / reportEvery) {
         val result = ntbea.runTrial(GroundWarEvaluator(args[0], logger, opponentModel), reportEvery)
         // tuples gets cleared out
 
         println(result.joinToString())
 
         println("Summary of 1-tuple statistics:")
-        (ntbea.banditLandscapeModel as NTupleSystem).tuples.withIndex().take(ntbea.banditLandscapeModel.searchSpace.nDims()).forEach { (i, t) ->
+        val searchSpace = ntbea.banditLandscapeModel.searchSpace
+        (ntbea.banditLandscapeModel as NTupleSystem).tuples.withIndex().take(searchSpace.nDims()).forEach { (i, t) ->
             t.ntMap.toSortedMap().forEach { (k, v) ->
-                println(String.format("\t%d, %s\t%d trials\t mean %.3g +/- %.2g", i, k, v.n(), v.mean(), v.stdErr()))
+                println(String.format("\t%d-%20s, %s\t%d trials\t mean %.3g +/- %.2g", i, searchSpace.name(i), k, v.n(), v.mean(), v.stdErr()))
             }
         }
         println("\nSummary of 10 most tried full-tuple statistics:")
-        (ntbea.banditLandscapeModel as NTupleSystem).tuples.find { it.tuple.size == ntbea.banditLandscapeModel.searchSpace.nDims() }
+        (ntbea.banditLandscapeModel as NTupleSystem).tuples.find { it.tuple.size == searchSpace.nDims() }
                 ?.ntMap?.map { (k, v) -> k to v }?.sortedByDescending { (_, v) -> v.n() }?.take(10)?.forEach { (k, v) ->
             println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g", k, v.n(), v.mean(), v.stdErr()))
         }
@@ -106,6 +107,7 @@ class GroundWarEvaluator(val type: String, val logger: EvolutionLogger, val oppo
 
 object RHEASearchSpace : SearchSpace {
 
+    val names = arrayOf("SequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne")
     val values = arrayOf(
             arrayOf(4, 8, 12, 24, 48, 100, 200),                    // sequenceLength
             arrayOf(10, 25, 50, 100, 200, 400, 1000),               // horizon
@@ -122,10 +124,13 @@ object RHEASearchSpace : SearchSpace {
     override fun nValues(index: Int) = values[index].size
 
     override fun nDims() = values.size
+
+    override fun name(index: Int) = names[index]
 }
 
 object MCTSSearchSpace : SearchSpace {
 
+    val names = arrayOf("maxDepth", "horizon", "pruneTree", "C", "maxActions", "rolloutPolicy", "selectionPolicy")
     val values = arrayOf(
             arrayOf(1, 2, 3, 6, 12),                  // maxDepth (==sequenceLength)
             arrayOf(10, 25, 50, 100, 200, 400, 1000),               // horizon
