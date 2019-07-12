@@ -33,11 +33,11 @@ fun main(args: Array<String>) {
     runWithParams(params, if (args.size > 0) args[0] else "")
 }
 
-fun runWithParams(params: EventGameParams, worldAsJSON: String = "") {
-    val fileAsLines = if (worldAsJSON != "") BufferedReader(FileReader(worldAsJSON)).readLines().joinToString("\n") else ""
+fun runWithParams(params: EventGameParams, mapFile: String = "") {
+    val fileAsLines = if (mapFile != "") BufferedReader(FileReader(mapFile)).readLines().joinToString("\n") else ""
     val world = if (fileAsLines == "") World(random = Random(1), params = params) else createWorld(fileAsLines, params)
-    if (worldAsJSON != "" && !fileAsLines.startsWith("{")) {
-        val output = FileWriter(worldAsJSON.substringBefore('.') + ".json")
+    if (mapFile != "" && !fileAsLines.startsWith("{")) {
+        val output = FileWriter(mapFile.substringBefore('.') + ".json")
         output.write(world.toJSON().toString(1))
         output.close()
     }

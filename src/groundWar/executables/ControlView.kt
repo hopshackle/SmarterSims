@@ -6,6 +6,12 @@ import javax.swing.*
 import kotlin.reflect.full.memberProperties
 
 fun main(args: Array<String>) {
+    //Schedule a job for the event dispatch thread:
+    //creating and showing this application's GUI.
+    SwingUtilities.invokeLater { createAndShowGUI() }
+}
+
+fun createAndShowGUI() {
     val view = ControlView()
     view.create(JFrame())
 }
@@ -59,6 +65,20 @@ class ControlView {
             setting.add(ParameterSetting(it, propertyMap))
             //ParameterSetting(it, default.getOrElse(it, ""))
         }
+        val fileChooserPanel = JPanel(FlowLayout(FlowLayout.LEFT))
+        val mapButton = JButton("Map ")
+        fileChooserPanel.add(mapButton)
+        val mapNameField = JTextField("", 10)
+        fileChooserPanel.add(mapNameField)
+        mapButton.addActionListener{
+            val fileChooser = JFileChooser()
+            if (fileChooser.showOpenDialog(setting) == JFileChooser.APPROVE_OPTION) {
+                val selectedValue = fileChooser.selectedFile
+                mapNameField.text = selectedValue.path
+            }
+        }
+        setting.add(fileChooserPanel)
+
 
         val buttonPanel = JPanel()
         val startButton = JButton("Start")
@@ -85,7 +105,7 @@ class ControlView {
                         minAssaultFactor = propertyMap["minAssaultFactor"] as DoubleArray,
                         seed = propertyMap["seed"] as Long
                 )
-                runningThread = Thread { runWithParams(simParams) }
+                runningThread = Thread { runWithParams(simParams, mapNameField.text) }
                 runningThread.start()
             }
         }

@@ -126,7 +126,8 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
             // for each city we connect to all cities within a specified range
             for (j in 0 until cities.size) {
                 if (i != j && cities[i].location.distanceTo(cities[j].location) <= params.autoConnect
-                        && !routesCross(cities[i].location, cities[j].location, routes, cities)) {
+                        && !routesCross(cities[i].location, cities[j].location, routes, cities)
+                        && !routePassesTooCloseToOtherCity(i, j)) {
                     routes += Route(i, j, cities[i].location.distanceTo(cities[j].location), 1.0)
                 }
             }
@@ -171,6 +172,8 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
             !routes.any { r -> r.fromCity == cityIndex && r.toCity == cities.indexOf(it) }
         }.filter {
             !routesCross(cities[cityIndex].location, it.location, routes, cities)
+        }.filter { c ->
+            !routePassesTooCloseToOtherCity(cityIndex, cities.indexOf(c))
         }
         if (eligibleCities.isEmpty())
             return false
@@ -180,6 +183,16 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
         routes += Route(cityIndex, cities.indexOf(proposal), distance, 1.0)
         routes += Route(cities.indexOf(proposal), cityIndex, distance, 1.0)
         return true
+    }
+
+    private fun routePassesTooCloseToOtherCity(indexFrom: Int, indexTo: Int): Boolean {
+        val cityRadii: List<Pair<Vec2d, Vec2d>> = cities.withIndex()
+                .filterNot { (i, _) -> i in listOf(indexFrom, indexTo) }
+                .flatMap { (_, c2) ->
+                    listOf(Pair(c2.location + Vec2d(c2.radius.toDouble(), c2.radius.toDouble()), c2.location - Vec2d(c2.radius.toDouble(), c2.radius.toDouble())),
+                            Pair(c2.location + Vec2d(c2.radius.toDouble(), -c2.radius.toDouble()), c2.location - Vec2d(c2.radius.toDouble(), -c2.radius.toDouble())))
+                }
+        return routesCross(cities[indexFrom].location, cities[indexTo].location, cityRadii)
     }
 
     fun canPlace(c: City, cities: List<City>, minSep: Int): Boolean {
@@ -337,12 +350,17 @@ fun createWorldFromMap(data: String, params: EventGameParams): World {
                     Pair(Vec2d(x * 50.0 + 50, y * 50.0), Vec2d(x * 50.0, y * 50.0 + 50)))
         }.toList()
     }
+    val cityRadii: List<Triple<Int, Vec2d, Vec2d>> = cities.withIndex().flatMap { (i, c) ->
+        listOf(Triple(i, c.location + Vec2d(c.radius.toDouble(), c.radius.toDouble()), c.location - Vec2d(c.radius.toDouble(), c.radius.toDouble())),
+                Triple(i, c.location + Vec2d(c.radius.toDouble(), -c.radius.toDouble()), c.location - Vec2d(c.radius.toDouble(), -c.radius.toDouble())))
+    }
 
     val routes: List<Route> = cities.withIndex().fold(emptyList(), { acc1: List<Route>, city1 ->
         acc1 + cities.withIndex().fold(emptyList(), { acc2: List<Route>, city2 ->
             //      println("Processing cities ${city1.value.name} and ${city2.value.name}; ${acc1.size}:${acc2.size} routes")
             acc2 + if (city1.index < city2.index && !routesCross(city1.value.location, city2.value.location, acc1, cities)
-                    && !routesCross(city1.value.location, city2.value.location, mountains)) {
+                    && !routesCross(city1.value.location, city2.value.location, mountains +
+                            cityRadii.filterNot { it.first in listOf(city1.index, city2.index) }.map { Pair(it.second, it.third) })) {
                 //       println("Route between cities $city1 and $city2; ${acc1.size} routes")
                 val length = city1.value.location.distanceTo(city2.value.location)
                 listOf(Route(city1.index, city2.index, length, 1.0),

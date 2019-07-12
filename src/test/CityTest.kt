@@ -46,10 +46,16 @@ class CityCreationTest {
 
     @Test
     fun allCitiesHaveThreeMinimumConnections() {
-        val localCityCreationWorld = World(params = cityCreationParams.copy(minConnections = 3))
-        for ((i, _) in localCityCreationWorld.cities.withIndex()) {
-            assert(localCityCreationWorld.allRoutesFromCity[i]?.size ?: 0 >= 3)
+        val initialThreePlus = cityCreationWorld.cities.withIndex().count { (i, _) ->
+            cityCreationWorld.allRoutesFromCity[i]?.size ?: 0 >= 3
         }
+
+        val localCityCreationWorld = World(params = cityCreationParams.copy(minConnections = 3))
+        val citiesWithAtLeastThree = localCityCreationWorld.cities.withIndex().count { (i, _) ->
+            localCityCreationWorld.allRoutesFromCity[i]?.size ?: 0 >= 3
+        }
+
+        assert(citiesWithAtLeastThree > initialThreePlus)
     }
 
     @Test
@@ -71,6 +77,22 @@ class CityCreationTest {
         with(cityCreationWorld) {
             assertEquals(routes.size, routes.distinct().size)
         }
+    }
+
+    @Test
+    fun cityRadiiAvoided() {
+        val localWorld = World(params = cityCreationParams.copy(seed = 10, nAttempts = 25, minConnections = 3))
+        val cityRadii: List<Triple<Int, Vec2d, Vec2d>> = localWorld.cities.withIndex().flatMap { (i, c2) ->
+            listOf(Triple(i, c2.location + Vec2d(c2.radius.toDouble(), c2.radius.toDouble()), c2.location - Vec2d(c2.radius.toDouble(), c2.radius.toDouble())),
+                    Triple(i, c2.location + Vec2d(c2.radius.toDouble(), -c2.radius.toDouble()), c2.location - Vec2d(c2.radius.toDouble(), -c2.radius.toDouble())))
+        }
+        assertTrue(localWorld.cities.withIndex().all { (i, c) ->
+            val destinationCities = localWorld.allRoutesFromCity[i]?.map(Route::toCity)?.toList() ?: emptyList()
+            destinationCities.none { dest ->
+                routesCross(c.location, localWorld.cities[dest].location,
+                        cityRadii.filterNot { it.first in listOf(i, dest) }.map { Pair(it.second, it.third) })
+            }
+        })
     }
 
     @Test

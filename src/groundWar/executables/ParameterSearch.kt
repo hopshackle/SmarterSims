@@ -107,7 +107,7 @@ class GroundWarEvaluator(val type: String, val logger: EvolutionLogger, val oppo
 
 object RHEASearchSpace : SearchSpace {
 
-    val names = arrayOf("SequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne")
+    private val names = arrayOf("SequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne")
     val values = arrayOf(
             arrayOf(4, 8, 12, 24, 48, 100, 200),                    // sequenceLength
             arrayOf(10, 25, 50, 100, 200, 400, 1000),               // horizon
@@ -130,7 +130,7 @@ object RHEASearchSpace : SearchSpace {
 
 object MCTSSearchSpace : SearchSpace {
 
-    val names = arrayOf("maxDepth", "horizon", "pruneTree", "C", "maxActions", "rolloutPolicy", "selectionPolicy")
+    private val names = arrayOf("maxDepth", "horizon", "pruneTree", "C", "maxActions", "rolloutPolicy", "selectionPolicy")
     val values = arrayOf(
             arrayOf(1, 2, 3, 6, 12),                  // maxDepth (==sequenceLength)
             arrayOf(10, 25, 50, 100, 200, 400, 1000),               // horizon
@@ -150,4 +150,5 @@ object MCTSSearchSpace : SearchSpace {
 
     override fun nDims() = values.size
 
+    override fun name(index: Int) = names[index]
 }

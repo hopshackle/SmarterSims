@@ -125,7 +125,7 @@ class FogTests {
 
     @Test
     fun testFogOnCityCopy() {
-        foggyWorld.cities[0].owner = PlayerId.Blue
+        foggyWorld.cities[0].owner = PlayerId.Red
         val fullCopy = foggyWorld.deepCopy()
         val fogCopyRed = foggyWorld.deepCopyWithFog(PlayerId.Red)
         val fogCopyBlue = foggyWorld.deepCopyWithFog(PlayerId.Blue)
