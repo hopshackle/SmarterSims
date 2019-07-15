@@ -49,7 +49,7 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
                 val (attacker, target) = eligibleTargets.random(rnd)
                 val attackRef = cities.indexOf(attacker)
                 val targetRef = cities.indexOf(target)
-                val proportion = target.pop * attackRatio / attacker.pop * gameState.nActions()
+                val proportion = target.pop * attackRatio / attacker.pop
                 return LaunchExpedition(playerId,
                         attackRef,
                         targetCityCode(this, attackRef, targetRef),

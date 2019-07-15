@@ -11,36 +11,71 @@ import kotlin.math.min
 import kotlin.random.Random
 
 fun main(args: Array<String>) {
-    val ntbea = NTupleBanditEA(30.0, 50)
-    ntbea.banditLandscapeModel = NTupleSystem()
-    ntbea.banditLandscapeModel.searchSpace = if (args[0] == "RHEA") RHEASearchSpace else MCTSSearchSpace
+    if (args.size < 3) AssertionError("Must specify at least three parameters: RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
+    val searchSpace = if (args[0] == "RHEA") RHEASearchSpace else MCTSSearchSpace
+    val nTupleSystem = when {
+        args[2] == "STD" -> NTupleSystem()
+        args[2] == "EXP_MEAN" -> NTupleSystemExp(30, expWeightExplore = false)
+        args[2].startsWith("EXP_FULL") -> {
+            val minWeight = args[2].split(":")[1].toDouble()
+            NTupleSystemExp(30, minWeight = minWeight)
+        }
+        args[2].startsWith("EXP_SQRT") -> {
+            val minWeight = args[2].split(":")[1].toDouble()
+            NTupleSystemExp(30, minWeight = minWeight, exploreWithSqrt = true)
+        }
+        else -> throw AssertionError("Unknown NTuple parameter: " + args[2])
+    }
+    val stateSpaceSize = (0 until searchSpace.nDims()).fold(1, { acc, i -> acc * searchSpace.nValues(i) })
+    val twoTupleSize = (0 until searchSpace.nDims() - 1).map { i ->
+        searchSpace.nValues(i) * (i + 1 until searchSpace.nDims()).map(searchSpace::nValues).sum()
+    }.sum()
+
+    val ntbea = NTupleBanditEA(100.0, min(50.0, stateSpaceSize * 0.01).toInt())
+    ntbea.banditLandscapeModel = nTupleSystem
+    ntbea.banditLandscapeModel.searchSpace = searchSpace
     ntbea.resetModelEachRun = false
     val opponentModel = when {
-        args.size <= 2 -> SimpleActionDoNothing(1000)
-        args[2] == "random" -> SimpleActionRandom
-        else -> HeuristicAgent(args[2].toDouble(), args[3].toDouble(),
-                args.withIndex().filter { it.index > 3 }.map { it.value }.map(HeuristicOptions::valueOf).toList())
+        args.size <= 3 -> SimpleActionDoNothing(1000)
+        args[3] == "random" -> SimpleActionRandom
+        else -> HeuristicAgent(args[3].toDouble(), args[4].toDouble(),
+                args.withIndex().filter { it.index > 4 }.map { it.value }.map(HeuristicOptions::valueOf).toList())
     }
-    val reportEvery = min(1000, args[1].toInt())
+    val reportEvery = min(stateSpaceSize / 2, args[1].toInt())
     val logger = EvolutionLogger()
+    println("Search space consists of $stateSpaceSize states and $twoTupleSize possible 2-Tuples:")
+    (0 until searchSpace.nDims()).forEach {
+        println(String.format("%20s has %d values %s", searchSpace.name(it), searchSpace.nValues(it),
+                (0 until searchSpace.nValues(it)).map { i -> searchSpace.value(it, i) }.joinToString()))
+    }
     repeat(args[1].toInt() / reportEvery) {
-        val result = ntbea.runTrial(GroundWarEvaluator(args[0], logger, opponentModel), reportEvery)
+        ntbea.runTrial(GroundWarEvaluator(args[0], logger, opponentModel), reportEvery)
         // tuples gets cleared out
 
-        println(result.joinToString())
-
-        println("Summary of 1-tuple statistics:")
-        val searchSpace = ntbea.banditLandscapeModel.searchSpace
-        (ntbea.banditLandscapeModel as NTupleSystem).tuples.withIndex().take(searchSpace.nDims()).forEach { (i, t) ->
+        println("Current best sampled point (using mean estimate): " + nTupleSystem.bestOfSampled.joinToString() +
+                String.format(", %.3g", nTupleSystem.getMeanEstimate(nTupleSystem.bestOfSampled)))
+        val tuplesExploredBySize = (1..searchSpace.nDims()).map { size ->
+            nTupleSystem.tuples.filter { it.tuple.size == size }
+                    .map { it.ntMap.size }.sum()
+        }
+        println("Tuples explored by size: ${tuplesExploredBySize.joinToString()}")
+        println("Summary of 1-tuple statistics after ${nTupleSystem.numberOfSamples()} samples:")
+        nTupleSystem.tuples.withIndex().take(searchSpace.nDims()).forEach { (i, t) ->
             t.ntMap.toSortedMap().forEach { (k, v) ->
-                println(String.format("\t%d-%20s, %s\t%d trials\t mean %.3g +/- %.2g", i, searchSpace.name(i), k, v.n(), v.mean(), v.stdErr()))
+                println(String.format("\t%20s\t%s\t%d trials\t mean %.3g +/- %.2g", searchSpace.name(i), k, v.n(), v.mean(), v.stdErr()))
             }
         }
         println("\nSummary of 10 most tried full-tuple statistics:")
-        (ntbea.banditLandscapeModel as NTupleSystem).tuples.find { it.tuple.size == searchSpace.nDims() }
+        nTupleSystem.tuples.find { it.tuple.size == searchSpace.nDims() }
                 ?.ntMap?.map { (k, v) -> k to v }?.sortedByDescending { (_, v) -> v.n() }?.take(10)?.forEach { (k, v) ->
-            println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g", k, v.n(), v.mean(), v.stdErr()))
+            println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), nTupleSystem.getMeanEstimate(k.v)))
         }
+        println("\nSummary of 5 highest valued full-tuple statistics:")
+        nTupleSystem.tuples.find { it.tuple.size == searchSpace.nDims() }
+                ?.ntMap?.map { (k, v) -> k to v }?.sortedByDescending { (_, v) -> v.mean() }?.take(3)?.forEach { (k, v) ->
+            println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), nTupleSystem.getMeanEstimate(k.v)))
+        }
+        println("")
 
     }
 }
@@ -126,6 +161,8 @@ object RHEASearchSpace : SearchSpace {
     override fun nDims() = values.size
 
     override fun name(index: Int) = names[index]
+
+    override fun value(dimension: Int, index: Int) = values[dimension][index]
 }
 
 object MCTSSearchSpace : SearchSpace {
@@ -151,4 +188,6 @@ object MCTSSearchSpace : SearchSpace {
     override fun nDims() = values.size
 
     override fun name(index: Int) = names[index]
+
+    override fun value(dimension: Int, index: Int) = values[dimension][index]
 }

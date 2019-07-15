@@ -125,6 +125,7 @@ class SimpleActionDoNothing(val defaultWait: Int) : SimpleActionPlayerInterface 
     override fun getAgentType() = "SimpleActionDoNothing"
     override fun getForwardModelInterface() = this
     override fun backPropagate(finalScore: Double) {}
+    override fun toString() = "SimpleActionDoNothing"
 }
 
 object SimpleActionRandom : SimpleActionPlayerInterface {
@@ -138,4 +139,5 @@ object SimpleActionRandom : SimpleActionPlayerInterface {
     override fun getAgentType() = "SimpleActionRandom"
     override fun getForwardModelInterface() = this
     override fun backPropagate(finalScore: Double) {}
+    override fun toString() = "SimpleActionRandom"
 }
