@@ -95,6 +95,7 @@ class GroundWarEvaluator(val type: String, val logger: EvolutionLogger, val oppo
                     underlyingAgent = SimpleEvoAgent(
                             nEvals = 10000,
                             timeLimit = 50,
+                            useMutationTransducer = false,
                             sequenceLength = RHEASearchSpace.values[0][settings[0]] as Int,
                             horizon = RHEASearchSpace.values[1][settings[1]] as Int,
                             useShiftBuffer = RHEASearchSpace.values[2][settings[2]] as Boolean,
@@ -129,6 +130,7 @@ class GroundWarEvaluator(val type: String, val logger: EvolutionLogger, val oppo
         game.registerAgent(1, redAgent)
         game.next(1000)
         nEvals++
+   //     println("Game score ${settings.joinToString()} is ${game.score(0).toInt()}")
         logger.log(game.score(0), settings, false)
         return game.score(0)
     }

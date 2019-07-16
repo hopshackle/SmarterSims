@@ -21,21 +21,7 @@ fun main(args: Array<String>) {
     val params = if (args.size > 2) {
         val fileAsLines = BufferedReader(FileReader(args[2])).lines().toList()
         createIntervalParamsFromString(fileAsLines).sampleParams()
-    } else EventGameParams(
-            fogOfWar = true,
-            fogStrengthAssumption = doubleArrayOf(5.0, 5.0),
-            nAttempts = 15,
-            citySeparation = 50,
-            minConnections = 3,
-            speed = doubleArrayOf(5.0, 5.0),
-            OODALoop = intArrayOf(25, 25),
-            minAssaultFactor = doubleArrayOf(2.0, 2.0),
-            lanchesterCoeff = doubleArrayOf(0.05, 0.05),
-            lanchesterExp = doubleArrayOf(0.5, 0.5),
-            percentFort = 0.25,
-            fortAttackerDivisor = 2.0,
-            fortDefenderExpBonus = 0.1
-    )
+    } else EventGameParams()
 
     val agents = HashMap<PlayerId, SimpleActionPlayerInterface>()
     agents[PlayerId.Blue] = agentParams.createAgent("BLUE")
@@ -49,7 +35,9 @@ fun main(args: Array<String>) {
    //         SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 10000, timeLimit = 500, sequenceLength = 40, horizon = params.planningHorizon[1], useMutationTransducer = false, useShiftBuffer = true, probMutation = 0.25, name = "RED"))
     //    HeuristicAgent(3.0, 1.0, listOf( HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))
 
-    val scoreFunction = compositeScoreFunction(
+
+    val simpleScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -1.0)
+    val complexScoreFunction = compositeScoreFunction(
             simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
             visibilityScore(1.0, 1.0)
     )
@@ -67,8 +55,8 @@ fun main(args: Array<String>) {
 
         val world = World(random = Random(seed = params.seed), params = params)
         val game = LandCombatGame(world)
-        game.scoreFunction[PlayerId.Blue] = scoreFunction
-        game.scoreFunction[PlayerId.Red] = scoreFunction
+        game.scoreFunction[PlayerId.Blue] = simpleScoreFunction
+        game.scoreFunction[PlayerId.Red] = simpleScoreFunction
         game.registerAgent(0, agents[PlayerId.Blue] ?: SimpleActionDoNothing(1000))
         game.registerAgent(1, agents[PlayerId.Red] ?: SimpleActionDoNothing(1000))
         game.next(1000)

@@ -69,7 +69,7 @@ data class SimpleEvoAgent(
         var nEvals: Int = 20,
         var timeLimit: Int = 1000,
         var useShiftBuffer: Boolean = true,
-        var useMutationTransducer: Boolean = true,
+        var useMutationTransducer: Boolean = false,
         var repeatProb: Double = 0.5,  // only used with mutation transducer
         var discountFactor: Double? = null,
         val horizon: Int = 1,
