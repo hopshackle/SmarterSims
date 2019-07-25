@@ -26,7 +26,7 @@ class SimpleEvoAgentTest {
             Route(2, 0, 10.0, 1.0),
             Route(2, 1, 10.0, 1.0)
     )
-    val gameParams = EventGameParams(OODALoop = intArrayOf(10, 10), width = 20, height = 20)
+    val gameParams = EventGameParams(OODALoop = intArrayOf(10, 10), width = 20, height = 20, speed = doubleArrayOf(5.0, 5.0))
     val world = World(cities, routes, Random(10), params = gameParams)
     val game = LandCombatGame(world)
 
@@ -87,9 +87,9 @@ class SimpleEvoAgentTest {
 
         val redGenome1 = intArrayOf(1, 0, 9, 1, 1, 1, 1, 0)
         val projectedState3 = projectedState2.copy()
-        reward = evaluateSequenceDelta(projectedState3, redGenome1, 1, 1.0, 1)
+        reward = evaluateSequenceDelta(projectedState3, redGenome1, 1, 1.0, 2)
         assertEquals(projectedState2.nTicks(), 1)
-        assertEquals(projectedState3.nTicks(), 2)
+        assertEquals(projectedState3.nTicks(), 3)
         assertEquals(reward, -1.0) // blue force reaches neutral city
 
         val redGenome2 = intArrayOf(1, 0, 9, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0)
@@ -123,26 +123,26 @@ class SimpleEvoAgentTest {
 
     @Test
     fun rollForwardForSeveralTicksWithOneAction() {
-        val blueGenome = intArrayOf(1, 0, 0, 2, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0)
-        // Blue first of all gives a Wait order for 10 time units, then a March order (which will take 3 time units to arrive) to invade the Neutral city
-        // MakeDecision should be at tick = 20 (10 + 10), as the default wait after a LaunchExpedition is 10
-        val redGenome = intArrayOf(1, 1, 2, 3, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0)
+        val blueGenome = intArrayOf(1, 0, 5, 3, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0)
+        // Blue first of all gives a Wait order for 8 time units, then a March order (which will take 2 time units to arrive) to invade the Neutral city
+        // MakeDecision should be at tick = 18 (8 + 10), as the default wait after a LaunchExpedition is 10
+        val redGenome = intArrayOf(1, 1, 2, 4, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0)
         // Red gives an expedition order immediately to attack the Neutral city, that takes 3 time units
-        // Make Decision should be at tick = 15
+        // Make Decision should be at tick = 16
         val blueAgent = SimpleActionEvoAgentRollForward(blueGenome)
         val redAgent = SimpleActionEvoAgentRollForward(redGenome)
         game.registerAgent(0, blueAgent)
         game.registerAgent(1, redAgent)
-        game.next(11)
-        assertEquals(game.nTicks(), 11)
+        game.next(10)
+        assertEquals(game.nTicks(), 10)
         assertEquals(game.score(0), -1.0)
         assertEquals(game.score(1), 1.0)
         assert(game.world.cities[2].owner == PlayerId.Red)
         assertEquals(game.world.currentTransits.size, 1)
         assertTrue(game.world.currentTransits[0].playerId == PlayerId.Blue)
 
-        assertTrue(game.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 1 && e.tick == 15 })
-        assertTrue(game.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 0 && e.tick == 20 })
+        assertTrue(game.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 1 && e.tick == 16 })
+        assertTrue(game.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 0 && e.tick == 18 })
     }
 
 }
