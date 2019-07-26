@@ -1,6 +1,7 @@
 package test
 
 import agents.MCTS.*
+import agents.SimpleActionRandom
 import groundWar.*
 import ggi.*
 import org.junit.jupiter.api.*
@@ -317,7 +318,7 @@ class MCTSChildTest {
         repeat(100) {
             rolloutActions.add(childAgent.rollout(simpleMazeGame, 0))
         }
-        assertEquals(rolloutActions.count { it == NoAction(0)}.toDouble(), 33.0, 12.0)
+        assertEquals(rolloutActions.count { it == NoAction(0) }.toDouble(), 33.0, 12.0)
         assertEquals(rolloutActions.count { it == Move(0, Direction.LEFT) }.toDouble(), 33.0, 12.0)
         assertEquals(rolloutActions.count { it == Move(0, Direction.RIGHT) }.toDouble(), 33.0, 12.0)
         assertEquals(childAgent.treeCalls, 0)

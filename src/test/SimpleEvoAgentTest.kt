@@ -1,8 +1,6 @@
 package test
 
-import agents.*
-import ggi.SimpleActionEvoAgent
-import ggi.SimpleActionEvoAgentRollForward
+import agents.RHEA.*
 import groundWar.*
 import groundWar.EventGameParams
 import math.Vec2d

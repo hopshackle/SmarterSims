@@ -2,6 +2,9 @@ package groundWar.executables
 
 import agents.MCTS.*
 import agents.*
+import agents.RHEA.RHCAAgent
+import agents.RHEA.SimpleActionEvoAgent
+import agents.RHEA.SimpleEvoAgent
 import evodef.*
 import ggi.*
 import groundWar.*
@@ -12,7 +15,12 @@ import kotlin.random.Random
 
 fun main(args: Array<String>) {
     if (args.size < 3) AssertionError("Must specify at least three parameters: RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
-    val searchSpace = if (args[0] == "RHEA") RHEASearchSpace else MCTSSearchSpace
+    val searchSpace = when {
+        args[0] == "RHEA" -> RHEASearchSpace
+        args[0] == "MCTS" -> MCTSSearchSpace
+        args[0] == "RHCA" -> RHCASearchSpace
+        else -> throw AssertionError("Unknown searchSpace " + args[0])
+    }
     val nTupleSystem = when {
         args[2] == "STD" -> NTupleSystem()
         args[2] == "EXP_MEAN" -> NTupleSystemExp(30, expWeightExplore = false)
@@ -26,6 +34,7 @@ fun main(args: Array<String>) {
         }
         else -> throw AssertionError("Unknown NTuple parameter: " + args[2])
     }
+
     val stateSpaceSize = (0 until searchSpace.nDims()).fold(1, { acc, i -> acc * searchSpace.nValues(i) })
     val twoTupleSize = (0 until searchSpace.nDims() - 1).map { i ->
         searchSpace.nValues(i) * (i + 1 until searchSpace.nDims()).map(searchSpace::nValues).sum()
@@ -49,7 +58,7 @@ fun main(args: Array<String>) {
                 (0 until searchSpace.nValues(it)).map { i -> searchSpace.value(it, i) }.joinToString()))
     }
     repeat(args[1].toInt() / reportEvery) {
-        ntbea.runTrial(GroundWarEvaluator(args[0], logger, opponentModel), reportEvery)
+        ntbea.runTrial(GroundWarEvaluator(searchSpace, logger, opponentModel), reportEvery)
         // tuples gets cleared out
 
         println("Current best sampled point (using mean estimate): " + nTupleSystem.bestOfSampled.joinToString() +
@@ -80,7 +89,7 @@ fun main(args: Array<String>) {
     }
 }
 
-class GroundWarEvaluator(val type: String, val logger: EvolutionLogger, val opponentModel: SimpleActionPlayerInterface) : SolutionEvaluator {
+class GroundWarEvaluator(val searchSpace: SearchSpace, val logger: EvolutionLogger, val opponentModel: SimpleActionPlayerInterface) : SolutionEvaluator {
     override fun optimalFound() = false
 
     override fun optimalIfKnown() = null
@@ -90,8 +99,8 @@ class GroundWarEvaluator(val type: String, val logger: EvolutionLogger, val oppo
     var nEvals = 0
     override fun evaluate(settings: IntArray): Double {
         val gameParams = EventGameParams()
-        val blueAgent = when (type) {
-            "RHEA" -> SimpleActionEvoAgent(
+        val blueAgent = when (searchSpace) {
+            RHEASearchSpace -> SimpleActionEvoAgent(
                     underlyingAgent = SimpleEvoAgent(
                             nEvals = 10000,
                             timeLimit = 50,
@@ -104,7 +113,18 @@ class GroundWarEvaluator(val type: String, val logger: EvolutionLogger, val oppo
                     ),
                     opponentModel = opponentModel //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
             )
-            "MCTS" -> MCTSTranspositionTableAgentMaster(MCTSParameters(
+            RHCASearchSpace -> RHCAAgent(
+                    timeLimit = 50,
+                    sequenceLength = RHCASearchSpace.values[0][settings[0]] as Int,
+                    horizon = RHCASearchSpace.values[1][settings[1]] as Int,
+                    useShiftBuffer = RHCASearchSpace.values[2][settings[2]] as Boolean,
+                    probMutation = RHCASearchSpace.values[3][settings[3]] as Double,
+                    flipAtLeastOneValue = RHCASearchSpace.values[4][settings[4]] as Boolean,
+                    populationSize = RHCASearchSpace.values[5][settings[5]] as Int,
+                    parentSize = RHCASearchSpace.values[6][settings[6]] as Int,
+                    evalsPerGeneration = RHCASearchSpace.values[7][settings[7]] as Int
+            )
+            MCTSSearchSpace -> MCTSTranspositionTableAgentMaster(MCTSParameters(
                     C = MCTSSearchSpace.values[3][settings[3]] as Double,
                     selectionMethod = MCTSSearchSpace.values[6][settings[6]] as MCTSSelectionMethod,
                     maxPlayouts = 10000,
@@ -118,7 +138,7 @@ class GroundWarEvaluator(val type: String, val logger: EvolutionLogger, val oppo
                     rolloutPolicy = MCTSSearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface,
                     opponentModel = opponentModel
             )
-            else -> throw AssertionError("Unknown type " + type)
+            else -> throw AssertionError("Unknown type " + searchSpace)
         }
         val redAgent = HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
         val scoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -1.0)
@@ -130,12 +150,12 @@ class GroundWarEvaluator(val type: String, val logger: EvolutionLogger, val oppo
         game.registerAgent(1, redAgent)
         game.next(1000)
         nEvals++
-   //     println("Game score ${settings.joinToString()} is ${game.score(0).toInt()}")
+        //     println("Game score ${settings.joinToString()} is ${game.score(0).toInt()}")
         logger.log(game.score(0), settings, false)
         return game.score(0)
     }
 
-    override fun searchSpace() = if (type == "RHEA") RHEASearchSpace else MCTSSearchSpace
+    override fun searchSpace() = searchSpace
 
     override fun reset() {}
 
@@ -151,6 +171,34 @@ object RHEASearchSpace : SearchSpace {
             arrayOf(true, false),                                   // useShiftBuffer
             arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
             arrayOf(true, false)                           // flipAtLeastOne
+            /*       arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
+                           HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
+                           HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
+                           HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
+                   ) */
+    )
+
+    override fun nValues(index: Int) = values[index].size
+
+    override fun nDims() = values.size
+
+    override fun name(index: Int) = names[index]
+
+    override fun value(dimension: Int, index: Int) = values[dimension][index]
+}
+
+object RHCASearchSpace : SearchSpace {
+
+    private val names = arrayOf("SequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne", "populationSize", "parentSize", "evalsPerGeneration")
+    val values = arrayOf(
+            arrayOf(4, 8, 12, 24, 48, 100, 200),                    // sequenceLength
+            arrayOf(10, 25, 50, 100, 200, 400, 1000),               // horizon
+            arrayOf(true, false),                                   // useShiftBuffer
+            arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
+            arrayOf(true, false),                           // flipAtLeastOne
+            arrayOf(2, 4, 8, 16, 32),                       //populationSize
+            arrayOf(1, 2, 4),                               // parentSize
+            arrayOf(1, 3, 5, 10)                            // evalsPerGeneration
             /*       arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
                            HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
                            HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),

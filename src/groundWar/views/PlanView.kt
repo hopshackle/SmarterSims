@@ -1,9 +1,8 @@
 package groundWar.views
 
-import ggi.SimpleActionPlayerInterface
+import ggi.*
+import agents.RHEA.*
 import groundWar.LandCombatGame
-import ggi.SimpleActionEvoAgent
-import ggi.SimpleActionEvoAgentRollForward
 import javax.swing.*
 
 class PlanView(val agent: SimpleActionPlayerInterface, val game: LandCombatGame, val playerRef: Int) : JTextArea(10, 50) {

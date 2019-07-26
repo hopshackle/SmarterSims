@@ -1,14 +1,11 @@
 package test
-
-
-import ggi.SimpleActionDoNothing
-import ggi.SimpleActionEvoAgent
+import agents.SimpleActionDoNothing
+import agents.RHEA.*
 import groundWar.*
 import groundWar.EventGameParams
 import math.Vec2d
 import org.junit.jupiter.api.Test
 import kotlin.math.abs
-import kotlin.math.exp
 import kotlin.random.Random
 import kotlin.test.*
 

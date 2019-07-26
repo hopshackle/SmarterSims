@@ -1,8 +1,7 @@
 package groundWar.executables
 
 import agents.MCTS.*
-import agents.SimpleEvoAgent
-import ggi.SimpleActionEvoAgent
+import agents.RHEA.*
 import groundWar.*
 import groundWar.views.WorldView
 import utilities.*

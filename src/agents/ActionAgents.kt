@@ -1,0 +1,27 @@
+package agents
+
+import ggi.*
+
+class SimpleActionDoNothing(val defaultWait: Int) : SimpleActionPlayerInterface {
+    override fun getAction(gameState: ActionAbstractGameState, playerRef: Int) = NoAction(playerRef, defaultWait)
+    override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int) = emptyList<Action>()
+    override fun reset() = this
+    override fun getAgentType() = "SimpleActionDoNothing"
+    override fun getForwardModelInterface() = this
+    override fun backPropagate(finalScore: Double) {}
+    override fun toString() = "SimpleActionDoNothing"
+}
+
+object SimpleActionRandom : SimpleActionPlayerInterface {
+    override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
+        val allActions = gameState.possibleActions(playerRef, 1)
+        return allActions.random()
+    }
+
+    override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int) = emptyList<Action>()
+    override fun reset() = this
+    override fun getAgentType() = "SimpleActionRandom"
+    override fun getForwardModelInterface() = this
+    override fun backPropagate(finalScore: Double) {}
+    override fun toString() = "SimpleActionRandom"
+}

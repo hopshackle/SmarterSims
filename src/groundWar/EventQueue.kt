@@ -2,7 +2,7 @@ package groundWar
 
 import ggi.Action
 import ggi.ActionAbstractGameState
-import ggi.SimpleActionDoNothing
+import agents.SimpleActionDoNothing
 import ggi.SimpleActionPlayerInterface
 import java.util.*
 import kotlin.collections.HashMap

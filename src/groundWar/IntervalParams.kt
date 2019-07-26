@@ -2,6 +2,9 @@ package groundWar
 
 import agents.*
 import agents.MCTS.*
+import agents.RHEA.RHCAAgent
+import agents.RHEA.SimpleActionEvoAgent
+import agents.RHEA.SimpleEvoAgent
 import ggi.*
 import intervals.*
 
@@ -113,28 +116,21 @@ data class EventGameParams(
 )
 
 data class AgentParams(
-        val blueAgent: String = "MCTS",
-        val redAgent: String = "RHEA",
+        val algorithm: String = "RHEA",
         val timeBudget: Int = 50,
-        val evalBudget: Int = 500,
+        val evalBudget: Int = 50000,
         val sequenceLength: Int = 40,
         val planningHorizon: Int = 100,
-        val blueParams: String = "pruneTree, C:1.0, maxActions:20, rolloutPolicy:DoNothing",
-        val redParams: String = "useShiftBuffer, probMutation:0.25",
-        val blueOpponentModel: String = "",
-        val redOpponentModel: String = ""
+        val algoParams: String = "useShiftBuffer, probMutation:0.25",
+        val opponentModel: String = ""
 ) {
     fun createAgent(colour: String): SimpleActionPlayerInterface {
-        val (type, params, opponent) = when (colour.toUpperCase()) {
-            "BLUE" -> Triple(blueAgent, blueParams.split(","), blueOpponentModel)
-            "RED" -> Triple(redAgent, redParams.split(","), redOpponentModel)
-            else -> throw AssertionError("Unknown colour " + colour)
-        }
+        val params = algoParams.split(",")
         fun getParam(name: String): String {
             return params.firstOrNull { it.contains(name) }?.let { it.split(":")[1] } ?: "0"
         }
 
-        val oppParams = opponent.split(":")
+        val oppParams = opponentModel.split(":")
         val opponentModel = when (oppParams[0]) {
             "Heuristic" -> {
                 val options = oppParams.subList(3, oppParams.size).map(HeuristicOptions::valueOf)
@@ -142,7 +138,7 @@ data class AgentParams(
             }
             else -> SimpleActionDoNothing(1000)
         }
-        return when (type) {
+        return when (algorithm) {
             "Heuristic" -> {
                 val options = getParam("options").split("|").map(HeuristicOptions::valueOf)
                 HeuristicAgent(getParam("attack").toDouble(), getParam("defence").toDouble(), options)
@@ -153,8 +149,13 @@ data class AgentParams(
                             flipAtLeastOneValue = params.contains("flipAtLeastOneValue"),
                             probMutation = getParam("probMutation").toDouble(), name = colour + "_RHEA"),
                     opponentModel = opponentModel)
+            "RHCA" -> RHCAAgent(flipAtLeastOneValue = params.contains("flipAtLeastOneValue"), probMutation = getParam("probMutation").toDouble(),
+                    sequenceLength = sequenceLength, evalsPerGeneration = getParam("evalsPerGeneration").toInt(),
+                    populationSize = getParam("populationSize").toInt(), timeLimit = timeBudget, parentSize = getParam("parentSize").toInt(),
+                    useShiftBuffer = params.contains("useShiftBuffer"), horizon = planningHorizon, name = colour + "_RHCA")
             "MCTS" -> MCTSTranspositionTableAgentMaster(MCTSParameters(C = getParam("C").toDouble(), maxPlayouts = evalBudget, timeLimit = timeBudget,
-                    maxDepth = sequenceLength, horizon = planningHorizon, pruneTree = params.contains("pruneTree")),
+                    maxDepth = sequenceLength, horizon = planningHorizon, pruneTree = params.contains("pruneTree"),
+                    selectionMethod = MCTSSelectionMethod.valueOf(getParam("selectionPolicy"))),
                     stateFunction = LandCombatStateFunction,
                     rolloutPolicy = when (getParam("rolloutPolicy")) {
                         "Heuristic" -> HeuristicAgent(3.0, 1.0, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
@@ -164,7 +165,7 @@ data class AgentParams(
                     },
                     opponentModel = opponentModel,
                     name = colour + "_MCTS")
-            else -> throw AssertionError("Unknown agent type: " + type)
+            else -> throw AssertionError("Unknown agent type: " + algorithm)
         }
     }
 
@@ -183,16 +184,13 @@ fun createAgentParamsFromString(details: List<String>): AgentParams {
     }.toMap()
 
     return AgentParams(
-            blueAgent = paramMap.getOrDefault("blueAgent", "RHEA"),
-            redAgent = paramMap.getOrDefault("redAgent", "RHEA"),
+            algorithm = paramMap.getOrDefault("algorithm", "RHEA"),
             timeBudget = paramMap.getOrDefault("timeBudget", "50").toInt(),
             evalBudget = paramMap.getOrDefault("evalBudget", "500").toInt(),
             sequenceLength = paramMap.getOrDefault("sequenceLength", "40").toInt(),
             planningHorizon = paramMap.getOrDefault("planningHorizon", "100").toInt(),
-            blueParams = paramMap.getOrDefault("blueParams", ""),
-            redParams = paramMap.getOrDefault("redParams", ""),
-            blueOpponentModel = paramMap.getOrDefault("blueOpponentModel", ""),
-            redOpponentModel = paramMap.getOrDefault("redOpponentModel", "")
+            algoParams = paramMap.getOrDefault("algoParams", ""),
+            opponentModel = paramMap.getOrDefault("opponentModel", "")
     )
 }
 

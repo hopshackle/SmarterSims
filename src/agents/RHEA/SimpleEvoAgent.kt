@@ -1,8 +1,12 @@
-package agents
+package agents.RHEA
 
+import agents.DoNothingAgent
+import agents.SimpleActionDoNothing
 import ggi.*
 import utilities.StatsCollator
 import kotlin.random.Random
+
+internal var RHEARandom = Random(System.currentTimeMillis())
 
 fun evaluateSequenceDelta(gameState: AbstractGameState,
                           seq: IntArray,
@@ -51,13 +55,62 @@ fun evaluateSequenceDelta(gameState: AbstractGameState,
         -delta
 }
 
-fun shiftLeftAndRandomAppend(startingArray: IntArray, nShift: Int, nActions: Int, random: Random = Random(System.currentTimeMillis())): IntArray {
+fun shiftLeftAndRandomAppend(startingArray: IntArray, nShift: Int, nActions: Int): IntArray {
     val p = IntArray(startingArray.size)
     for (i in 0 until p.size)
         p[i] = when {
-            i >= p.size - nShift -> random.nextInt(nActions)
+            i >= p.size - nShift -> RHEARandom.nextInt(nActions)
             else -> startingArray[i + nShift]
         }
+    return p
+}
+
+fun mutate(v: IntArray, mutProb: Double, nActions: Int,
+           useMutationTransducer: Boolean = false, repeatProb: Double = 0.5,
+           flipAtLeastOneValue: Boolean = false): IntArray {
+
+    if (useMutationTransducer) {
+        // build it dynamically in case any of the params have changed
+        val mt = MutationTransducer(mutProb, repeatProb)
+        return mt.mutate(v, nActions)
+    }
+
+    val n = v.size
+    val x = IntArray(n)
+    // pointwise probability of additional mutations
+    // choose element of vector to mutate
+    var ix = RHEARandom.nextInt(n)
+    if (!flipAtLeastOneValue) {
+        // setting this to -1 means it will never match the first clause in the if statement in the loop
+        // leaving it at the randomly chosen value ensures that at least one bit (or more generally value) is always flipped
+        ix = -1
+    }
+    // copy all the values faithfully apart from the chosen one
+    for (i in 0 until n) {
+        if (i == ix || RHEARandom.nextDouble() < mutProb) {
+            x[i] = mutateValue(v[i], nActions)
+        } else {
+            x[i] = v[i]
+        }
+    }
+    return x
+}
+
+fun mutateValue(cur: Int, nPossible: Int): Int {
+    // the range is nPossible-1, since we
+    // selecting the current value is not allowed
+    // therefore we add 1 if the randomly chosen
+    // value is greater than or equal to the current value
+    if (nPossible <= 1) return cur
+    val rx = RHEARandom.nextInt(nPossible - 1)
+    return if (rx >= cur) rx + 1 else rx
+}
+
+fun randomPoint(nValues: Int, sequenceLength: Int): IntArray {
+    val p = IntArray(sequenceLength)
+    for (i in p.indices) {
+        p[i] = RHEARandom.nextInt(nValues)
+    }
     return p
 }
 
@@ -80,8 +133,6 @@ data class SimpleEvoAgent(
         return "SimpleEvoAgent"
     }
 
-    internal var random = Random(System.currentTimeMillis())
-
     // these are all the parameters that control the agend
     internal var buffer: IntArray? = null // randomPoint(sequenceLength)
 
@@ -97,13 +148,13 @@ data class SimpleEvoAgent(
 
     fun getActions(gameState: AbstractGameState, playerId: Int): IntArray {
         val startTime = System.currentTimeMillis()
-        var solution = buffer ?: randomPoint(gameState.nActions())
+        var solution = buffer ?: randomPoint(gameState.nActions(), sequenceLength)
         if (useShiftBuffer) {
             val numberToShiftLeft = gameState.codonsPerAction()
-            solution = shiftLeftAndRandomAppend(solution, numberToShiftLeft, gameState.nActions(), random)
+            solution = shiftLeftAndRandomAppend(solution, numberToShiftLeft, gameState.nActions())
         } else {
             // System.out.println("New random solution with nActions = " + gameState.nActions())
-            solution = randomPoint(gameState.nActions())
+            solution = randomPoint(gameState.nActions(), sequenceLength)
         }
         solutions.clear()
         solutions.add(solution)
@@ -112,7 +163,7 @@ data class SimpleEvoAgent(
         var iterations = 0
         do {
             // evaluate the current one
-            val mut = mutate(solution, probMutation, gameState.nActions())
+            val mut = mutate(solution, probMutation, gameState.nActions(), useMutationTransducer, repeatProb, flipAtLeastOneValue)
             val mutScore = evalSeq(gameState.copy(), mut, playerId)
             if (mutScore >= curScore) {
                 curScore = mutScore
@@ -129,56 +180,10 @@ data class SimpleEvoAgent(
         return solution
     }
 
-    private fun mutate(v: IntArray, mutProb: Double, nActions: Int): IntArray {
-
-        if (useMutationTransducer) {
-            // build it dynamically in case any of the params have changed
-            val mt = MutationTransducer(mutProb, repeatProb)
-            return mt.mutate(v, nActions)
-        }
-
-        val n = v.size
-        val x = IntArray(n)
-        // pointwise probability of additional mutations
-        // choose element of vector to mutate
-        var ix = random.nextInt(n)
-        if (!flipAtLeastOneValue) {
-            // setting this to -1 means it will never match the first clause in the if statement in the loop
-            // leaving it at the randomly chosen value ensures that at least one bit (or more generally value) is always flipped
-            ix = -1
-        }
-        // copy all the values faithfully apart from the chosen one
-        for (i in 0 until n) {
-            if (i == ix || random.nextDouble() < mutProb) {
-                x[i] = mutateValue(v[i], nActions)
-            } else {
-                x[i] = v[i]
-            }
-        }
-        return x
-    }
-
-    private fun mutateValue(cur: Int, nPossible: Int): Int {
-        // the range is nPossible-1, since we
-        // selecting the current value is not allowed
-        // therefore we add 1 if the randomly chosen
-        // value is greater than or equal to the current value
-        if (nPossible <= 1) return cur
-        val rx = random.nextInt(nPossible - 1)
-        return if (rx >= cur) rx + 1 else rx
-    }
-
-    private fun randomPoint(nValues: Int): IntArray {
-        val p = IntArray(sequenceLength)
-        for (i in p.indices) {
-            p[i] = random.nextInt(nValues)
-        }
-        return p
-    }
-
 
     private fun evalSeq(gameState: AbstractGameState, seq: IntArray, playerId: Int): Double {
-        return evaluateSequenceDelta(gameState, seq, playerId, discountFactor ?: 1.0, this.horizon, opponentModel)
+        return evaluateSequenceDelta(gameState, seq, playerId, discountFactor
+                ?: 1.0, this.horizon, opponentModel)
     }
 
 

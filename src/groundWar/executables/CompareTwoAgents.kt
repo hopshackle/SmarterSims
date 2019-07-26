@@ -1,6 +1,7 @@
 package groundWar.executables
 
 import ggi.*
+import agents.*
 import groundWar.*
 import utilities.*
 import java.io.*
@@ -14,23 +15,27 @@ fun main(args: Array<String>) {
     // args[1] is the file that contains agentParams to use
     // args[2] is the file that contains intervalParams to use (this is used with a fixed set at the moment, it is not resampled for each game)
     val maxGames = if (args.size > 0) args[0].toInt() else 100
-    val agentParams = if (args.size > 1) {
+    val agentParams1 = if (args.size > 1) {
         val fileAsLines = BufferedReader(FileReader(args[1])).lines().toList()
         createAgentParamsFromString(fileAsLines)
     } else AgentParams()
-    val params = if (args.size > 2) {
+    val agentParams2 = if (args.size > 2) {
+        val fileAsLines = BufferedReader(FileReader(args[1])).lines().toList()
+        createAgentParamsFromString(fileAsLines)
+    } else AgentParams()
+    val params = if (args.size > 3) {
         val fileAsLines = BufferedReader(FileReader(args[2])).lines().toList()
         createIntervalParamsFromString(fileAsLines).sampleParams()
     } else EventGameParams()
 
     val agents = HashMap<PlayerId, SimpleActionPlayerInterface>()
-    agents[PlayerId.Blue] = agentParams.createAgent("BLUE")
+    agents[PlayerId.Blue] = agentParams1.createAgent("BLUE")
       //      MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = agentParams.timeBudget, maxPlayouts = agentParams.evalBudget, horizon = params.planningHorizon[0], pruneTree = true), LandCombatStateFunction)
     //  SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40, horizon = 100, useMutationTransducer = false, probMutation = 0.25, name = "BLUE")
     //  , opponentModel = HeuristicAgent(2.0, 1.0))
     //    HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))
 
-    agents[PlayerId.Red] = agentParams.createAgent("RED")
+    agents[PlayerId.Red] = agentParams2.createAgent("RED")
             //        MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
    //         SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 10000, timeLimit = 500, sequenceLength = 40, horizon = params.planningHorizon[1], useMutationTransducer = false, useShiftBuffer = true, probMutation = 0.25, name = "RED"))
     //    HeuristicAgent(3.0, 1.0, listOf( HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))

@@ -4,8 +4,7 @@ import ggi.NoAction
 import groundWar.*
 import groundWar.EventGameParams
 import org.junit.jupiter.api.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
+import kotlin.test.*
 
 class FogTests {
 

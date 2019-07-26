@@ -1,18 +1,8 @@
-package ggi
+package agents.RHEA
 
-import agents.SimpleEvoAgent
+import agents.SimpleActionDoNothing
+import ggi.*
 import groundWar.LandCombatGame
-import kotlin.math.max
-
-data class NoAction(val playerRef: Int, val waitTime: Int = 1) : Action {
-    override fun apply(state: ActionAbstractGameState): Int {
-        // Do absolutely nothing
-        return state.nTicks() + waitTime
-    }
-
-    // only visible to planning player
-    override fun visibleTo(player: Int, state: ActionAbstractGameState) = player == playerRef
-}
 
 class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(),
                            val opponentModel: SimpleActionPlayerInterface = SimpleActionDoNothing(underlyingAgent.horizon)
@@ -116,28 +106,4 @@ class SimpleActionEvoAgentRollForward(var genome: IntArray, val horizon: Int = 1
     }
 
     override fun backPropagate(finalScore: Double) {}
-}
-
-class SimpleActionDoNothing(val defaultWait: Int) : SimpleActionPlayerInterface {
-    override fun getAction(gameState: ActionAbstractGameState, playerRef: Int) = NoAction(playerRef, defaultWait)
-    override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int) = emptyList<Action>()
-    override fun reset() = this
-    override fun getAgentType() = "SimpleActionDoNothing"
-    override fun getForwardModelInterface() = this
-    override fun backPropagate(finalScore: Double) {}
-    override fun toString() = "SimpleActionDoNothing"
-}
-
-object SimpleActionRandom : SimpleActionPlayerInterface {
-    override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
-        val allActions = gameState.possibleActions(playerRef, 1)
-        return allActions.random()
-    }
-
-    override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int) = emptyList<Action>()
-    override fun reset() = this
-    override fun getAgentType() = "SimpleActionRandom"
-    override fun getForwardModelInterface() = this
-    override fun backPropagate(finalScore: Double) {}
-    override fun toString() = "SimpleActionRandom"
 }

@@ -1,14 +1,12 @@
 package groundWar.executables
 
 import agents.*
-import ggi.SimpleActionEvoAgent
+import agents.RHEA.*
 import groundWar.*
-import intervals.interval
 import utilities.StatsCollator
 import java.io.BufferedReader
 import java.io.FileReader
 import java.io.FileWriter
-import kotlin.random.Random
 import kotlin.reflect.full.memberProperties
 import kotlin.streams.toList
 

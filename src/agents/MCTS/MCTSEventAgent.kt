@@ -1,8 +1,10 @@
 package agents.MCTS
 
+import agents.SimpleActionDoNothing
 import ggi.*
 import utilities.StatsCollator
 import java.util.*
+import kotlin.math.pow
 
 class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
                                         val stateFunction: StateSummarizer,
@@ -156,7 +158,8 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         protected set(n) {
             field = n
         }
-    var nodesToExpand = nodesPerIteration
+    // we default this to zero, and set it to the requisite value only when we expand a node
+    var nodesToExpand = 0
         protected set(n) {
             field = n
         }
@@ -172,7 +175,10 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         val node = tree[currentState]
         val actionChosen = when {
             node == null || actionsTaken > params.maxDepth -> rollout(gameState, playerRef)
-            node.hasUnexploredActions() -> expansionPolicy(node, gameState, possibleActions(gameState, currentState, playerRef))
+            node.hasUnexploredActions() -> {
+                nodesToExpand = nodesPerIteration
+                expansionPolicy(node, gameState, possibleActions(gameState, currentState, playerRef))
+            }
             else -> treePolicy(node, gameState, possibleActions(gameState, currentState, playerRef))
         }
         trajectory.addLast(Triple(currentState, possibleActions(gameState, currentState, playerRef), actionChosen))
@@ -222,7 +228,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         // Here we go forwards through the trajectory
         // we decrement nodesExpanded as we need to expand a node
         // We can discount if needed
-        var totalDiscount = Math.pow(params.discountRate, trajectory.size.toDouble())
+        var totalDiscount = params.discountRate.pow(trajectory.size.toDouble())
         var previousState = ""
         trajectory.forEach { (state, possibleActions, action) ->
             totalDiscount /= params.discountRate
@@ -242,6 +248,6 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
             }
             previousState = state
         }
-        nodesToExpand = nodesPerIteration
+        nodesToExpand = 0
     }
 }

@@ -1,5 +1,15 @@
 package ggi
 
+data class NoAction(val playerRef: Int, val waitTime: Int = 1) : Action {
+    override fun apply(state: ActionAbstractGameState): Int {
+        // Do absolutely nothing
+        return state.nTicks() + waitTime
+    }
+
+    // only visible to planning player
+    override fun visibleTo(player: Int, state: ActionAbstractGameState) = player == playerRef
+}
+
 interface ActionAbstractGameState : AbstractGameState {
 
     // we do not use one method of the super interface

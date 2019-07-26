@@ -1,7 +1,7 @@
 package breakoutJS
 
 // import games.breakout.BreakoutGameState
-// import agents.SimpleEvoAgent
+// import agents.RHEA.SimpleEvoAgent
 import jquery.jq
 import mymath.Vec2d
 import org.w3c.dom.CENTER

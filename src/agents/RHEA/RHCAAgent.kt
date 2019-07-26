@@ -1,13 +1,12 @@
-package agents
+package agents.RHEA
 
-import ggi.AbstractGameState
+import agents.SimpleActionDoNothing
 import ggi.*
 import utilities.StatsCollator
-import kotlin.random.Random
+import kotlin.math.min
 
 data class RHCAAgent(
         val flipAtLeastOneValue: Boolean = true,
-        // var expectedMutations: Double = 10.0,
         val probMutation: Double = 0.2,
         val sequenceLength: Int = 200,
         val evalsPerGeneration: Int = 5,
@@ -23,13 +22,12 @@ data class RHCAAgent(
     // we are going to need a set of populations for both us and the opponent
     // for the moment we will assume a 2-player environment for GroundWar
     // we will also assume the same EA parameters for both us and opponent
-    private var currentPopulation: List<IntArray> = (0 until populationSize).map { randomPoint(sequenceLength) }
-    private var opponentPopulation: List<IntArray> = (0 until populationSize).map { randomPoint(sequenceLength) }
+    private var currentPopulation = listOf<IntArray>()
+    private var opponentPopulation = listOf<IntArray>()
     private var currentScores = mutableListOf<Double>()
     private var opponentScores = mutableListOf<Double>()
     private var currentParents = listOf<IntArray>()
     private var opponentParents = listOf<IntArray>()
-    internal val random = Random(System.currentTimeMillis())
 
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
         val startTime = System.currentTimeMillis()
@@ -37,11 +35,15 @@ data class RHCAAgent(
         // These are straightforward to apply for 1+1 ES, what do I do here?
         // On each iteration we first score the best members of the current population
         // then we breed them....so we can still do this within a time budget, but with a coarser-grain
+        if (currentPopulation.isEmpty()) {
+            currentPopulation = (0 until populationSize).map { randomPoint(gameState.nActions(), sequenceLength) }
+            opponentPopulation = (0 until populationSize).map { randomPoint(gameState.nActions(), sequenceLength) }
+        }
 
         if (useShiftBuffer) {
             val numberToShiftLeft = gameState.codonsPerAction()
-            currentPopulation = currentPopulation.map { p -> shiftLeftAndRandomAppend(p, numberToShiftLeft, gameState.nActions(), random) }
-            opponentPopulation = opponentPopulation.map { p -> shiftLeftAndRandomAppend(p, numberToShiftLeft, gameState.nActions(), random) }
+            currentPopulation = currentPopulation.map { p -> shiftLeftAndRandomAppend(p, numberToShiftLeft, gameState.nActions()) }
+            opponentPopulation = opponentPopulation.map { p -> shiftLeftAndRandomAppend(p, numberToShiftLeft, gameState.nActions()) }
         }
 
         var currentBest: IntArray
@@ -50,11 +52,11 @@ data class RHCAAgent(
             scoreCurrentPopulation(gameState, playerRef)
             currentBest = currentScores.zip(currentPopulation).maxBy { p -> p.first }?.second ?: currentPopulation[0]
 
-            breedCurrentPopulation()
+            breedCurrentPopulation(gameState.nActions())
 
             iterations++
 
-        } while (timeLimit + startTime < System.currentTimeMillis())
+        } while (timeLimit + startTime > System.currentTimeMillis())
 
         StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
         StatsCollator.addStatistics("${name}_Evals", iterations)
@@ -71,9 +73,10 @@ data class RHCAAgent(
         opponentScores = MutableList(populationSize) { 0.0 }
         currentScores = MutableList(populationSize) { 0.0 }
         val opponentTrials = MutableList(populationSize) { 0 }
+        val evals = min(evalsPerGeneration, populationSize)
         (0 until populationSize).forEach { i ->
             val opponentOrdering = (0 until populationSize).shuffled()
-            (0 until evalsPerGeneration).forEach {
+            (0 until evals).forEach {
                 val j = opponentOrdering[it]
                 val score = evaluateSequenceDelta(gameState.copy(), currentPopulation[i], playerId,
                         discountFactor, horizon, SimpleActionEvoAgentRollForward(opponentPopulation[j], horizon))
@@ -81,47 +84,46 @@ data class RHCAAgent(
                 opponentScores[j] -= score // we assume zero-sum for convenience
                 opponentTrials[j]++
             }
-            opponentScores[i] = opponentScores[i] / evalsPerGeneration
+            opponentScores[i] = opponentScores[i] / evals
         }
         opponentScores = opponentScores.zip(opponentTrials).map { (score, n) -> score / n }.toMutableList()
     }
 
-    private fun breedCurrentPopulation() {
+    private fun breedCurrentPopulation(nActions: Int) {
+        val effectiveParentSize = min(parentSize, populationSize / 2)
         // firstly we populate the parents to keep
+        currentParents = currentPopulation.zip(currentScores).sortedBy { p -> p.second }.take(effectiveParentSize).map { p -> p.first }
+        opponentParents = opponentPopulation.zip(opponentScores).sortedBy { p -> p.second }.take(effectiveParentSize).map { p -> p.first }
+        currentPopulation = currentParents.toList()
+        opponentPopulation = opponentParents.toList()
+        // and include them in the next generation
+
         // then we mutate them to get the next generation
-        val mut = mutate(solution, probMutation, gameState.nActions())
-        val mutScore = evalSeq(gameState.copy(), mut, playerId)
-        if (mutScore >= curScore) {
-            curScore = mutScore
-            solution = mut
-            //        println(String.format("Player %d finds better score of %.1f with %s", playerId, mutScore, solution.joinToString("")))
+        (effectiveParentSize until populationSize).forEach { i ->
+            currentPopulation += (mutate(currentParents[RHEARandom.nextInt(effectiveParentSize)], probMutation, nActions, flipAtLeastOneValue = flipAtLeastOneValue))
+            opponentPopulation += (mutate(opponentParents[RHEARandom.nextInt(effectiveParentSize)], probMutation, nActions, flipAtLeastOneValue = flipAtLeastOneValue))
         }
-        solutions.add(solution)
     }
-
-    private fun randomPoint(nValues: Int): IntArray {
-        val p = IntArray(sequenceLength)
-        for (i in p.indices) {
-            p[i] = random.nextInt(nValues)
-        }
-        return p
-    }
-
 
     override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return convertGenomeToActionList(currentParents[0], gameState.copy(), playerRef)
     }
 
     override fun getForwardModelInterface(): SimpleActionPlayerInterface {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        if (currentParents.isEmpty()) return SimpleActionDoNothing(1000)
+        return SimpleActionEvoAgentRollForward(currentParents[0], horizon)
     }
 
-    override fun backPropagate(finalScore: Double) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun backPropagate(finalScore: Double) {}
 
     override fun reset(): SimpleActionPlayerInterface {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        currentPopulation = listOf()
+        opponentPopulation = listOf()
+        currentScores = mutableListOf()
+        opponentScores = mutableListOf()
+        currentParents = listOf()
+        opponentParents = listOf()
+        return this
     }
 
     override fun getAgentType() = name
