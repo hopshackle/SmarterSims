@@ -24,8 +24,8 @@ class SimpleEvoAgentTest {
             Route(2, 0, 10.0, 1.0),
             Route(2, 1, 10.0, 1.0)
     )
-    val gameParams = EventGameParams(OODALoop = intArrayOf(10, 10), width = 20, height = 20, speed = doubleArrayOf(5.0, 5.0))
-    val world = World(cities, routes, Random(10), params = gameParams)
+    val gameParams = EventGameParams(seed = 10, OODALoop = intArrayOf(10, 10), width = 20, height = 20, speed = doubleArrayOf(5.0, 5.0))
+    val world = World(cities, routes, params = gameParams)
     val game = LandCombatGame(world)
 
     @Test

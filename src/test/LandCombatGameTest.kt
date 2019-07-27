@@ -24,8 +24,8 @@ private val routes = listOf(
         Route(2, 1, 10.0, 1.0)
 )
 
-val params = EventGameParams(speed = doubleArrayOf(5.0, 5.0), width = 20, height = 20)
-val world = World(cities, routes, Random(10), params = params)
+val params = EventGameParams(speed = doubleArrayOf(5.0, 5.0), width = 20, height = 20, seed = 10)
+val world = World(cities, routes, params = params)
 val game = LandCombatGame(world)
 
 object TransitTest {

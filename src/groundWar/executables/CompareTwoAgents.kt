@@ -5,6 +5,8 @@ import agents.*
 import groundWar.*
 import utilities.*
 import java.io.*
+import java.lang.AssertionError
+import kotlin.math.*
 import kotlin.random.Random
 import kotlin.streams.toList
 
@@ -20,28 +22,20 @@ fun main(args: Array<String>) {
         createAgentParamsFromString(fileAsLines)
     } else AgentParams()
     val agentParams2 = if (args.size > 2) {
-        val fileAsLines = BufferedReader(FileReader(args[1])).lines().toList()
+        val fileAsLines = BufferedReader(FileReader(args[2])).lines().toList()
         createAgentParamsFromString(fileAsLines)
     } else AgentParams()
-    val params = if (args.size > 3) {
-        val fileAsLines = BufferedReader(FileReader(args[2])).lines().toList()
-        createIntervalParamsFromString(fileAsLines).sampleParams()
-    } else EventGameParams()
+    val intervalParams = if (args.size > 3) {
+        val fileAsLines = BufferedReader(FileReader(args[3])).lines().toList()
+        createIntervalParamsFromString(fileAsLines)
+    } else null
+
 
     val agents = HashMap<PlayerId, SimpleActionPlayerInterface>()
     agents[PlayerId.Blue] = agentParams1.createAgent("BLUE")
-      //      MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = agentParams.timeBudget, maxPlayouts = agentParams.evalBudget, horizon = params.planningHorizon[0], pruneTree = true), LandCombatStateFunction)
-    //  SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40, horizon = 100, useMutationTransducer = false, probMutation = 0.25, name = "BLUE")
-    //  , opponentModel = HeuristicAgent(2.0, 1.0))
-    //    HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))
-
     agents[PlayerId.Red] = agentParams2.createAgent("RED")
-            //        MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
-   //         SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 10000, timeLimit = 500, sequenceLength = 40, horizon = params.planningHorizon[1], useMutationTransducer = false, useShiftBuffer = true, probMutation = 0.25, name = "RED"))
-    //    HeuristicAgent(3.0, 1.0, listOf( HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))
 
-
-    val simpleScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -1.0)
+    val simpleScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -0.5)
     val complexScoreFunction = compositeScoreFunction(
             simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
             visibilityScore(1.0, 1.0)
@@ -58,22 +52,32 @@ fun main(args: Array<String>) {
         agents[PlayerId.Blue]?.reset()
         agents[PlayerId.Red]?.reset()
 
-        val world = World(random = Random(seed = params.seed), params = params)
+        val params = intervalParams?.sampleParams() ?: EventGameParams(seed = System.currentTimeMillis())
+
+        val world = World(params = params)
         val game = LandCombatGame(world)
         game.scoreFunction[PlayerId.Blue] = simpleScoreFunction
         game.scoreFunction[PlayerId.Red] = simpleScoreFunction
-        game.registerAgent(0, agents[PlayerId.Blue] ?: SimpleActionDoNothing(1000))
-        game.registerAgent(1, agents[PlayerId.Red] ?: SimpleActionDoNothing(1000))
+        val firstToAct = r % 2
+        game.registerAgent(firstToAct, agents[numberToPlayerID(firstToAct)] ?: SimpleActionDoNothing(1000))
+        game.registerAgent(1 - firstToAct, agents[numberToPlayerID(1 - firstToAct)] ?: SimpleActionDoNothing(1000))
         game.next(1000)
         val gameScore = simpleScoreFunction(5.0, 1.0, -5.0, -1.0)(game, 0)
+        val redScore = simpleScoreFunction(5.0, 1.0, -5.0, -1.0)(game, 1)
+        if (abs(abs(gameScore) - abs(redScore)) > 0.001) {
+            throw AssertionError("Should be zero sum!")
+        }
         blueScore += gameScore
-        println(String.format("Game %2d\tScore: %4.1f", r, gameScore))
+        println(String.format("Game %2d\tScore: %6.1f\tCities: %2d, Routes: %2d, seed: %d", r, gameScore, world.cities.size, world.routes.size, params.seed))
         when {
             gameScore > 0.0 -> blueWins++
             gameScore < 0.0 -> redWins++
             else -> draws++
         }
+        val decisions = game.eventQueue.history.map(Event::action).filterIsInstance<MakeDecision>().partition { m -> m.playerRef == 0 }
         StatsCollator.addStatistics("BLUE_SCORE", gameScore)
+        StatsCollator.addStatistics("BLUE_Decisions", decisions.first.size)
+        StatsCollator.addStatistics("RED_Decisions", decisions.second.size)
     }
     println("$blueWins wins for Blue, $redWins for Red and $draws draws out of $maxGames in ${(java.util.Calendar.getInstance().timeInMillis - startTime) / maxGames} ms per game")
     println(StatsCollator.summaryString())

@@ -31,10 +31,11 @@ class SimpleMazeGame(val playerCount: Int, val target: Int) : ActionAbstractGame
     override fun possibleActions(player: Int, max: Int) = listOf(
             Move(player, Direction.LEFT),
             Move(player, Direction.RIGHT),
-            NoAction(player))
+            NoAction(player, 1)
+    )
 
     override fun codonsPerAction() = 1
-    override fun translateGene(player: Int, gene: IntArray) = possibleActions(player).getOrElse(gene[0]) { NoAction(player) }
+    override fun translateGene(player: Int, gene: IntArray) = possibleActions(player).getOrElse(gene[0]) { NoAction(player, 1) }
 
     override fun copy(): AbstractGameState {
         val retValue = SimpleMazeGame(playerCount, target)
@@ -111,7 +112,7 @@ class MCTSMasterTest {
     @Test
     fun bestActionWithNoDataIsNoAction() {
         val testState = simpleMazeGame.copy() as ActionAbstractGameState
-        assertEquals(agents[2].getBestAction(testState), NoAction(0))
+        assertEquals(agents[2].getBestAction(testState), NoAction(0, 1))
     }
 
     @Test
@@ -122,7 +123,7 @@ class MCTSMasterTest {
         rootNode.update(Move(2, Direction.LEFT), testState.possibleActions(2), 1.0)
         rootNode.update(Move(2, Direction.LEFT), testState.possibleActions(2), 1.0)
         rootNode.update(Move(2, Direction.RIGHT), testState.possibleActions(2), 2.0)
-        rootNode.update(NoAction(2), testState.possibleActions(2), 1.5)
+        rootNode.update(NoAction(2, 1), testState.possibleActions(2), 1.5)
         assertEquals(agents[2].getBestAction(testState), Move(2, Direction.RIGHT))
     }
 
@@ -136,7 +137,7 @@ class MCTSMasterTest {
         rootNode.update(Move(2, Direction.LEFT), testState.possibleActions(2), 1.0)
         rootNode.update(Move(2, Direction.LEFT), testState.possibleActions(2), 1.0)
         rootNode.update(Move(2, Direction.RIGHT), testState.possibleActions(2), 2.0)
-        rootNode.update(NoAction(2), testState.possibleActions(2), 1.5)
+        rootNode.update(NoAction(2, 1), testState.possibleActions(2), 1.5)
         assertEquals(agents[2].getBestAction(testState), Move(2, Direction.LEFT))
     }
 
@@ -288,7 +289,7 @@ class MCTSChildTest {
         tree[root] = TTNode(params, simpleMazeGame.possibleActions(0))
         tree[root]!!.update(Move(0, Direction.LEFT), simpleMazeGame.possibleActions(0), 5.0)
         assertNotEquals(childAgent.treePolicy(tree[root]!!, simpleMazeGame, simpleMazeGame.possibleActions(0)), Move(0, Direction.LEFT))
-        tree[root]!!.update(NoAction(0), simpleMazeGame.possibleActions(0), 4.0)
+        tree[root]!!.update(NoAction(0, 1), simpleMazeGame.possibleActions(0), 4.0)
         assertEquals(childAgent.treePolicy(tree[root]!!, simpleMazeGame, simpleMazeGame.possibleActions(0)), Move(0, Direction.RIGHT))
         tree[root]!!.update(Move(0, Direction.RIGHT), simpleMazeGame.possibleActions(0), 4.0)
         assertEquals(childAgent.treePolicy(tree[root]!!, simpleMazeGame, simpleMazeGame.possibleActions(0)), Move(0, Direction.LEFT))
@@ -303,7 +304,7 @@ class MCTSChildTest {
         tree[root] = TTNode(params, simpleMazeGame.possibleActions(0))
         tree[root]!!.update(Move(0, Direction.LEFT), simpleMazeGame.possibleActions(0), 5.0)
         assertNotEquals(childAgent.expansionPolicy(tree[root]!!, simpleMazeGame, simpleMazeGame.possibleActions(0)), Move(0, Direction.LEFT))
-        tree[root]!!.update(NoAction(0), simpleMazeGame.possibleActions(0), 4.0)
+        tree[root]!!.update(NoAction(0, 1), simpleMazeGame.possibleActions(0), 4.0)
         assertEquals(childAgent.expansionPolicy(tree[root]!!, simpleMazeGame, simpleMazeGame.possibleActions(0)), Move(0, Direction.RIGHT))
         tree[root]!!.update(Move(0, Direction.RIGHT), simpleMazeGame.possibleActions(0), 4.0)
         assertThrows(AssertionError::class.java) { childAgent.expansionPolicy(tree[root]!!, simpleMazeGame, simpleMazeGame.possibleActions(0)) }
@@ -318,7 +319,7 @@ class MCTSChildTest {
         repeat(100) {
             rolloutActions.add(childAgent.rollout(simpleMazeGame, 0))
         }
-        assertEquals(rolloutActions.count { it == NoAction(0) }.toDouble(), 33.0, 12.0)
+        assertEquals(rolloutActions.count { it == NoAction(0, 1) }.toDouble(), 33.0, 12.0)
         assertEquals(rolloutActions.count { it == Move(0, Direction.LEFT) }.toDouble(), 33.0, 12.0)
         assertEquals(rolloutActions.count { it == Move(0, Direction.RIGHT) }.toDouble(), 33.0, 12.0)
         assertEquals(childAgent.treeCalls, 0)
@@ -359,12 +360,12 @@ class TTNodeTest {
     val allActions = listOf(
             Move(0, Direction.LEFT),
             Move(0, Direction.RIGHT),
-            NoAction(0))
+            NoAction(0, 1))
 
     @Test
     fun updateTest() {
         val node = TTNode(MCTSParameters(), allActions)
-        val stats = node.actionMap[NoAction(0)]!!
+        val stats = node.actionMap[NoAction(0, 1)]!!
         assertTrue(node.actionMap.values.all { it.validVisitCount == 0 })
         assertEquals(stats.mean, Double.NaN)
         assertEquals(stats.max, Double.NEGATIVE_INFINITY)
@@ -372,7 +373,7 @@ class TTNodeTest {
         assertEquals(stats.sum, 0.0)
         assertEquals(stats.sumSquares, 0.0)
 
-        node.update(NoAction(0), allActions, 2.0)
+        node.update(NoAction(0, 1), allActions, 2.0)
 
         assertEquals(stats.mean, 2.0)
         assertEquals(stats.max, 2.0)

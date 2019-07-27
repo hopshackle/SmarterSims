@@ -8,7 +8,7 @@ import kotlin.test.*
 
 class FogTests {
 
-    val cityCreationParams = EventGameParams(seed = 6, minConnections = 2, autoConnect = 300, maxDistance = 1000, fogOfWar = true)
+    val cityCreationParams = EventGameParams(seed = 3, minConnections = 2, autoConnect = 300, maxDistance = 1000, fogOfWar = true)
     val foggyWorld = World(params = cityCreationParams)
     //
 

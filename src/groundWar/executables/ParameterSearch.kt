@@ -9,9 +9,12 @@ import evodef.*
 import ggi.*
 import groundWar.*
 import ntbea.*
+import java.io.BufferedReader
+import java.io.FileReader
 import java.lang.AssertionError
 import kotlin.math.min
 import kotlin.random.Random
+import kotlin.streams.toList
 
 fun main(args: Array<String>) {
     if (args.size < 3) AssertionError("Must specify at least three parameters: RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
@@ -34,6 +37,10 @@ fun main(args: Array<String>) {
         }
         else -> throw AssertionError("Unknown NTuple parameter: " + args[2])
     }
+    val params = if (args.size > 3) {
+        val fileAsLines = BufferedReader(FileReader(args[3])).lines().toList()
+        createIntervalParamsFromString(fileAsLines).sampleParams()
+    } else EventGameParams()
 
     val stateSpaceSize = (0 until searchSpace.nDims()).fold(1, { acc, i -> acc * searchSpace.nValues(i) })
     val twoTupleSize = (0 until searchSpace.nDims() - 1).map { i ->
@@ -45,10 +52,10 @@ fun main(args: Array<String>) {
     ntbea.banditLandscapeModel.searchSpace = searchSpace
     ntbea.resetModelEachRun = false
     val opponentModel = when {
-        args.size <= 3 -> SimpleActionDoNothing(1000)
-        args[3] == "random" -> SimpleActionRandom
-        else -> HeuristicAgent(args[3].toDouble(), args[4].toDouble(),
-                args.withIndex().filter { it.index > 4 }.map { it.value }.map(HeuristicOptions::valueOf).toList())
+        args.size <= 4 -> SimpleActionDoNothing(1000)
+        args[4] == "random" -> SimpleActionRandom
+        else -> HeuristicAgent(args[4].toDouble(), args[5].toDouble(),
+                args.withIndex().filter { it.index > 5 }.map { it.value }.map(HeuristicOptions::valueOf).toList())
     }
     val reportEvery = min(stateSpaceSize / 2, args[1].toInt())
     val logger = EvolutionLogger()
@@ -58,7 +65,7 @@ fun main(args: Array<String>) {
                 (0 until searchSpace.nValues(it)).map { i -> searchSpace.value(it, i) }.joinToString()))
     }
     repeat(args[1].toInt() / reportEvery) {
-        ntbea.runTrial(GroundWarEvaluator(searchSpace, logger, opponentModel), reportEvery)
+        ntbea.runTrial(GroundWarEvaluator(searchSpace, params, logger, opponentModel), reportEvery)
         // tuples gets cleared out
 
         println("Current best sampled point (using mean estimate): " + nTupleSystem.bestOfSampled.joinToString() +
@@ -89,7 +96,7 @@ fun main(args: Array<String>) {
     }
 }
 
-class GroundWarEvaluator(val searchSpace: SearchSpace, val logger: EvolutionLogger, val opponentModel: SimpleActionPlayerInterface) : SolutionEvaluator {
+class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGameParams, val logger: EvolutionLogger, val opponentModel: SimpleActionPlayerInterface) : SolutionEvaluator {
     override fun optimalFound() = false
 
     override fun optimalIfKnown() = null
@@ -98,7 +105,6 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val logger: EvolutionLogg
 
     var nEvals = 0
     override fun evaluate(settings: IntArray): Double {
-        val gameParams = EventGameParams()
         val blueAgent = when (searchSpace) {
             RHEASearchSpace -> SimpleActionEvoAgent(
                     underlyingAgent = SimpleEvoAgent(
@@ -142,7 +148,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val logger: EvolutionLogg
         }
         val redAgent = HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
         val scoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -1.0)
-        val world = World(random = Random(seed = gameParams.seed), params = gameParams)
+        val world = World(params = params)
         val game = LandCombatGame(world)
         game.scoreFunction[PlayerId.Blue] = scoreFunction
         game.scoreFunction[PlayerId.Red] = scoreFunction
@@ -168,9 +174,9 @@ object RHEASearchSpace : SearchSpace {
     val values = arrayOf(
             arrayOf(4, 8, 12, 24, 48, 100, 200),                    // sequenceLength
             arrayOf(10, 25, 50, 100, 200, 400, 1000),               // horizon
-            arrayOf(true, false),                                   // useShiftBuffer
+            arrayOf(false, true),                                   // useShiftBuffer
             arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
-            arrayOf(true, false)                           // flipAtLeastOne
+            arrayOf(false, true)                           // flipAtLeastOne
             /*       arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
                            HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
                            HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
@@ -193,9 +199,9 @@ object RHCASearchSpace : SearchSpace {
     val values = arrayOf(
             arrayOf(4, 8, 12, 24, 48, 100, 200),                    // sequenceLength
             arrayOf(10, 25, 50, 100, 200, 400, 1000),               // horizon
-            arrayOf(true, false),                                   // useShiftBuffer
+            arrayOf(false, true),                                   // useShiftBuffer
             arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
-            arrayOf(true, false),                           // flipAtLeastOne
+            arrayOf(false, true),                           // flipAtLeastOne
             arrayOf(2, 4, 8, 16, 32),                       //populationSize
             arrayOf(1, 2, 4),                               // parentSize
             arrayOf(1, 3, 5, 10)                            // evalsPerGeneration
@@ -221,7 +227,7 @@ object MCTSSearchSpace : SearchSpace {
     val values = arrayOf(
             arrayOf(4, 8, 12, 24, 48),                  // maxDepth (==sequenceLength)
             arrayOf(10, 25, 50, 100, 200, 400, 1000),               // horizon
-            arrayOf(true, false),                           // pruneTree
+            arrayOf(false, true),                           // pruneTree
             arrayOf(0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0),           // C
             arrayOf(5, 10, 20, 40, 80),             // maxActions
             arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom),                          // rolloutPolicy

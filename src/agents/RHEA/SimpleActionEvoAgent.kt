@@ -24,7 +24,11 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
             opponentModel.getAction(gameState, 1 - playerRef)
             // this is just to give the opponent model some thinking time
             underlyingAgent.opponentModel = opponentModel.getForwardModelInterface()
-            val gene = underlyingAgent.getActions(gameState, playerRef).sliceArray(0 until intPerAction)
+
+            val genome = underlyingAgent.getActions(gameState, playerRef)
+            if (genome.size < intPerAction)
+                return NoAction(playerRef, 1000)
+            val gene = genome.sliceArray(0 until intPerAction)
             return gameState.translateGene(playerRef, gene)
         }
         throw AssertionError("Unexpected type of GameState $gameState")
@@ -62,6 +66,7 @@ fun convertGenomeToActionList(genome: IntArray?, gameState: AbstractGameState, p
 fun elapsedLengthOfPlan(genome: IntArray, gameState: AbstractGameState, playerRef: Int): Int {
     val intPerAction = gameState.codonsPerAction()
     val startingTime = gameState.nTicks()
+    if (genome.size < intPerAction) return 0
     if (gameState is ActionAbstractGameState) {
         gameState.registerAgent(0, SimpleActionDoNothing(1000))
         gameState.registerAgent(1, SimpleActionDoNothing(1000))

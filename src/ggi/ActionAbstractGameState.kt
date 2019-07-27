@@ -1,6 +1,6 @@
 package ggi
 
-data class NoAction(val playerRef: Int, val waitTime: Int = 1) : Action {
+data class NoAction(val playerRef: Int, val waitTime: Int) : Action {
     override fun apply(state: ActionAbstractGameState): Int {
         // Do absolutely nothing
         return state.nTicks() + waitTime
@@ -13,16 +13,16 @@ data class NoAction(val playerRef: Int, val waitTime: Int = 1) : Action {
 interface ActionAbstractGameState : AbstractGameState {
 
     // we do not use one method of the super interface
-    override fun next(actions: IntArray) : AbstractGameState {
+    override fun next(actions: IntArray): AbstractGameState {
         throw AssertionError("Should use next() with List<Action>")
     }
 
-    fun next(forwardTicks: Int) : ActionAbstractGameState
+    fun next(forwardTicks: Int): ActionAbstractGameState
 
     /** this method is shared with AbstractGameState, but defines the number of different
     values that each location (or base) on the genome can hold, so it is not strictly the number of 'actions'
-     any more. TODO: Refactor the inheritance set up to remove this opportunity for misunderstanding
-    **/
+    any more. TODO: Refactor the inheritance set up to remove this opportunity for misunderstanding
+     **/
     override fun nActions(): Int
 
     /**
@@ -39,7 +39,7 @@ interface ActionAbstractGameState : AbstractGameState {
 
     fun possibleActions(player: Int, max: Int = Int.MAX_VALUE): List<Action>
 
-    fun translateGene(player: Int, gene: IntArray) : Action
+    fun translateGene(player: Int, gene: IntArray): Action
 
     fun registerAgent(player: Int, agent: SimpleActionPlayerInterface)
 
@@ -48,11 +48,11 @@ interface ActionAbstractGameState : AbstractGameState {
     fun planEvent(time: Int, action: Action)
 }
 
-interface Action  {
-    fun apply(state: ActionAbstractGameState) : Int
+interface Action {
+    fun apply(state: ActionAbstractGameState): Int
     fun visibleTo(player: Int, state: ActionAbstractGameState): Boolean
 }
 
 interface StateSummarizer {
-    operator fun invoke(state: ActionAbstractGameState) : String
+    operator fun invoke(state: ActionAbstractGameState): String
 }

@@ -11,6 +11,8 @@ import kotlin.collections.HashMap
 class EventQueue(val eventQueue: Queue<Event> = PriorityQueue<Event>()) : Queue<Event> by eventQueue {
 
     private val playerAgentMap = HashMap<Int, SimpleActionPlayerInterface>()
+    val history = mutableListOf<Event>()
+
     var currentTime = 0
         set(time) {
             if (eventQueue.isNotEmpty() && eventQueue.peek().tick < time) {
@@ -49,6 +51,7 @@ class EventQueue(val eventQueue: Queue<Event> = PriorityQueue<Event>()) : Queue<
                 }
                 currentTime = event.tick
                 event.action.apply(state)
+                history.add(event)
                 //           println("Triggered event: ${event} in Game $this")
             } else {
                 currentTime = timeToFinish

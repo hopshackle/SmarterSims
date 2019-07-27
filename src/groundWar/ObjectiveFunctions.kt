@@ -17,7 +17,7 @@ fun simpleScoreFunction(ourCityValue: Double, ourForceValue: Double, theirCityVa
             val ourForces = cities.filter { c -> c.owner == playerId }.sumByDouble(City::pop) +
                     currentTransits.filter { t -> t.playerId == playerId }.sumByDouble(Transit::nPeople)
             val enemyForces = cities.filter { c -> c.owner != playerId}.sumByDouble(City::pop) +
-                    currentTransits.filter { t -> t.playerId == PlayerId.Red }.sumByDouble(Transit::nPeople)
+                    currentTransits.filter { t -> t.playerId != playerId }.sumByDouble(Transit::nPeople)
             ourCityValue * ourCities + ourForceValue * ourForces + theirCityValue * theirCities + theirForceValue * enemyForces
         }
     }

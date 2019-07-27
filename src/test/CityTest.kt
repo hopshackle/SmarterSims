@@ -26,7 +26,7 @@ class CityLocationTest {
     @Test
     fun fullyConnectedNetworkTest() {
         for (i in 1..25) {
-            val world = World(random = Random(i))
+            val world = World(params = EventGameParams(seed = i.toLong()))
             assertTrue(allCitiesConnected(world.routes, world.cities))
         }
     }

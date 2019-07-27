@@ -88,9 +88,9 @@ data class Transit(val nPeople: Double, val fromCity: Int, val toCity: Int, val 
 }
 
 data class World(var cities: List<City> = ArrayList(), var routes: List<Route> = ArrayList(),
-                 val random: Random = Random(3),
                  val params: EventGameParams = EventGameParams()) {
 
+    val random = Random(params.seed)
     var currentTransits: ArrayList<Transit> = ArrayList()
         private set(newTransits) {
             field = newTransits
