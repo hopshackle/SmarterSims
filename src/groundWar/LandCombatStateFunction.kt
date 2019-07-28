@@ -11,6 +11,8 @@ object LandCombatStateFunction : StateSummarizer {
             // for each city: ownership, population
             // for each route/player: number of transits, total population of transits
             return with(StringBuilder()) {
+                append(state.nTicks() / 50)
+                append("|")
                 state.world.cities.forEach {
                     append(playerIDToNumber(it.owner))
                     append(",")

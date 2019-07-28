@@ -57,7 +57,7 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
                         gameState.world.params.OODALoop[player])
             }
         }
-        return NoAction(player, 1)
+        return NoAction(player, gameState.world.params.OODALoop[player])
     }
 
     private fun withdrawOption(gameState: LandCombatGame, player: Int): Action {
@@ -83,7 +83,7 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
             }
         }
 
-        return NoAction(player, 1)
+        return NoAction(player, gameState.world.params.OODALoop[player])
     }
 
     fun targetCityCode(world: World, attacker: Int, target: Int): Int {
