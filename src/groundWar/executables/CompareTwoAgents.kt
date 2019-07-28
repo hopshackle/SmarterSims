@@ -3,6 +3,7 @@ package groundWar.executables
 import ggi.*
 import agents.*
 import groundWar.*
+import intervals.interval
 import utilities.*
 import java.io.*
 import java.lang.AssertionError
@@ -30,10 +31,10 @@ fun main(args: Array<String>) {
         createIntervalParamsFromString(fileAsLines)
     } else null
 
+    runGames(maxGames, agentParams1.createAgent("BLUE"), agentParams2.createAgent("RED"), intervalParams)
+}
 
-    val agents = HashMap<PlayerId, SimpleActionPlayerInterface>()
-    agents[PlayerId.Blue] = agentParams1.createAgent("BLUE")
-    agents[PlayerId.Red] = agentParams2.createAgent("RED")
+fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: SimpleActionPlayerInterface, intervalParams: IntervalParams? = null, eventParams: EventGameParams? = null) {
 
     val simpleScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -0.5)
     val complexScoreFunction = compositeScoreFunction(
@@ -41,6 +42,7 @@ fun main(args: Array<String>) {
             visibilityScore(1.0, 1.0)
     )
 
+    val agents = mapOf(PlayerId.Blue to blueAgent, PlayerId.Red to redAgent)
     var blueWins = 0
     var redWins = 0
     var draws = 0
@@ -52,9 +54,13 @@ fun main(args: Array<String>) {
         agents[PlayerId.Blue]?.reset()
         agents[PlayerId.Red]?.reset()
 
-        val params = intervalParams?.sampleParams() ?: EventGameParams(seed = System.currentTimeMillis())
-
+        val params = when {
+            eventParams != null -> eventParams.copy(seed = System.currentTimeMillis())
+            intervalParams == null -> EventGameParams(seed = System.currentTimeMillis())
+            else -> intervalParams.sampleParams()
+        }
         val world = World(params = params)
+
         val game = LandCombatGame(world)
         game.scoreFunction[PlayerId.Blue] = simpleScoreFunction
         game.scoreFunction[PlayerId.Red] = simpleScoreFunction

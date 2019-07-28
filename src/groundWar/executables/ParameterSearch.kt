@@ -92,8 +92,12 @@ fun main(args: Array<String>) {
             println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), nTupleSystem.getMeanEstimate(k.v)))
         }
         println("")
-
     }
+    val bestAgent = GroundWarEvaluator(searchSpace, params, logger, opponentModel).getAgent(nTupleSystem.bestSolution)
+    runGames(1000,
+            bestAgent,
+            HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
+            eventParams = params)
 }
 
 class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGameParams, val logger: EvolutionLogger, val opponentModel: SimpleActionPlayerInterface) : SolutionEvaluator {
@@ -104,8 +108,9 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
     override fun logger() = logger
 
     var nEvals = 0
-    override fun evaluate(settings: IntArray): Double {
-        val blueAgent = when (searchSpace) {
+
+    fun getAgent(settings: IntArray): SimpleActionPlayerInterface {
+        return when (searchSpace) {
             RHEASearchSpace -> SimpleActionEvoAgent(
                     underlyingAgent = SimpleEvoAgent(
                             nEvals = 10000,
@@ -146,6 +151,10 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
             )
             else -> throw AssertionError("Unknown type " + searchSpace)
         }
+    }
+
+    override fun evaluate(settings: IntArray): Double {
+        val blueAgent = getAgent(settings)
         val redAgent = HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
         val scoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -1.0)
         val world = World(params = params)

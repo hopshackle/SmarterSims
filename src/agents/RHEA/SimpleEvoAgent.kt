@@ -142,8 +142,6 @@ data class SimpleEvoAgent(
         return this
     }
 
-    val solutions = ArrayList<IntArray>()
-
     var x: Int? = 1
 
     fun getActions(gameState: AbstractGameState, playerId: Int): IntArray {
@@ -156,8 +154,6 @@ data class SimpleEvoAgent(
             // System.out.println("New random solution with nActions = " + gameState.nActions())
             solution = randomPoint(gameState.nActions(), sequenceLength)
         }
-        solutions.clear()
-        solutions.add(solution)
         var curScore: Double = evalSeq(gameState.copy(), solution, playerId)
         //       println(String.format("Player %d starting score to beat is %.1f", playerId, startScore))
         var iterations = 0
@@ -170,7 +166,6 @@ data class SimpleEvoAgent(
                 solution = mut
                 //        println(String.format("Player %d finds better score of %.1f with %s", playerId, mutScore, solution.joinToString("")))
             }
-            solutions.add(solution)
             iterations++
         } while (iterations < nEvals && System.currentTimeMillis() - startTime < timeLimit)
         StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
@@ -195,10 +190,4 @@ data class SimpleEvoAgent(
         return getActions(gameState, playerRef)[0]
     }
 
-    fun getSolutionsCopy(): ArrayList<IntArray> {
-
-        val x = ArrayList<IntArray>()
-        x.addAll(solutions)
-        return x
-    }
 }
