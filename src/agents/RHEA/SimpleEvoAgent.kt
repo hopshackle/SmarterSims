@@ -154,7 +154,8 @@ data class SimpleEvoAgent(
             // System.out.println("New random solution with nActions = " + gameState.nActions())
             solution = randomPoint(gameState.nActions(), sequenceLength)
         }
-        var curScore: Double = evalSeq(gameState.copy(), solution, playerId)
+        val startScore: Double = evalSeq(gameState.copy(), solution, playerId)
+        var curScore = startScore
         //       println(String.format("Player %d starting score to beat is %.1f", playerId, startScore))
         var iterations = 0
         do {
@@ -168,6 +169,9 @@ data class SimpleEvoAgent(
             }
             iterations++
         } while (iterations < nEvals && System.currentTimeMillis() - startTime < timeLimit)
+        StatsCollator.addStatistics("${name}_ToGene", solution[1])
+        StatsCollator.addStatistics("${name}_ProportionsGene", solution[2])
+        StatsCollator.addStatistics("${name}_WaitGene", solution[3])
         StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
         StatsCollator.addStatistics("${name}_Evals", iterations)
         StatsCollator.addStatistics("${name}_HorizonUsed", elapsedLengthOfPlan(solution, gameState.copy(), playerId))

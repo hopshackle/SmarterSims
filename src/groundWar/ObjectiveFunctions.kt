@@ -3,9 +3,12 @@ package groundWar
 
 fun compositeScoreFunction(vararg functions: (LandCombatGame, Int) -> Double): (LandCombatGame, Int) -> Double {
     return { game: LandCombatGame, player: Int ->
-        functions.map{f -> f(game, player)}.sum()
+        functions.map { f -> f(game, player) }.sum()
     }
 }
+
+val interimScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -0.5)
+val finalScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -1.0)
 
 fun simpleScoreFunction(ourCityValue: Double, ourForceValue: Double, theirCityValue: Double, theirForceValue: Double): (LandCombatGame, Int) -> Double {
     return { game: LandCombatGame, player: Int ->
@@ -16,13 +19,12 @@ fun simpleScoreFunction(ourCityValue: Double, ourForceValue: Double, theirCityVa
             // then add the total of all forces
             val ourForces = cities.filter { c -> c.owner == playerId }.sumByDouble(City::pop) +
                     currentTransits.filter { t -> t.playerId == playerId }.sumByDouble(Transit::nPeople)
-            val enemyForces = cities.filter { c -> c.owner != playerId}.sumByDouble(City::pop) +
+            val enemyForces = cities.filter { c -> c.owner != playerId }.sumByDouble(City::pop) +
                     currentTransits.filter { t -> t.playerId != playerId }.sumByDouble(Transit::nPeople)
             ourCityValue * ourCities + ourForceValue * ourForces + theirCityValue * theirCities + theirForceValue * enemyForces
         }
     }
 }
-
 
 fun specificTargetScoreFunction(targetValue: Double = 100.0,
                                 ownForceValue: Double = 1.0, enemyForceValue: Double = -1.0): (LandCombatGame, Int) -> Double {

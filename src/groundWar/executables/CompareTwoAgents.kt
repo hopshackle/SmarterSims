@@ -36,12 +36,6 @@ fun main(args: Array<String>) {
 
 fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: SimpleActionPlayerInterface, intervalParams: IntervalParams? = null, eventParams: EventGameParams? = null) {
 
-    val simpleScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -0.5)
-    val complexScoreFunction = compositeScoreFunction(
-            simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
-            visibilityScore(1.0, 1.0)
-    )
-
     val agents = mapOf(PlayerId.Blue to blueAgent, PlayerId.Red to redAgent)
     var blueWins = 0
     var redWins = 0
@@ -62,14 +56,14 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
         val world = World(params = params)
 
         val game = LandCombatGame(world)
-        game.scoreFunction[PlayerId.Blue] = simpleScoreFunction
-        game.scoreFunction[PlayerId.Red] = simpleScoreFunction
+        game.scoreFunction[PlayerId.Blue] = interimScoreFunction
+        game.scoreFunction[PlayerId.Red] = interimScoreFunction
         val firstToAct = r % 2
         game.registerAgent(firstToAct, agents[numberToPlayerID(firstToAct)] ?: SimpleActionDoNothing(1000))
         game.registerAgent(1 - firstToAct, agents[numberToPlayerID(1 - firstToAct)] ?: SimpleActionDoNothing(1000))
         game.next(1000)
-        val gameScore = simpleScoreFunction(5.0, 1.0, -5.0, -1.0)(game, 0)
-        val redScore = simpleScoreFunction(5.0, 1.0, -5.0, -1.0)(game, 1)
+        val gameScore = finalScoreFunction(game, 0)
+        val redScore = finalScoreFunction(game, 1)
         if (abs(abs(gameScore) - abs(redScore)) > 0.001) {
             throw AssertionError("Should be zero sum!")
         }

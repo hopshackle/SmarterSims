@@ -9,6 +9,7 @@ import evodef.*
 import ggi.*
 import groundWar.*
 import ntbea.*
+import utilities.StatsCollator
 import java.io.BufferedReader
 import java.io.FileReader
 import java.lang.AssertionError
@@ -37,6 +38,9 @@ fun main(args: Array<String>) {
         }
         else -> throw AssertionError("Unknown NTuple parameter: " + args[2])
     }
+    val use3Tuples = true
+    nTupleSystem.use3Tuple = use3Tuples
+
     val params = if (args.size > 3) {
         val fileAsLines = BufferedReader(FileReader(args[3])).lines().toList()
         createIntervalParamsFromString(fileAsLines).sampleParams()
@@ -46,8 +50,14 @@ fun main(args: Array<String>) {
     val twoTupleSize = (0 until searchSpace.nDims() - 1).map { i ->
         searchSpace.nValues(i) * (i + 1 until searchSpace.nDims()).map(searchSpace::nValues).sum()
     }.sum()
+    val threeTupleSize = (0 until searchSpace.nDims() - 2).map { i ->
+        searchSpace.nValues(i) * (i + 1 until searchSpace.nDims()).map { j ->
+            searchSpace.nValues(j) * (j + 1 until searchSpace.nDims()).map(searchSpace::nValues).sum()
+        }.sum()
+    }.sum()
 
     val ntbea = NTupleBanditEA(100.0, min(50.0, stateSpaceSize * 0.01).toInt())
+
     ntbea.banditLandscapeModel = nTupleSystem
     ntbea.banditLandscapeModel.searchSpace = searchSpace
     ntbea.resetModelEachRun = false
@@ -59,7 +69,8 @@ fun main(args: Array<String>) {
     }
     val reportEvery = min(stateSpaceSize / 2, args[1].toInt())
     val logger = EvolutionLogger()
-    println("Search space consists of $stateSpaceSize states and $twoTupleSize possible 2-Tuples:")
+    println("Search space consists of $stateSpaceSize states and $twoTupleSize possible 2-Tuples" +
+            "${if (use3Tuples) " and $threeTupleSize possible 3-Tuples" else ""}:")
     (0 until searchSpace.nDims()).forEach {
         println(String.format("%20s has %d values %s", searchSpace.name(it), searchSpace.nValues(it),
                 (0 until searchSpace.nValues(it)).map { i -> searchSpace.value(it, i) }.joinToString()))
@@ -67,9 +78,10 @@ fun main(args: Array<String>) {
     repeat(args[1].toInt() / reportEvery) {
         ntbea.runTrial(GroundWarEvaluator(searchSpace, params, logger, opponentModel), reportEvery)
         // tuples gets cleared out
-
         println("Current best sampled point (using mean estimate): " + nTupleSystem.bestOfSampled.joinToString() +
                 String.format(", %.3g", nTupleSystem.getMeanEstimate(nTupleSystem.bestOfSampled)))
+        println("Current best predicted point (using mean estimate): " + nTupleSystem.bestSolution.joinToString() +
+                String.format(", %.3g", nTupleSystem.getMeanEstimate(nTupleSystem.bestSolution)))
         val tuplesExploredBySize = (1..searchSpace.nDims()).map { size ->
             nTupleSystem.tuples.filter { it.tuple.size == size }
                     .map { it.ntMap.size }.sum()
@@ -156,18 +168,18 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
     override fun evaluate(settings: IntArray): Double {
         val blueAgent = getAgent(settings)
         val redAgent = HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
-        val scoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -1.0)
-        val world = World(params = params)
+        val world = World(params = params.copy(seed = System.currentTimeMillis()))
+
         val game = LandCombatGame(world)
-        game.scoreFunction[PlayerId.Blue] = scoreFunction
-        game.scoreFunction[PlayerId.Red] = scoreFunction
+        game.scoreFunction[PlayerId.Blue] = interimScoreFunction
+        game.scoreFunction[PlayerId.Red] = interimScoreFunction
         game.registerAgent(0, blueAgent)
         game.registerAgent(1, redAgent)
         game.next(1000)
         nEvals++
         //     println("Game score ${settings.joinToString()} is ${game.score(0).toInt()}")
         logger.log(game.score(0), settings, false)
-        return game.score(0)
+        return finalScoreFunction(game, 0)
     }
 
     override fun searchSpace() = searchSpace
