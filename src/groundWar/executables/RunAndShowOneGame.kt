@@ -14,7 +14,7 @@ var paused: Boolean = false
 
 fun main(args: Array<String>) {
     val params = EventGameParams(
-            fogOfWar = true,
+            fogOfWar = false,
             fogStrengthAssumption = doubleArrayOf(5.0, 5.0),
             nAttempts = 15,
             citySeparation = 50,
@@ -62,12 +62,14 @@ fun runWithParams(params: EventGameParams, mapFile: String = "") {
     //    SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40,
     //    useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = false,
             //    horizon = 200, opponentModel = blueOpponentModel))
-            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = 100), LandCombatStateFunction)
+            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = 100), LandCombatStateFunction,
+                    opponentModel = null, name = "BLUE")
 
     game.registerAgent(0, blueAgent)
     val redAgent =
-               SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = 100))
-         //   MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = 100), LandCombatStateFunction)
+         //      SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = 100))
+            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = 100), LandCombatStateFunction,
+                    name = "RED")
     // HeuristicAgent(2.0, 1.1)
     game.registerAgent(1, redAgent)
 

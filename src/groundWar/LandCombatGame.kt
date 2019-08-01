@@ -47,7 +47,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
 
     override fun copy(): LandCombatGame {
         val retValue = copyHelper(world.deepCopy())
-        retValue.eventQueue.addAll(eventQueue) { true }
+        retValue.eventQueue.addAll(eventQueue) { it.action !is MakeDecision }
         return retValue
     }
 

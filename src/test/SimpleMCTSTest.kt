@@ -110,12 +110,6 @@ class MCTSMasterTest {
     }
 
     @Test
-    fun bestActionWithNoDataIsNoAction() {
-        val testState = simpleMazeGame.copy() as ActionAbstractGameState
-        assertEquals(agents[2].getBestAction(testState), NoAction(0, 1))
-    }
-
-    @Test
     fun bestActionWithSimpleSelection() {
         val testState = simpleMazeGame.copy() as ActionAbstractGameState
         val rootNode = TTNode(params, testState.possibleActions(2))
@@ -149,8 +143,22 @@ class MCTSMasterTest {
         assertEquals(agents[1].tree.values.flatMap { it.actionMap.values }.sumBy(MCStatistics::visitCount), 0)
         assertEquals(agents[0].tree.values.flatMap { it.actionMap.values }.sumBy(MCStatistics::visitCount), 0)
         agents[2].resetTree(simpleMazeGame.copy() as ActionAbstractGameState, 2)
-        assertEquals(agents[2].tree.size, 1)
-        assertEquals(agents[2].tree.values.flatMap { it.actionMap.values }.sumBy(MCStatistics::visitCount), 0)
+        assertEquals(agents[2].tree.size, 0)
+        //     assertEquals(agents[2].tree.values.flatMap { it.actionMap.values }.sumBy(MCStatistics::visitCount), 0)
+    }
+
+    @Test
+    fun firstActionEnsuresStateIsAddedToTree() {
+        val childAgents = agents.map(MCTSTranspositionTableAgentMaster::getForwardModelInterface)
+                .map { it as MCTSTranspositionTableAgentChild }.toList()
+        childAgents[1].firstAction = false
+        childAgents.withIndex().forEach{ (i, it) ->
+            it.getAction(simpleMazeGame, i)
+        }
+        assertEquals(childAgents[0].tree.size, 1)
+        assertEquals(childAgents[1].tree.size, 0)
+        assertEquals(childAgents[2].tree.size, 1)
+        assertTrue(childAgents.none(MCTSTranspositionTableAgentChild::firstAction))
     }
 
     @Test

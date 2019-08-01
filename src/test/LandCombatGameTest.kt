@@ -231,6 +231,15 @@ class MakeDecisionTest {
         assertEquals(gameCopy.eventQueue.count { e -> e.action is MakeDecision && e.action.playerRef == 0 }, 1)
     }
 
+    @Test
+    fun cloningStateDoesNotAddNewMakeDecisions() {
+        val gameCopy = game.copy()
+        gameCopy.registerAgent(0, SimpleActionEvoAgent())
+        assertEquals(gameCopy.eventQueue.size, 1)       // MakeDecision created
+        val gameCopyCopy = gameCopy.copy()
+        assertEquals(gameCopyCopy.eventQueue.size, 1)         // no MakeDecision created
+    }
+
 }
 
 class LandCombatStateRepresentationTests {
@@ -239,7 +248,7 @@ class LandCombatStateRepresentationTests {
     fun stateRepresentationIsAString() {
         val stateRep = LandCombatStateFunction(game)
         assertFalse(stateRep.isEmpty())
-        assertEquals(stateRep.count { it == '|' }, game.world.cities.size + game.world.routes.size)
+        assertEquals(stateRep.count { it == '|' }, 1 + game.world.cities.size + game.world.routes.size)
     }
 }
 

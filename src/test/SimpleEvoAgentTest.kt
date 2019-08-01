@@ -122,8 +122,8 @@ class SimpleEvoAgentTest {
     @Test
     fun rollForwardForSeveralTicksWithOneAction() {
         val blueGenome = intArrayOf(1, 0, 5, 3, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0)
-        // Blue first of all gives a Wait order for 8 time units, then a March order (which will take 2 time units to arrive) to invade the Neutral city
-        // MakeDecision should be at tick = 18 (8 + 10), as the default wait after a LaunchExpedition is 10
+        // Blue first of all gives a Wait order for 9 time units, then a March order (which will take 2 time units to arrive) to invade the Neutral city
+        // MakeDecision should be at tick = 18 (9 + 10), as the default wait after a LaunchExpedition is 10
         val redGenome = intArrayOf(1, 1, 2, 4, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0)
         // Red gives an expedition order immediately to attack the Neutral city, that takes 3 time units
         // Make Decision should be at tick = 16
@@ -140,7 +140,7 @@ class SimpleEvoAgentTest {
         assertTrue(game.world.currentTransits[0].playerId == PlayerId.Blue)
 
         assertTrue(game.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 1 && e.tick == 16 })
-        assertTrue(game.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 0 && e.tick == 18 })
+        assertTrue(game.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 0 && e.tick == 19 })
     }
 
 }

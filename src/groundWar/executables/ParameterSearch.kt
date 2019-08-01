@@ -18,31 +18,31 @@ import kotlin.random.Random
 import kotlin.streams.toList
 
 fun main(args: Array<String>) {
-    if (args.size < 3) AssertionError("Must specify at least three parameters: RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
+    if (args.size < 4) AssertionError("Must specify at least four parameters: 3-Tuples? RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
     val searchSpace = when {
-        args[0] == "RHEA" -> RHEASearchSpace
-        args[0] == "MCTS" -> MCTSSearchSpace
-        args[0] == "RHCA" -> RHCASearchSpace
-        else -> throw AssertionError("Unknown searchSpace " + args[0])
+        args[1] == "RHEA" -> RHEASearchSpace
+        args[1] == "MCTS" -> MCTSSearchSpace
+        args[1] == "RHCA" -> RHCASearchSpace
+        else -> throw AssertionError("Unknown searchSpace " + args[1])
     }
     val nTupleSystem = when {
-        args[2] == "STD" -> NTupleSystem()
-        args[2] == "EXP_MEAN" -> NTupleSystemExp(30, expWeightExplore = false)
-        args[2].startsWith("EXP_FULL") -> {
-            val minWeight = args[2].split(":")[1].toDouble()
+        args[3] == "STD" -> NTupleSystem()
+        args[3] == "EXP_MEAN" -> NTupleSystemExp(30, expWeightExplore = false)
+        args[3].startsWith("EXP_FULL") -> {
+            val minWeight = args[3].split(":")[1].toDouble()
             NTupleSystemExp(30, minWeight = minWeight)
         }
-        args[2].startsWith("EXP_SQRT") -> {
-            val minWeight = args[2].split(":")[1].toDouble()
+        args[3].startsWith("EXP_SQRT") -> {
+            val minWeight = args[3].split(":")[1].toDouble()
             NTupleSystemExp(30, minWeight = minWeight, exploreWithSqrt = true)
         }
-        else -> throw AssertionError("Unknown NTuple parameter: " + args[2])
+        else -> throw AssertionError("Unknown NTuple parameter: " + args[3])
     }
-    val use3Tuples = true
+    val use3Tuples = args[0] == "true"
     nTupleSystem.use3Tuple = use3Tuples
 
-    val params = if (args.size > 3) {
-        val fileAsLines = BufferedReader(FileReader(args[3])).lines().toList()
+    val params = if (args.size > 4) {
+        val fileAsLines = BufferedReader(FileReader(args[4])).lines().toList()
         createIntervalParamsFromString(fileAsLines).sampleParams()
     } else EventGameParams()
 
@@ -62,12 +62,12 @@ fun main(args: Array<String>) {
     ntbea.banditLandscapeModel.searchSpace = searchSpace
     ntbea.resetModelEachRun = false
     val opponentModel = when {
-        args.size <= 4 -> SimpleActionDoNothing(1000)
-        args[4] == "random" -> SimpleActionRandom
-        else -> HeuristicAgent(args[4].toDouble(), args[5].toDouble(),
-                args.withIndex().filter { it.index > 5 }.map { it.value }.map(HeuristicOptions::valueOf).toList())
+        args.size <= 5 -> SimpleActionDoNothing(1000)
+        args[5] == "random" -> SimpleActionRandom
+        else -> HeuristicAgent(args[5].toDouble(), args[6].toDouble(),
+                args.withIndex().filter { it.index > 6 }.map { it.value }.map(HeuristicOptions::valueOf).toList())
     }
-    val reportEvery = min(stateSpaceSize / 2, args[1].toInt())
+    val reportEvery = min(stateSpaceSize / 2, args[2].toInt())
     val logger = EvolutionLogger()
     println("Search space consists of $stateSpaceSize states and $twoTupleSize possible 2-Tuples" +
             "${if (use3Tuples) " and $threeTupleSize possible 3-Tuples" else ""}:")
@@ -75,7 +75,9 @@ fun main(args: Array<String>) {
         println(String.format("%20s has %d values %s", searchSpace.name(it), searchSpace.nValues(it),
                 (0 until searchSpace.nValues(it)).map { i -> searchSpace.value(it, i) }.joinToString()))
     }
-    repeat(args[1].toInt() / reportEvery) {
+    repeat(args[2].toInt() / reportEvery) {
+        val runsSoFar = nTupleSystem.numberOfSamples()
+        // TODO: Add in final runs remainder in the last iteration
         ntbea.runTrial(GroundWarEvaluator(searchSpace, params, logger, opponentModel), reportEvery)
         // tuples gets cleared out
         println("Current best sampled point (using mean estimate): " + nTupleSystem.bestOfSampled.joinToString() +

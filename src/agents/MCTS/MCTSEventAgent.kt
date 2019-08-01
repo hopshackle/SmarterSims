@@ -2,13 +2,15 @@ package agents.MCTS
 
 import agents.SimpleActionDoNothing
 import ggi.*
+import groundWar.LandCombatStateFunction
+import test.game
 import utilities.StatsCollator
 import java.util.*
 import kotlin.math.pow
 
 class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
                                         val stateFunction: StateSummarizer,
-                                        val opponentModel: SimpleActionPlayerInterface = SimpleActionDoNothing(params.horizon),
+                                        val opponentModel: SimpleActionPlayerInterface? = SimpleActionDoNothing(params.horizon),
                                         val rolloutPolicy: SimpleActionPlayerInterface = SimpleActionDoNothing(params.horizon),
                                         val name: String = "MCTS"
 ) : SimpleActionPlayerInterface {
@@ -23,8 +25,12 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
 
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
 
+        val opponentTree: MutableMap<String, TTNode> = mutableMapOf()
+        val opponentStateToActionMap: MutableMap<String, List<Action>> = mutableMapOf()
         val startTime = System.currentTimeMillis()
         var iteration = 0
+        val opponentMCTS = MCTSTranspositionTableAgentChild(opponentTree, mutableMapOf(), opponentStateToActionMap,
+                params, LandCombatStateFunction, SimpleActionDoNothing(1000))
 
         resetTree(gameState, playerRef)
         do {
@@ -32,9 +38,14 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
             // TODO: At some point, we may then resample state here for IS-MCTS
             clonedState.registerAgent(playerRef, getForwardModelInterface())
             (0 until clonedState.playerCount()).forEach {
-                if (it != playerRef)
-                    clonedState.registerAgent(it, opponentModel)
-                // TODO: When we have more interesting opponent models (e.g. MCTS agents), we need to instantiate/initialise them
+                if (it != playerRef) {
+                    if (opponentModel != null) {
+                        clonedState.registerAgent(it, opponentModel)
+                    } else {
+                        clonedState.registerAgent(it, opponentMCTS)
+                        opponentMCTS.firstAction = true
+                    }
+                }
             }
 
             clonedState.next(params.horizon)
@@ -51,6 +62,9 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
         StatsCollator.addStatistics("${name}_MeanDepth", meanDepth)
         StatsCollator.addStatistics("${name}_MaxDepth", maxDepth)
         StatsCollator.addStatistics("${name}_States", tree.size)
+        if (opponentModel == null) {
+            StatsCollator.addStatistics("${name}_OM_States", opponentTree.size)
+        }
         //    println("$iteration iterations executed for player $playerId")
         return getBestAction(gameState)
     }
@@ -81,11 +95,8 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
                 MCTSSelectionMethod.SIMPLE -> it.value.mean
                 MCTSSelectionMethod.ROBUST -> it.value.visitCount.toDouble()
             }
-        }?.key
-        if (chosenAction == null) {
-            throw AssertionError("Unexpected")
-        }
-        return chosenAction ?: NoAction(0, 1)
+        }?.key ?: throw AssertionError("Unexpected")
+        return chosenAction
     }
 
     fun resetTree(root: ActionAbstractGameState, playerRef: Int) {
@@ -115,9 +126,6 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
             tree.clear()
             stateLinks.clear()
             stateToActionMap.clear()
-            val key = stateFunction(root)
-            stateToActionMap[key] = root.possibleActions(playerRef, params.maxActions)
-            tree[key] = TTNode(params, stateToActionMap[key] ?: emptyList())
         }
     }
 
@@ -127,7 +135,7 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
 
     override fun reset(): SimpleActionPlayerInterface {
         tree.clear()
-        opponentModel.reset()
+        opponentModel?.reset()
         stateLinks.clear()
         return this
     }
@@ -155,6 +163,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
     // node, possibleActions from node, action taken
 
     protected val trajectory: Deque<Triple<String, List<Action>, Action>> = ArrayDeque()
+    var firstAction = true
 
     private val nodesPerIteration = 1
     var actionsTaken = 0
@@ -175,7 +184,17 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         val currentState = stateFunction(gameState)
         actionsTaken += gameState.codonsPerAction()  // for comparability with RHEA
 
-        val node = tree[currentState]
+        var node = tree[currentState]
+        if (firstAction) {
+            firstAction = false
+            if (node == null) {
+                // for the first action taken, we will always be in the tree
+                val key = stateFunction(gameState)
+                stateToActionMap[key] = gameState.possibleActions(playerRef, params.maxActions)
+                node = TTNode(params, stateToActionMap[key] ?: emptyList())
+                tree[key] = node
+            }
+        }
         val actionChosen = when {
             node == null || actionsTaken > params.maxDepth -> rollout(gameState, playerRef)
             node.hasUnexploredActions() -> {
