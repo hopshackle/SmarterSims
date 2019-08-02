@@ -240,6 +240,26 @@ class MakeDecisionTest {
         assertEquals(gameCopyCopy.eventQueue.size, 1)         // no MakeDecision created
     }
 
+    @Test
+    fun cloningStateByPerspectiveHasMakeDecisionForPerspectivePlayerFirst() {
+        val gameCopy = game.copy()
+        gameCopy.registerAgent(0, SimpleActionEvoAgent())
+        gameCopy.registerAgent(1, SimpleActionEvoAgent())
+        assertEquals(gameCopy.eventQueue.size, 2)       // MakeDecisions created
+        gameCopy.eventQueue.poll() // removes MakeDecision(0)
+        val gameCopyCopy2 = gameCopy.copy(0)
+        assertEquals(gameCopyCopy2.eventQueue.size, 2)         // no MakeDecision created
+        val firstAction2 = gameCopyCopy2.eventQueue.poll().action as MakeDecision
+        assertEquals(firstAction2.playerRef, 0)
+
+        gameCopy.registerAgent(0, SimpleActionEvoAgent())
+        gameCopy.eventQueue.poll() // removes MakeDecision(1)
+        val gameCopyCopy = gameCopy.copy(1)
+        assertEquals(gameCopyCopy.eventQueue.size, 2)         // no MakeDecision created
+        val firstAction = gameCopyCopy.eventQueue.poll().action as MakeDecision
+        assertEquals(firstAction.playerRef, 1)
+    }
+
 }
 
 class LandCombatStateRepresentationTests {

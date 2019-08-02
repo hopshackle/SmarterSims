@@ -42,12 +42,14 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         val retValue = copyHelper(newWorld)
         // We also need to strip out any events in the queue that are not visible to the perspective player!
         retValue.eventQueue.addAll(eventQueue) { e -> e.action.visibleTo(perspective, this) }
+        addMakeDecisions(perspective, retValue)
         return retValue
     }
 
     override fun copy(): LandCombatGame {
         val retValue = copyHelper(world.deepCopy())
         retValue.eventQueue.addAll(eventQueue) { it.action !is MakeDecision }
+        addMakeDecisions(-1, retValue)
         return retValue
     }
 
@@ -55,10 +57,16 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         val state = LandCombatGame(world, targets)
         state.scoreFunction = scoreFunction
         state.eventQueue.currentTime = nTicks()
-        (0 until playerCount()).forEach { p ->
-            state.registerAgent(p, getAgent(p).getForwardModelInterface())
-        }
         return state
+    }
+
+    private fun addMakeDecisions(perspective: Int, state: LandCombatGame) {
+        if (perspective != -1)
+            state.registerAgent(perspective, getAgent(perspective).getForwardModelInterface())
+        (0 until playerCount()).forEach { p ->
+            if (p != perspective)
+                state.registerAgent(p, getAgent(p).getForwardModelInterface())
+        }
     }
 
     override fun playerCount() = 2
@@ -80,7 +88,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         val rawFromGene = gene.take(cityGenes).reversed().mapIndexed { i, v -> 10.0.pow(i.toDouble()) * v }.sum().toInt()
         val rawToGene = gene.takeLast(gene.size - cityGenes).take(routeGenes).reversed().mapIndexed { i, v -> 10.0.pow(i.toDouble()) * v }.sum().toInt()
         val proportion = 0.1 * (gene[cityGenes + routeGenes] + 1)
-        val encodedWait = gene[cityGenes+routeGenes+1].pow(2)
+        val encodedWait = gene[cityGenes + routeGenes + 1].pow(2)
 //        val encodedWait = 2.pow(gene[cityGenes + routeGenes + 1])
         val actualWait = max(encodedWait, world.params.OODALoop[player])
         val proposedAction = LaunchExpedition(playerId, rawFromGene % world.cities.size, rawToGene, proportion, actualWait)

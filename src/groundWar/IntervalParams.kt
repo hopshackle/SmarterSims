@@ -136,7 +136,9 @@ data class AgentParams(
                 val options = oppParams.subList(3, oppParams.size).map(HeuristicOptions::valueOf)
                 HeuristicAgent(oppParams[1].toDouble(), oppParams[2].toDouble(), options)
             }
-            else -> SimpleActionDoNothing(1000)
+            "DoNothing" -> SimpleActionDoNothing(1000)
+            "Random" -> SimpleActionRandom
+            else -> null
         }
         return when (algorithm) {
             "Heuristic" -> {
@@ -148,19 +150,20 @@ data class AgentParams(
                             useMutationTransducer = params.contains("useMutationTransducer"), useShiftBuffer = params.contains("useShiftBuffer"),
                             flipAtLeastOneValue = params.contains("flipAtLeastOneValue"),
                             probMutation = getParam("probMutation").toDouble(), name = colour + "_RHEA"),
-                    opponentModel = opponentModel)
+                    opponentModel = opponentModel ?: SimpleActionDoNothing(1000))
             "RHCA" -> RHCAAgent(flipAtLeastOneValue = params.contains("flipAtLeastOneValue"), probMutation = getParam("probMutation").toDouble(),
                     sequenceLength = sequenceLength, evalsPerGeneration = getParam("evalsPerGeneration").toInt(),
                     populationSize = getParam("populationSize").toInt(), timeLimit = timeBudget, parentSize = getParam("parentSize").toInt(),
                     useShiftBuffer = params.contains("useShiftBuffer"), horizon = planningHorizon, name = colour + "_RHCA")
-            "MCTS" -> MCTSTranspositionTableAgentMaster(MCTSParameters(C = getParam("C").toDouble(), maxPlayouts = evalBudget, timeLimit = timeBudget,
+            "MCTS" -> MCTSTranspositionTableAgentMaster(MCTSParameters(C = getParam("C").toDouble(),
+                    maxPlayouts = evalBudget, timeLimit = timeBudget, maxActions = getParam("maxActions").toInt(),
                     maxDepth = sequenceLength, horizon = planningHorizon, pruneTree = params.contains("pruneTree"),
                     selectionMethod = MCTSSelectionMethod.valueOf(getParam("selectionPolicy"))),
                     stateFunction = LandCombatStateFunction,
                     rolloutPolicy = when (getParam("rolloutPolicy")) {
                         "Heuristic" -> HeuristicAgent(3.0, 1.0, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
                         "DoNothing" -> SimpleActionDoNothing(1000)
-                        "random", "" -> SimpleActionRandom
+                        "Random", "" -> SimpleActionRandom
                         else -> throw AssertionError("Unknown rollout policy " + getParam("rolloutPolicy"))
                     },
                     opponentModel = opponentModel,

@@ -8,7 +8,7 @@ import java.util.*
 import kotlin.collections.HashMap
 
 
-class EventQueue(val eventQueue: Queue<Event> = PriorityQueue<Event>()) : Queue<Event> by eventQueue {
+class EventQueue(val eventQueue: Queue<Event> = PriorityQueue()) : Queue<Event> by eventQueue {
 
     private val playerAgentMap = HashMap<Int, SimpleActionPlayerInterface>()
     val history = mutableListOf<Event>()

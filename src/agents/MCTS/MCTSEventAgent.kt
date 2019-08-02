@@ -29,27 +29,31 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
         val opponentStateToActionMap: MutableMap<String, List<Action>> = mutableMapOf()
         val startTime = System.currentTimeMillis()
         var iteration = 0
-        val opponentMCTS = MCTSTranspositionTableAgentChild(opponentTree, mutableMapOf(), opponentStateToActionMap,
-                params, LandCombatStateFunction, SimpleActionDoNothing(1000))
 
         resetTree(gameState, playerRef)
         do {
             val clonedState = gameState.copy() as ActionAbstractGameState
             // TODO: At some point, we may then resample state here for IS-MCTS
-            clonedState.registerAgent(playerRef, getForwardModelInterface())
+            val MCTSChildAgent = getForwardModelInterface() as MCTSTranspositionTableAgentChild
+            MCTSChildAgent.setRoot(gameState, playerRef)
+            clonedState.registerAgent(playerRef, MCTSChildAgent)
             (0 until clonedState.playerCount()).forEach {
                 if (it != playerRef) {
                     if (opponentModel != null) {
                         clonedState.registerAgent(it, opponentModel)
                     } else {
+                        val opponentMCTS = MCTSTranspositionTableAgentChild(opponentTree, mutableMapOf(), opponentStateToActionMap,
+                                params, LandCombatStateFunction, SimpleActionDoNothing(1000))
                         clonedState.registerAgent(it, opponentMCTS)
-                        opponentMCTS.firstAction = true
                     }
                 }
             }
 
             clonedState.next(params.horizon)
 
+            if (iteration > 100 && opponentModel == null) {
+                val stop = true
+            }
             (0 until clonedState.playerCount()).forEach {
                 val reward = clonedState.score(it)
                 clonedState.getAgent(it).backPropagate(reward)
@@ -180,21 +184,22 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         return "MCTSTranspositionTableAgentChild"
     }
 
+    fun setRoot(gameState: ActionAbstractGameState, playerRef: Int) {
+        val key = stateFunction(gameState)
+        if (!stateToActionMap.contains(key)) {
+            stateToActionMap[key] = gameState.possibleActions(playerRef, params.maxActions)
+            tree[key] = TTNode(params, stateToActionMap[key] ?: emptyList())
+        }
+        firstAction = false
+    }
+
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
+        if (firstAction) setRoot(gameState, playerRef)
+
         val currentState = stateFunction(gameState)
         actionsTaken += gameState.codonsPerAction()  // for comparability with RHEA
 
-        var node = tree[currentState]
-        if (firstAction) {
-            firstAction = false
-            if (node == null) {
-                // for the first action taken, we will always be in the tree
-                val key = stateFunction(gameState)
-                stateToActionMap[key] = gameState.possibleActions(playerRef, params.maxActions)
-                node = TTNode(params, stateToActionMap[key] ?: emptyList())
-                tree[key] = node
-            }
-        }
+        val node = tree[currentState]
         val actionChosen = when {
             node == null || actionsTaken > params.maxDepth -> rollout(gameState, playerRef)
             node.hasUnexploredActions() -> {
@@ -237,7 +242,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         trajectory.clear()
         stateToActionMap.clear()
         stateLinks.clear()
-        nodesToExpand = nodesPerIteration
+        nodesToExpand = 0
         actionsTaken = 0
         return MCTSTranspositionTableAgentChild(tree, mutableMapOf(), mutableMapOf(), params, stateFunction, rolloutPolicy)
     }
