@@ -259,7 +259,6 @@ class MakeDecisionTest {
         val firstAction = gameCopyCopy.eventQueue.poll().action as MakeDecision
         assertEquals(firstAction.playerRef, 1)
     }
-
 }
 
 class LandCombatStateRepresentationTests {

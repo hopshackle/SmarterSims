@@ -2,7 +2,9 @@ package agents.MCTS
 
 import agents.SimpleActionDoNothing
 import ggi.*
+import groundWar.LandCombatGame
 import groundWar.LandCombatStateFunction
+import groundWar.MakeDecision
 import test.game
 import utilities.StatsCollator
 import java.util.*
@@ -32,9 +34,10 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
 
         resetTree(gameState, playerRef)
         do {
-            val clonedState = gameState.copy() as ActionAbstractGameState
+            val clonedState = gameState.copy() as LandCombatGame
             // TODO: At some point, we may then resample state here for IS-MCTS
             val MCTSChildAgent = getForwardModelInterface() as MCTSTranspositionTableAgentChild
+
             MCTSChildAgent.setRoot(gameState, playerRef)
             clonedState.registerAgent(playerRef, MCTSChildAgent)
             (0 until clonedState.playerCount()).forEach {
@@ -51,9 +54,6 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
 
             clonedState.next(params.horizon)
 
-            if (iteration > 100 && opponentModel == null) {
-                val stop = true
-            }
             (0 until clonedState.playerCount()).forEach {
                 val reward = clonedState.score(it)
                 clonedState.getAgent(it).backPropagate(reward)
@@ -168,6 +168,8 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
 
     protected val trajectory: Deque<Triple<String, List<Action>, Action>> = ArrayDeque()
     var firstAction = true
+    var debug = false
+    private var actionCount = 0
 
     private val nodesPerIteration = 1
     var actionsTaken = 0
@@ -186,20 +188,25 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
 
     fun setRoot(gameState: ActionAbstractGameState, playerRef: Int) {
         val key = stateFunction(gameState)
-        if (!stateToActionMap.contains(key)) {
+        if (debug) println("Adding root state " + key)
+        if (!stateToActionMap.contains(key))
             stateToActionMap[key] = gameState.possibleActions(playerRef, params.maxActions)
+
+        if (!tree.contains(key))
             tree[key] = TTNode(params, stateToActionMap[key] ?: emptyList())
-        }
+
         firstAction = false
     }
 
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
         if (firstAction) setRoot(gameState, playerRef)
 
+        actionCount++
         val currentState = stateFunction(gameState)
         actionsTaken += gameState.codonsPerAction()  // for comparability with RHEA
 
         val node = tree[currentState]
+        if (debug) println(String.format("Action %d, Tick: %d, Current State %s, Node %s, ", actionCount, gameState.nTicks(), currentState, if (node == null) "null" else "exists"))
         val actionChosen = when {
             node == null || actionsTaken > params.maxDepth -> rollout(gameState, playerRef)
             node.hasUnexploredActions() -> {
@@ -208,6 +215,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
             }
             else -> treePolicy(node, gameState, possibleActions(gameState, currentState, playerRef))
         }
+
         trajectory.addLast(Triple(currentState, possibleActions(gameState, currentState, playerRef), actionChosen))
         return actionChosen
     }
@@ -222,15 +230,21 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
     }
 
     open fun rollout(state: ActionAbstractGameState, playerRef: Int): Action {
-        return rolloutPolicy.getAction(state, playerRef)
+        val retValue = rolloutPolicy.getAction(state, playerRef)
+        if (debug) println("\tRollout action: " + retValue)
+        return retValue
     }
 
     open fun expansionPolicy(node: TTNode, state: ActionAbstractGameState, possibleActions: List<Action>): Action {
-        return node.getRandomUnexploredAction(possibleActions)
+        val retValue = node.getRandomUnexploredAction(possibleActions)
+        if (debug) println("\tExpansion action: " + retValue)
+        return retValue
     }
 
     open fun treePolicy(node: TTNode, state: ActionAbstractGameState, possibleActions: List<Action>): Action {
-        return node.getUCTAction(possibleActions)
+        val retValue = node.getUCTAction(possibleActions)
+        if (debug) println("\tTree action: " + retValue)
+        return retValue
     }
 
     override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
