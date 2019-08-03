@@ -5,7 +5,7 @@ import ggi.ActionAbstractGameState
 import kotlin.math.min
 
 data class TransitStart(val transit: Transit) : Action {
-    override fun apply(state: ActionAbstractGameState): Int {
+    override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
             val world = state.world
             val city = world.cities[transit.fromCity]
@@ -22,14 +22,13 @@ data class TransitStart(val transit: Transit) : Action {
                 state.eventQueue.add(transit.collisionEvent(enemyCollision, world, state.nTicks()))
             }
         }
-        return -1
     }
 
     override fun visibleTo(player: Int, state: ActionAbstractGameState) = if (state is LandCombatGame) state.world.checkVisible(transit, numberToPlayerID(player)) else true
 }
 
 data class TransitEnd(val player: PlayerId, val fromCity: Int, val toCity: Int, val endTime: Int) : Action {
-    override fun apply(state: ActionAbstractGameState): Int {
+    override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
             val transit = getTransit(state)
             if (transit != null) {
@@ -37,7 +36,6 @@ data class TransitEnd(val player: PlayerId, val fromCity: Int, val toCity: Int, 
                 state.world.removeTransit(transit)
             }
         }
-        return -1
     }
 
     override fun visibleTo(player: Int, state: ActionAbstractGameState): Boolean {
@@ -56,7 +54,7 @@ data class TransitEnd(val player: PlayerId, val fromCity: Int, val toCity: Int, 
 }
 
 data class CityInflux(val player: PlayerId, val pop: Double, val destination: Int, val origin: Int = -1) : Action {
-    override fun apply(state: ActionAbstractGameState): Int {
+    override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
             val world = state.world
             val city = world.cities[destination]
@@ -81,7 +79,6 @@ data class CityInflux(val player: PlayerId, val pop: Double, val destination: In
                 }
             }
         }
-        return -1
     }
 
     override fun visibleTo(player: Int, state: ActionAbstractGameState): Boolean {
@@ -99,7 +96,7 @@ data class CityInflux(val player: PlayerId, val pop: Double, val destination: In
 }
 
 data class Battle(val transit1: Transit, val transit2: Transit) : Action {
-    override fun apply(state: ActionAbstractGameState): Int {
+    override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
             val p = state.world.params
             val playerRef = playerIDToNumber(transit1.playerId)
@@ -125,7 +122,6 @@ data class Battle(val transit1: Transit, val transit2: Transit) : Action {
                 }
             }
         }
-        return -1
     }
 
     override fun visibleTo(player: Int, state: ActionAbstractGameState): Boolean {
@@ -151,7 +147,7 @@ data class LaunchExpedition(val player: PlayerId, val from: Int, val toCode: Int
         return -1.0
     }
 
-    override fun apply(state: ActionAbstractGameState): Int {
+    override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
             val world = state.world
             val to = destinationCity(state)
@@ -166,6 +162,9 @@ data class LaunchExpedition(val player: PlayerId, val from: Int, val toCode: Int
                 state.eventQueue.add(Event(arrivalTime, TransitEnd(transit.playerId, transit.fromCity, transit.toCity, transit.endTime)))
             }
         }
+    }
+
+    override fun nextDecisionPoint(player: Int, state: ActionAbstractGameState): Int {
         return state.nTicks() + wait
     }
 

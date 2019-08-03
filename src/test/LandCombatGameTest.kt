@@ -173,7 +173,8 @@ class MakeDecisionTest {
         assert(fullInvasion is LaunchExpedition)
         val gameCopy = game.copy()
         assertEquals(gameCopy.eventQueue.size, 0)
-        assertEquals(fullInvasion.apply(gameCopy), 16)
+        assertEquals(fullInvasion.nextDecisionPoint(0, gameCopy), 16)
+        fullInvasion.apply(gameCopy)
         assertEquals(gameCopy.eventQueue.size, 1)         // no MakeDecision created
         gameCopy.registerAgent(0, SimpleActionEvoAgent())
         assertEquals(gameCopy.eventQueue.size, 2)           // Make Decision now added
@@ -191,7 +192,7 @@ class MakeDecisionTest {
         assertEquals(world.params.OODALoop[0], 10);
         val fullInvasion = game.translateGene(0, intArrayOf(0, 1, 2, 1))
         val gameCopy = game.copy()
-        assertEquals(fullInvasion.apply(gameCopy), 10)
+        assertEquals(fullInvasion.nextDecisionPoint(0, gameCopy), 10)
     }
 
     @Test

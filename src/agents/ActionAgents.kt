@@ -14,7 +14,7 @@ class SimpleActionDoNothing(val defaultWait: Int) : SimpleActionPlayerInterface 
 
 object SimpleActionRandom : SimpleActionPlayerInterface {
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
-        val allActions = gameState.possibleActions(playerRef, 1)
+        val allActions = gameState.possibleActions(playerRef, 10)
         return allActions.random()
     }
 

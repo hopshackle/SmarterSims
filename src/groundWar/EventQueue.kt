@@ -61,15 +61,17 @@ class EventQueue(val eventQueue: Queue<Event> = PriorityQueue()) : Queue<Event> 
 }
 
 data class MakeDecision(val playerRef: Int) : Action {
-    override fun apply(state: ActionAbstractGameState): Int {
+    override fun apply(state: ActionAbstractGameState) {
         val agent = state.getAgent(playerRef)
         val perceivedState = state.copy(playerRef) as ActionAbstractGameState
         val action = agent.getAction(perceivedState, playerRef)
-        val nextDecisionPoint = action.apply(state)
-        if (nextDecisionPoint < state.nTicks())
-            throw AssertionError("Next Decision point must be in the future")
-        state.planEvent(nextDecisionPoint, MakeDecision(playerRef))
-        return -1
+        state.planEvent(state.nTicks(), action)
+        val nextDecisionTime = action.nextDecisionPoint(playerRef, state)
+        when {
+            nextDecisionTime == -1 -> throw AssertionError("No action from MakeDecision should have -1 as next point")
+            nextDecisionTime <= state.nTicks() -> throw AssertionError("Next Decision point must be in the future")
+            else -> state.planEvent(action.nextDecisionPoint(playerRef, state), MakeDecision(playerRef))
+        }
     }
 
     // only visible to planning player

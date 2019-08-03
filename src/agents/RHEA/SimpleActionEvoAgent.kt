@@ -54,7 +54,8 @@ fun convertGenomeToActionList(genome: IntArray?, gameState: AbstractGameState, p
         val retValue = (0 until (genome.size / intPerAction)).map { i ->
             val gene = genome.sliceArray(i * intPerAction until (i + 1) * intPerAction)
             val action = gameState.translateGene(playerRef, gene)
-            val finishTime = action.apply(gameState)
+            val finishTime = action.nextDecisionPoint(playerRef, gameState)
+            action.apply(gameState)
             gameState.next(finishTime - gameState.nTicks())
             action
         }
@@ -74,7 +75,8 @@ fun elapsedLengthOfPlan(genome: IntArray, gameState: AbstractGameState, playerRe
         do {
             val gene = genome.sliceArray(i * intPerAction until (i + 1) * intPerAction)
             val action = gameState.translateGene(playerRef, gene)
-            val nextDecisionTime = action.apply(gameState)
+            val nextDecisionTime = action.nextDecisionPoint(playerRef, gameState)
+            action.apply(gameState)
             gameState.next(nextDecisionTime - gameState.nTicks())
             i++
         } while (i < genome.size / intPerAction)

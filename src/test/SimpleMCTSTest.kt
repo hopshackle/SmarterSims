@@ -58,13 +58,16 @@ class SimpleMazeGame(val playerCount: Int, val target: Int) : ActionAbstractGame
 enum class Direction { LEFT, RIGHT }
 
 data class Move(val player: Int, val direction: Direction) : Action {
-    override fun apply(state: ActionAbstractGameState): Int {
+    override fun apply(state: ActionAbstractGameState) {
         if (state is SimpleMazeGame) {
             when (direction) {
                 Direction.LEFT -> state.currentPosition[player]--
                 Direction.RIGHT -> state.currentPosition[player]++
             }
         }
+    }
+
+    override fun nextDecisionPoint(player: Int, state: ActionAbstractGameState): Int {
         return state.nTicks() + 1
     }
 
@@ -151,12 +154,11 @@ class MCTSMasterTest {
     fun firstActionEnsuresStateIsAddedToTree() {
         val childAgents = agents.map(MCTSTranspositionTableAgentMaster::getForwardModelInterface)
                 .map { it as MCTSTranspositionTableAgentChild }.toList()
-        childAgents[1].firstAction = false
         childAgents.withIndex().forEach{ (i, it) ->
             it.getAction(simpleMazeGame, i)
         }
         assertEquals(childAgents[0].tree.size, 1)
-        assertEquals(childAgents[1].tree.size, 0)
+        assertEquals(childAgents[1].tree.size, 1)
         assertEquals(childAgents[2].tree.size, 1)
         assertTrue(childAgents.none(MCTSTranspositionTableAgentChild::firstAction))
     }

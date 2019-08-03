@@ -34,7 +34,7 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
 
         resetTree(gameState, playerRef)
         do {
-            val clonedState = gameState.copy() as LandCombatGame
+            val clonedState = gameState.copy() as ActionAbstractGameState
             // TODO: At some point, we may then resample state here for IS-MCTS
             val MCTSChildAgent = getForwardModelInterface() as MCTSTranspositionTableAgentChild
 
@@ -208,6 +208,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         val node = tree[currentState]
         if (debug) println(String.format("Action %d, Tick: %d, Current State %s, Node %s, ", actionCount, gameState.nTicks(), currentState, if (node == null) "null" else "exists"))
         val actionChosen = when {
+            node == null && actionCount == 1 -> throw AssertionError("Should always find state on first call")
             node == null || actionsTaken > params.maxDepth -> rollout(gameState, playerRef)
             node.hasUnexploredActions() -> {
                 nodesToExpand = nodesPerIteration

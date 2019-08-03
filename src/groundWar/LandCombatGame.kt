@@ -8,11 +8,15 @@ import kotlin.random.Random
 import ggi.SimpleActionPlayerInterface as SimpleActionPlayerInterface
 
 data class Event(val tick: Int, val action: Action) : Comparable<Event> {
+
+    val priority = if (action is MakeDecision) 0 else 1
+
     operator override fun compareTo(other: Event): Int {
-        return tick.compareTo(other.tick)
+        val tickComparison = tick.compareTo(other.tick)
+        if (tickComparison == 0) return priority.compareTo(other.priority)
+        return tickComparison
     }
 }
-
 
 class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List<Int>> = emptyMap()) : ActionAbstractGameState {
 

@@ -1,10 +1,10 @@
 package ggi
 
 data class NoAction(val playerRef: Int, val waitTime: Int) : Action {
-    override fun apply(state: ActionAbstractGameState): Int {
-        // Do absolutely nothing
-        return state.nTicks() + waitTime
-    }
+    override fun apply(state: ActionAbstractGameState) {}
+            // Do absolutely nothing
+
+    override fun nextDecisionPoint(player: Int, state: ActionAbstractGameState) = state.nTicks() + waitTime
 
     // only visible to planning player
     override fun visibleTo(player: Int, state: ActionAbstractGameState) = player == playerRef
@@ -49,8 +49,9 @@ interface ActionAbstractGameState : AbstractGameState {
 }
 
 interface Action {
-    fun apply(state: ActionAbstractGameState): Int
+    fun apply(state: ActionAbstractGameState)
     fun visibleTo(player: Int, state: ActionAbstractGameState): Boolean
+    fun nextDecisionPoint(player: Int, state:ActionAbstractGameState): Int = -1
 }
 
 interface StateSummarizer {
