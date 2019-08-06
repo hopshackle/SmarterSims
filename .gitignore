@@ -10,3 +10,4 @@ build/
 !experiments/**/*.csv
 *.orig
 *.kotlin_module
+*.MF
