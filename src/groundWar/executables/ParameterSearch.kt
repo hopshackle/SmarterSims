@@ -19,10 +19,10 @@ import kotlin.streams.toList
 
 fun main(args: Array<String>) {
     if (args.size < 4) AssertionError("Must specify at least four parameters: 3-Tuples? RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
-    val searchSpace = when {
-        args[1] == "RHEA" -> RHEASearchSpace
-        args[1] == "MCTS" -> MCTSSearchSpace
-        args[1] == "RHCA" -> RHCASearchSpace
+    val searchSpace = when (args[1]) {
+        "RHEA" -> RHEASearchSpace
+        "MCTS", "MCTS2" -> MCTSSearchSpace
+        "RHCA" -> RHCASearchSpace
         else -> throw AssertionError("Unknown searchSpace " + args[1])
     }
     val nTupleSystem = when {
@@ -61,12 +61,15 @@ fun main(args: Array<String>) {
     ntbea.banditLandscapeModel = nTupleSystem
     ntbea.banditLandscapeModel.searchSpace = searchSpace
     ntbea.resetModelEachRun = false
-    val opponentModel = when {
+    val opponentModel: SimpleActionPlayerInterface? = when {
+        args[1] == "MCTS2" -> null
         args.size <= 5 -> SimpleActionDoNothing(1000)
         args[5] == "random" -> SimpleActionRandom
         else -> HeuristicAgent(args[5].toDouble(), args[6].toDouble(),
                 args.withIndex().filter { it.index > 6 }.map { it.value }.map(HeuristicOptions::valueOf).toList())
     }
+    if (args[1] == "MCTS2" && args.size > 5)
+        throw AssertionError("Opponent model not used in MCTS2")
     val reportEvery = min(stateSpaceSize / 2, args[2].toInt())
     val logger = EvolutionLogger()
     println("Search space consists of $stateSpaceSize states and $twoTupleSize possible 2-Tuples" +
@@ -82,8 +85,8 @@ fun main(args: Array<String>) {
         // tuples gets cleared out
         println("Current best sampled point (using mean estimate): " + nTupleSystem.bestOfSampled.joinToString() +
                 String.format(", %.3g", nTupleSystem.getMeanEstimate(nTupleSystem.bestOfSampled)))
-        println("Current best predicted point (using mean estimate): " + nTupleSystem.bestSolution.joinToString() +
-                String.format(", %.3g", nTupleSystem.getMeanEstimate(nTupleSystem.bestSolution)))
+        // println("Current best predicted point (using mean estimate): " + nTupleSystem.bestSolution.joinToString() +
+        //         String.format(", %.3g", nTupleSystem.getMeanEstimate(nTupleSystem.bestSolution)))
         val tuplesExploredBySize = (1..searchSpace.nDims()).map { size ->
             nTupleSystem.tuples.filter { it.tuple.size == size }
                     .map { it.ntMap.size }.sum()
@@ -107,14 +110,14 @@ fun main(args: Array<String>) {
         }
         println("")
     }
-    val bestAgent = GroundWarEvaluator(searchSpace, params, logger, opponentModel).getAgent(nTupleSystem.bestSolution)
+    val bestAgent = GroundWarEvaluator(searchSpace, params, logger, opponentModel).getAgent(nTupleSystem.bestOfSampled)
     runGames(1000,
             bestAgent,
             HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
             eventParams = params)
 }
 
-class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGameParams, val logger: EvolutionLogger, val opponentModel: SimpleActionPlayerInterface) : SolutionEvaluator {
+class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGameParams, val logger: EvolutionLogger, val opponentModel: SimpleActionPlayerInterface?) : SolutionEvaluator {
     override fun optimalFound() = false
 
     override fun optimalIfKnown() = null
@@ -136,7 +139,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
                             probMutation = RHEASearchSpace.values[3][settings[3]] as Double,
                             flipAtLeastOneValue = RHEASearchSpace.values[4][settings[4]] as Boolean
                     ),
-                    opponentModel = opponentModel //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
+                    opponentModel = opponentModel ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
             )
             RHCASearchSpace -> RHCAAgent(
                     timeLimit = 50,

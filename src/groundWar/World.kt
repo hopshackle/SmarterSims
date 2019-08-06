@@ -3,6 +3,7 @@ package groundWar
 import math.Vec2d
 import kotlin.random.Random
 import org.json.*
+import kotlin.math.abs
 
 enum class PlayerId {
     Blue, Red, Neutral, Fog
@@ -69,6 +70,12 @@ fun routesCross(start1: Vec2d, end1: Vec2d, start2: Vec2d, end2: Vec2d): Boolean
             ((end2.x - start2.x) * (end1.y - start1.y) - (end2.y - start2.y) * (end1.x - start1.x))
     val t1 = ((start2.x - start1.x) + t2 * (end2.x - start2.x)) / if (end1.x == start1.x) 0.001 else (end1.x - start1.x)
     //   println("$start1 -> $end1 with $start2 -> $end2 : $t1, $t2")
+    /* val t1 = if (end1.x != start1.x)
+        ((start2.x - start1.x) + t2 * (end2.x - start2.x)) / (end1.x - start1.x)
+    else {
+        val yIntercept = start2.y + (start1.x - start2.x) / abs(end2.x - start2.x) * (end2.y - start2.y)
+        (yIntercept - start1.y) / (end1.y - start1.y)
+    } */
     return (t2 in 0.001..0.999 && t1 in 0.001..0.999) || (t1 == 0.0 && t2 in 0.001..0.999)
 }
 
@@ -88,9 +95,9 @@ data class Transit(val nPeople: Double, val fromCity: Int, val toCity: Int, val 
 }
 
 data class World(var cities: List<City> = ArrayList(), var routes: List<Route> = ArrayList(),
+                 val random: Random = Random(3),
                  val params: EventGameParams = EventGameParams()) {
 
-    val random = Random(params.seed)
     var currentTransits: ArrayList<Transit> = ArrayList()
         private set(newTransits) {
             field = newTransits
