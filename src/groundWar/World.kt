@@ -66,15 +66,23 @@ fun routesCross(start1: Vec2d, end1: Vec2d, start2: Vec2d, end2: Vec2d): Boolean
     // first check if lines are parallel
 //    if ((end1.y - start1.y) / (end1.x - start1.x) == (end2.y - start2.y) / (end2.x - start2.x)) return false
 
+    if (end1.x == start1.x) {
+        // special case in which the formula below has a zero denominator
+        if ((start2.x < end1.x && end2.x > end1.x) || (start2.x > end1.x && end2.x < end1.x)) {
+            // firstly, start2/end2 have to be on opposite sides of line1.x
+            val yIntercept = start2.y + (start1.x - start2.x) / abs(end2.x - start2.x) * (end2.y - start2.y)
+            return ((start1.y < yIntercept && end1.y > yIntercept) || (end1.y < yIntercept && start1.y > yIntercept))
+        }
+        return false
+    }
     val t2 = ((start2.y - start1.y) * (end1.x - start1.x) - (start2.x - start1.x) * (end1.y - start1.y)) /
             ((end2.x - start2.x) * (end1.y - start1.y) - (end2.y - start2.y) * (end1.x - start1.x))
-    val t1 = ((start2.x - start1.x) + t2 * (end2.x - start2.x)) / if (end1.x == start1.x) 0.001 else (end1.x - start1.x)
+    val t1 = ((start2.x - start1.x) + t2 * (end2.x - start2.x)) / (end1.x - start1.x)
     //   println("$start1 -> $end1 with $start2 -> $end2 : $t1, $t2")
     /* val t1 = if (end1.x != start1.x)
         ((start2.x - start1.x) + t2 * (end2.x - start2.x)) / (end1.x - start1.x)
     else {
-        val yIntercept = start2.y + (start1.x - start2.x) / abs(end2.x - start2.x) * (end2.y - start2.y)
-        (yIntercept - start1.y) / (end1.y - start1.y)
+
     } */
     return (t2 in 0.001..0.999 && t1 in 0.001..0.999) || (t1 == 0.0 && t2 in 0.001..0.999)
 }
