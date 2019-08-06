@@ -1,4 +1,5 @@
 package test
+
 import agents.SimpleActionDoNothing
 import agents.RHEA.*
 import groundWar.*
@@ -242,23 +243,35 @@ class MakeDecisionTest {
     }
 
     @Test
-    fun cloningStateByPerspectiveHasMakeDecisionForPerspectivePlayerFirst() {
+    fun makeDecisionEventsAreSortedFirstInEventQueue() {
+        val gameCopy = game.copy()
+        gameCopy.planEvent(6, LaunchExpedition(PlayerId.Red, 6, 3, .5, 10))
+        gameCopy.planEvent(3, LaunchExpedition(PlayerId.Blue, 2, 3, .5, 10))
+        gameCopy.planEvent(3, MakeDecision(0))
+        gameCopy.planEvent(3, MakeDecision(1))
+        gameCopy.planEvent(4, TransitStart(Transit(3.0, 2, 5, PlayerId.Red, 3, 34)))
+
+        assertEquals(gameCopy.eventQueue.poll().action, MakeDecision(0))
+        assertEquals(gameCopy.eventQueue.poll().action, MakeDecision(1))
+        assertEquals(gameCopy.eventQueue.poll().action, LaunchExpedition(PlayerId.Blue, 2, 3, .5, 10))
+        assertEquals(gameCopy.eventQueue.poll().action, TransitStart(Transit(3.0, 2, 5, PlayerId.Red, 3, 34)))
+        assertEquals(gameCopy.eventQueue.poll().action, LaunchExpedition(PlayerId.Red, 6, 3, .5, 10))
+    }
+
+    @Test
+    fun makeDecisionsGenerateNewMakeDecisions() {
         val gameCopy = game.copy()
         gameCopy.registerAgent(0, SimpleActionEvoAgent())
-        gameCopy.registerAgent(1, SimpleActionEvoAgent())
-        assertEquals(gameCopy.eventQueue.size, 2)       // MakeDecisions created
-        gameCopy.eventQueue.poll() // removes MakeDecision(0)
-        val gameCopyCopy2 = gameCopy.copy(0)
-        assertEquals(gameCopyCopy2.eventQueue.size, 2)         // no MakeDecision created
-        val firstAction2 = gameCopyCopy2.eventQueue.poll().action as MakeDecision
-        assertEquals(firstAction2.playerRef, 0)
+        assertEquals(gameCopy.eventQueue.size, 1)
+        assertEquals(gameCopy.eventQueue.history.size, 0)
+        gameCopy.next(1)
+        val event = gameCopy.eventQueue.peek()
+        assertTrue(gameCopy.eventQueue.size in listOf(1, 2))
+        assertTrue(gameCopy.eventQueue.any { e -> e.action == MakeDecision(0) })
 
-        gameCopy.registerAgent(0, SimpleActionEvoAgent())
-        gameCopy.eventQueue.poll() // removes MakeDecision(1)
-        val gameCopyCopy = gameCopy.copy(1)
-        assertEquals(gameCopyCopy.eventQueue.size, 2)         // no MakeDecision created
-        val firstAction = gameCopyCopy.eventQueue.poll().action as MakeDecision
-        assertEquals(firstAction.playerRef, 1)
+        assertEquals(gameCopy.eventQueue.history.size, 2)
+        assertEquals(gameCopy.eventQueue.history[0].action, MakeDecision(0))
+        assertFalse(gameCopy.eventQueue.history[1].action is MakeDecision)
     }
 }
 

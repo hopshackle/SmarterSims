@@ -29,7 +29,8 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
             if (genome.size < intPerAction)
                 return NoAction(playerRef, 1000)
             val gene = genome.sliceArray(0 until intPerAction)
-            return gameState.translateGene(playerRef, gene)
+            val chosen = gameState.translateGene(playerRef, gene)
+            return chosen
         }
         throw AssertionError("Unexpected type of GameState $gameState")
     }

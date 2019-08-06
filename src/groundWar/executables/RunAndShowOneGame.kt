@@ -43,16 +43,8 @@ fun runWithParams(params: EventGameParams, mapFile: String = "") {
     val targets = mapOf(PlayerId.Blue to listOf(0, 2, 4, 5), PlayerId.Red to listOf(0, 1, 3, 5))
     val game = LandCombatGame(world, targets = emptyMap())
 
-    game.scoreFunction[PlayerId.Blue] = compositeScoreFunction(
-            simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
-            visibilityScore(2.0, 1.0)
-            //   game.scoreFunction = specificTargetScoreFunction(50.0)
-    )
-    game.scoreFunction[PlayerId.Red] = compositeScoreFunction(
-            simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
-            visibilityScore(0.0, 0.0)
-            //   game.scoreFunction = specificTargetScoreFunction(50.0)
-    )
+    game.scoreFunction[PlayerId.Blue] = interimScoreFunction
+    game.scoreFunction[PlayerId.Red] = interimScoreFunction
     StatsCollator.clear()
     val blueOpponentModel =
             //         DoNothingAgent()
@@ -62,13 +54,13 @@ fun runWithParams(params: EventGameParams, mapFile: String = "") {
     //    SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40,
     //    useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = false,
             //    horizon = 200, opponentModel = blueOpponentModel))
-            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = 100), LandCombatStateFunction,
+            MCTSTranspositionTableAgentMaster(MCTSParameters(maxActions = 40, timeLimit = 100, maxPlayouts = 2000, horizon = 100), LandCombatStateFunction,
                     opponentModel = null, name = "BLUE")
 
     game.registerAgent(0, blueAgent)
     val redAgent =
          //      SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 200, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = 100))
-            MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = 100), LandCombatStateFunction,
+            MCTSTranspositionTableAgentMaster(MCTSParameters(maxActions = 40, timeLimit = 100, maxPlayouts = 2000, horizon = 100), LandCombatStateFunction,
                     name = "RED")
     // HeuristicAgent(2.0, 1.1)
     game.registerAgent(1, redAgent)

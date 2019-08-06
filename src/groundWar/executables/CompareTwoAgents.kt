@@ -42,7 +42,6 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
     var draws = 0
     var blueScore = 0.0
 
-    val startTime = java.util.Calendar.getInstance().timeInMillis
     for (r in 1..maxGames) {
 
         agents[PlayerId.Blue]?.reset()
@@ -58,9 +57,9 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
         val game = LandCombatGame(world)
         game.scoreFunction[PlayerId.Blue] = interimScoreFunction
         game.scoreFunction[PlayerId.Red] = interimScoreFunction
-        val firstToAct = r % 2
-        game.registerAgent(firstToAct, agents[numberToPlayerID(firstToAct)] ?: SimpleActionDoNothing(1000))
-        game.registerAgent(1 - firstToAct, agents[numberToPlayerID(1 - firstToAct)] ?: SimpleActionDoNothing(1000))
+        game.registerAgent(0, agents[numberToPlayerID(0)] ?: SimpleActionDoNothing(1000))
+        game.registerAgent(1, agents[numberToPlayerID(1)] ?: SimpleActionDoNothing(1000))
+        val startTime = System.currentTimeMillis()
         game.next(1000)
         val gameScore = finalScoreFunction(game, 0)
         val redScore = finalScoreFunction(game, 1)
@@ -68,17 +67,20 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
             throw AssertionError("Should be zero sum!")
         }
         blueScore += gameScore
-        println(String.format("Game %2d\tScore: %6.1f\tCities: %2d, Routes: %2d, seed: %d", r, gameScore, world.cities.size, world.routes.size, params.seed))
+        val decisions = game.eventQueue.history.map(Event::action).filterIsInstance<MakeDecision>().partition { m -> m.playerRef == 0 }
+        println(String.format("Game %2d\tScore: %6.1f\tCities: %2d\tRoutes: %2d\tseed: %d\tTime: %3d\tTicks: %4d\tDecisions: %d:%d", r, gameScore, world.cities.size, world.routes.size, params.seed,
+                System.currentTimeMillis() - startTime, game.nTicks(), decisions.first.size, decisions.second.size))
         when {
             gameScore > 0.0 -> blueWins++
             gameScore < 0.0 -> redWins++
             else -> draws++
         }
-        val decisions = game.eventQueue.history.map(Event::action).filterIsInstance<MakeDecision>().partition { m -> m.playerRef == 0 }
         StatsCollator.addStatistics("BLUE_SCORE", gameScore)
+        StatsCollator.addStatistics("GameLength", game.nTicks())
+        StatsCollator.addStatistics("ElapsedTime", System.currentTimeMillis() - startTime)
         StatsCollator.addStatistics("BLUE_Decisions", decisions.first.size)
         StatsCollator.addStatistics("RED_Decisions", decisions.second.size)
     }
-    println("$blueWins wins for Blue, $redWins for Red and $draws draws out of $maxGames in ${(java.util.Calendar.getInstance().timeInMillis - startTime) / maxGames} ms per game")
+    println("$blueWins wins for Blue, $redWins for Red and $draws draws out of $maxGames")
     println(StatsCollator.summaryString())
 }
