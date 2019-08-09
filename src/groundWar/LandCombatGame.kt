@@ -98,10 +98,19 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         val encodedWait = gene[cityGenes + routeGenes + 1].pow(2)
 //        val encodedWait = 2.pow(gene[cityGenes + routeGenes + 1])
         val actualWait = max(encodedWait, world.params.OODALoop[player])
-        val proposedAction = LaunchExpedition(playerId, rawFromGene % world.cities.size, rawToGene, proportion, actualWait)
+        val origin = rawFromGene % world.cities.size
+        val destination = destinationCity(origin, rawToGene)
+        val proposedAction = LaunchExpedition(playerId, origin, destination, proportion, actualWait)
         if (!proposedAction.isValid(this))
             return NoAction(player, max(encodedWait, 1))
         return proposedAction
+    }
+
+    private fun destinationCity(from: Int, toCode: Int): Int {
+        val routes = world.allRoutesFromCity[from] ?: emptyList()
+        if (routes.isEmpty())
+            throw AssertionError("Should not be empty")
+        return routes[toCode % routes.size].toCity
     }
 
     override fun next(forwardTicks: Int): LandCombatGame {

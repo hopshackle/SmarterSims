@@ -133,12 +133,12 @@ data class Battle(val transit1: Transit, val transit2: Transit) : Action {
     }
 }
 
-data class LaunchExpedition(val player: PlayerId, val from: Int, val toCode: Int, val proportion: Double, val wait: Int) : Action {
+data class LaunchExpedition(val player: PlayerId, val origin: Int, val destination: Int, val proportion: Double, val wait: Int) : Action {
 
     fun forcesSent(state: ActionAbstractGameState): Double {
         if (state is LandCombatGame) {
             with(state.world) {
-                val sourceCityPop = cities[from].pop
+                val sourceCityPop = cities[origin].pop
                 var forcesSent = proportion * sourceCityPop
                 if (forcesSent < 1.0) forcesSent = min(1.0, sourceCityPop)
                 return forcesSent
@@ -150,12 +150,11 @@ data class LaunchExpedition(val player: PlayerId, val from: Int, val toCode: Int
     override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
             val world = state.world
-            val to = destinationCity(state)
             if (isValid(state)) {
-                val distance = world.cities[from].location.distanceTo(world.cities[to].location)
+                val distance = world.cities[origin].location.distanceTo(world.cities[destination].location)
                 val arrivalTime = state.nTicks() + (distance / world.params.speed[playerIDToNumber(player)]).toInt()
                 val forcesSent = forcesSent(state)
-                val transit = Transit(forcesSent, from, to, player, state.nTicks(), arrivalTime)
+                val transit = Transit(forcesSent, origin, destination, player, state.nTicks(), arrivalTime)
                 // we execute the troop departure immediately
                 TransitStart(transit).apply(state)
                 // and put their arrival in the queue for the game state
@@ -168,38 +167,29 @@ data class LaunchExpedition(val player: PlayerId, val from: Int, val toCode: Int
         return state.nTicks() + wait
     }
 
-    fun destinationCity(state: LandCombatGame): Int {
-        val routes = state.world.allRoutesFromCity[from] ?: emptyList()
-        if (routes.isEmpty())
-            throw AssertionError("Should not be empty")
-        return routes[toCode % routes.size].toCity
-    }
-
     fun isValid(state: LandCombatGame): Boolean {
-        val to = destinationCity(state)
-        return state.world.cities[from].owner == player &&
-                state.world.cities[from].pop > 0 &&
-                from != to &&
+        return state.world.cities[origin].owner == player &&
+                state.world.cities[origin].pop > 0 &&
+                origin != destination &&
+                state.world.allRoutesFromCity.getOrDefault(origin, emptyList()).any { r -> r.toCity == destination } &&
                 meetsMinStrengthCriterion(state)
     }
 
     fun meetsMinStrengthCriterion(state: LandCombatGame): Boolean {
-        val targetCity = destinationCity(state)
         val forceStrength = forcesSent(state)
 
         with(state.world) {
-            if (cities[targetCity].owner == player) return true
-            if (cities[targetCity].pop > forceStrength / params.minAssaultFactor[playerIDToNumber(player)])
+            if (cities[destination].owner == player) return true
+            if (cities[destination].pop > forceStrength / params.minAssaultFactor[playerIDToNumber(player)])
                 return false
             val forcesOnArc = currentTransits
-                    .filter { it.fromCity == targetCity && it.toCity == from && it.playerId != player }
+                    .filter { it.fromCity == destination && it.toCity == origin && it.playerId != player }
                     .sumByDouble(Transit::nPeople)
             if (forcesOnArc > forceStrength / params.minAssaultFactor[playerIDToNumber(player)])
                 return false
         }
         return true
     }
-
 
     // only visible to planning player
     override fun visibleTo(player: Int, state: ActionAbstractGameState) = player == playerIDToNumber(this.player)

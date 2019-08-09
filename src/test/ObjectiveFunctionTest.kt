@@ -16,7 +16,7 @@ class ObjectiveFunctionTest {
         assertEquals(startState.score(0), 5.0)
         assertEquals(startState.score(1), 5.0)
 
-        LaunchExpedition(PlayerId.Red, 1, 1, 0.5, 0).apply(startState)
+        LaunchExpedition(PlayerId.Red, 1, 2, 0.5, 0).apply(startState)
         startState.next(5)
         assertEquals(startState.score(0), 5.0)
         assertEquals(startState.score(1), 10.0)
@@ -31,7 +31,7 @@ class ObjectiveFunctionTest {
         assertEquals(simpleScoreFunction(5.0, 1.0, -5.0, -1.0)(game, 0), 0.0)
         assertEquals(simpleScoreFunction(5.0, 1.0, -5.0, -1.0)(game, 1), 0.0)
 
-        val action1 = LaunchExpedition(PlayerId.Blue, world.cities.indexOf(blueCity), 0, 0.5, 2)
+        val action1 = LaunchExpedition(PlayerId.Blue, world.cities.indexOf(blueCity), 1, 0.5, 2)
         action1.apply(game)
         assertEquals(blueCity.pop, 50.0)
         assertEquals(simpleScoreFunction(5.0, 1.0, -5.0, -1.0)(game, 0), 0.0)
