@@ -3,29 +3,16 @@ package groundWar.views
 import ggi.*
 import agents.RHEA.*
 import groundWar.LandCombatGame
+import groundWar.numberToPlayerID
 import javax.swing.*
 
-class PlanView(val agent: SimpleActionPlayerInterface, val game: LandCombatGame, val playerRef: Int) : JTextArea(10, 50) {
-
-    var lastGenome = intArrayOf()
-    var lastDifferentGenome = intArrayOf()
+class PlanView(val agent: SimpleActionPlayerInterface, val game: LandCombatGame, val playerRef: Int) : JTextArea(10, 60) {
 
     fun refresh() {
         val actionList = agent.getPlan(game, playerRef)
-        when (agent) {
-            is SimpleActionEvoAgentRollForward -> {
-                text = lastDifferentGenome.joinToString("") + "\n" + agent.genome.joinToString("") + "\n"
-                if (!lastGenome.contentEquals(agent.genome))
-                    lastDifferentGenome = lastGenome.copyOf()
-                lastGenome = agent.genome.copyOf()
-            }
-            is SimpleActionEvoAgent -> {
-                text = lastDifferentGenome.joinToString("") + "\n" + agent.underlyingAgent.buffer?.joinToString("") + "\n"
-                if (!lastGenome.contentEquals(agent.underlyingAgent.buffer ?: intArrayOf()))
-                    lastDifferentGenome = lastGenome.copyOf()
-                lastGenome = (agent.underlyingAgent.buffer ?: intArrayOf()).copyOf()
-            }
-        }
-        append(actionList.joinToString("\n"))
+        //  text = "Agent: ${numberToPlayerID(playerRef)}\t${agent.getAgentType()}\n${actionList.joinToString("\n")}\n"
+        text = "Agent: ${numberToPlayerID(playerRef)}\t${agent.getAgentType().take(40)}\n"
+        append("${actionList.joinToString("\n")}\n")
+
     }
 }

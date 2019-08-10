@@ -93,13 +93,8 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
 
     fun getBestAction(state: ActionAbstractGameState): Action {
         val key = stateFunction(state)
-        val actionMap: Map<Action, MCStatistics> = tree[key]?.actionMap ?: mapOf()
-        val chosenAction = actionMap.maxBy {
-            when (params.selectionMethod) {
-                MCTSSelectionMethod.SIMPLE -> it.value.mean
-                MCTSSelectionMethod.ROBUST -> it.value.visitCount.toDouble()
-            }
-        }?.key ?: throw AssertionError("Unexpected")
+        val chosenAction = tree[key]?.getBestAction()
+        if (chosenAction == null) throw AssertionError("Null action")
         return chosenAction
     }
 
@@ -134,7 +129,7 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
     }
 
     override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return getPlan(gameState, tree, stateFunction, playerRef)
     }
 
     override fun reset(): SimpleActionPlayerInterface {
@@ -153,6 +148,24 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
+}
+
+fun getPlan(gameState: ActionAbstractGameState, tree: Map<String, TTNode>, stateFunction: StateSummarizer, playerRef: Int): List<Action> {
+    // We need to work our way down the tree
+    val retValue = mutableListOf<Action>()
+    val forwardModel = gameState.copy() as ActionAbstractGameState
+    forwardModel.registerAgent(0, SimpleActionDoNothing(1000))
+    forwardModel.registerAgent(1, SimpleActionDoNothing(1000))
+    var count = 0
+    do {
+        val action = tree[stateFunction(forwardModel)]?.getBestAction() ?: NoAction(playerRef, 1000)
+        retValue.add(action)
+        val nextDecisionTime = action.nextDecisionPoint(playerRef, forwardModel)
+        action.apply(forwardModel)
+        forwardModel.next(nextDecisionTime - forwardModel.nTicks())
+        count++
+    } while (count < 10 && action != NoAction(playerRef, 1000))
+    return retValue.toList()
 }
 
 
@@ -249,7 +262,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
     }
 
     override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return getPlan(gameState, tree, stateFunction, playerRef)
     }
 
     override fun reset(): SimpleActionPlayerInterface {

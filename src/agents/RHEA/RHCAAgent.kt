@@ -40,25 +40,38 @@ data class RHCAAgent(
             opponentPopulation = (0 until populationSize).map { randomPoint(gameState.nActions(), sequenceLength) }
         }
 
+        val initialiseTime = System.currentTimeMillis()
         if (useShiftBuffer) {
             val numberToShiftLeft = gameState.codonsPerAction()
             currentPopulation = currentPopulation.map { p -> shiftLeftAndRandomAppend(p, numberToShiftLeft, gameState.nActions()) }
             opponentPopulation = opponentPopulation.map { p -> shiftLeftAndRandomAppend(p, numberToShiftLeft, gameState.nActions()) }
         }
 
+        val shiftTime = System.currentTimeMillis()
         var currentBest: IntArray
         var iterations = 0
+        var breedTime = 0L
+        var scoreTime = 0L
         do {
+            val iterationStart = System.currentTimeMillis()
             scoreCurrentPopulation(gameState, playerRef)
             currentBest = currentScores.zip(currentPopulation).maxBy { p -> p.first }?.second ?: currentPopulation[0]
+
+            val midTime = System.currentTimeMillis()
 
             breedCurrentPopulation(gameState.nActions())
 
             iterations++
+            val endTime = System.currentTimeMillis()
+            breedTime += endTime - midTime
+            scoreTime += midTime - iterationStart
 
         } while (timeLimit + startTime > System.currentTimeMillis())
 
         StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
+        StatsCollator.addStatistics("${name}_ScoreTime", scoreTime)
+        StatsCollator.addStatistics("${name}_BreedTime", breedTime)
+        StatsCollator.addStatistics("${name}_InitTime", shiftTime - startTime)
         StatsCollator.addStatistics("${name}_Evals", iterations)
         StatsCollator.addStatistics("${name}_HorizonUsed", elapsedLengthOfPlan(currentBest, gameState.copy(), playerRef))
 

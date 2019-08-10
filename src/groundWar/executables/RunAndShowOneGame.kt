@@ -3,6 +3,7 @@ package groundWar.executables
 import agents.MCTS.*
 import agents.RHEA.*
 import groundWar.*
+import groundWar.views.PlanView
 import groundWar.views.WorldView
 import utilities.*
 import java.awt.*
@@ -83,8 +84,10 @@ fun runWithParams(params: EventGameParams, mapFile: String = "") {
         multiView.add(redView)
         multiView.add(blueView)
     }
-    //   val planView = PlanView(game.getAgent(0), game, 0)
-//    multiView.add(planView)
+    val bluePlan = PlanView(blueAgent, game, 0)
+    val redPlan = PlanView(redAgent, game, 1)
+    multiView.add(bluePlan)
+    multiView.add(redPlan)
     val frame = JEasyFrame(multiView, "Event Based Game")
     frame.defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
 
@@ -95,9 +98,11 @@ fun runWithParams(params: EventGameParams, mapFile: String = "") {
             blueView.game = game.copy(0)
         }
         frame.title = String.format("Time: %d        Blue: %.0f        Red: %.0f", game.nTicks(), game.score(0), game.score(1))
+        bluePlan.refresh()
+        redPlan.refresh()
         multiView.repaint()
         do {
-            Thread.sleep(50)
+            Thread.sleep(100)
         } while (paused)
     }
 

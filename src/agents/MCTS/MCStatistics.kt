@@ -63,6 +63,16 @@ class TTNode(
         return withScores.maxBy { (_, score) -> score }!!.first
     }
 
+    fun getBestAction(): Action {
+        val chosenAction = actionMap.maxBy {
+            when (params.selectionMethod) {
+                MCTSSelectionMethod.SIMPLE -> it.value.mean
+                MCTSSelectionMethod.ROBUST -> it.value.visitCount.toDouble()
+            }
+        }?.key ?: throw AssertionError("Unexpected")
+        return chosenAction
+    }
+
     fun update(action: Action, possibleActions: List<Action>, reward: Double) {
         actionMap.filter { (k, _) -> possibleActions.contains(k) }
                 .mapNotNull { (_, v) -> v }
