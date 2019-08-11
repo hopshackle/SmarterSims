@@ -92,8 +92,8 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
         return index
     }
 
-    override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    override fun getLastPlan(): List<Action> {
+        return emptyList()
     }
 
     override fun reset(): SimpleActionPlayerInterface = this

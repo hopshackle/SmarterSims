@@ -1,6 +1,7 @@
 package groundWar.executables
 
 import groundWar.EventGameParams
+import groundWar.createAgentParamsFromString
 import java.awt.*
 import javax.swing.*
 import kotlin.reflect.full.memberProperties
@@ -24,6 +25,26 @@ class ControlView {
             "percentFort", "fortAttackerDivisor", "fortDefenderExpBonus", "fogOfWar", "fogStrengthAssumption", "speed",
             "OODALoop", "minAssaultFactor", "seed")
     var runningThread = Thread()
+
+    val defaultBlueAgent = """
+        algorithm=MCTS
+        timeBudget=50
+        evalBudget=100000
+        sequenceLength=24
+        planningHorizon=400
+        algoParams=C:0.03,maxActions:20,rolloutPolicy:Random,selectionPolicy:SIMPLE
+        opponentModel=DoNothing
+    """.trimIndent()
+
+    val defaultRedAgent = """
+        algorithm=RHEA
+        timeBudget=50
+        evalBudget=100000
+        sequenceLength=4
+        planningHorizon=400
+        algoParams=probMutation:0.7,flipAtLeastOneValue
+        opponentModel=DoNothing
+    """.trimIndent()
 
     class ParameterSetting(val text: String, val propertyMap: MutableMap<String, Any?>) : JPanel(FlowLayout(FlowLayout.LEFT)) {
         init {
@@ -60,10 +81,10 @@ class ControlView {
     }
 
     fun create(frame: JFrame) {
-        val setting = JPanel(GridLayout(0, 1))
+        val displayPanel = JPanel(GridLayout(1, 2))
+        val setting = JPanel(GridLayout(0, 1, 1, 1))
         parameterNames.forEach {
             setting.add(ParameterSetting(it, propertyMap))
-            //ParameterSetting(it, default.getOrElse(it, ""))
         }
         val fileChooserPanel = JPanel(FlowLayout(FlowLayout.LEFT))
         val mapButton = JButton("Map ")
@@ -79,6 +100,13 @@ class ControlView {
         }
         setting.add(fileChooserPanel)
 
+        val agentParameters = JPanel(GridLayout(0, 1, 1, 1))
+        agentParameters.add(JLabel("Blue Agent:"))
+        val blueAgentDetails = JTextArea(defaultBlueAgent, 15, 50)
+        agentParameters.add(blueAgentDetails)
+        agentParameters.add(JLabel("Red Agent:"))
+        val redAgentDetails = JTextArea(defaultRedAgent, 15, 50)
+        agentParameters.add(redAgentDetails)
 
         val buttonPanel = JPanel()
         val startButton = JButton("Start")
@@ -105,7 +133,9 @@ class ControlView {
                         minAssaultFactor = propertyMap["minAssaultFactor"] as DoubleArray,
                         seed = propertyMap["seed"] as Long
                 )
-                runningThread = Thread { runWithParams(simParams, mapNameField.text) }
+                val blueAgent = createAgentParamsFromString(blueAgentDetails.text.split("\n")).createAgent("BLUE")
+                val redAgent = createAgentParamsFromString(redAgentDetails.text.split("\n")).createAgent("RED")
+                runningThread = Thread { runWithParams(simParams, blueAgent, redAgent, mapNameField.text) }
                 runningThread.start()
             }
         }
@@ -118,9 +148,11 @@ class ControlView {
         buttonPanel.add(pauseButton)
         setting.add(buttonPanel)
 
-        frame.add(setting)
+        displayPanel.add(setting)
+        displayPanel.add(agentParameters)
+        frame.add(displayPanel)
         frame.title = "Smarter Simulations"
-        frame.setBounds(100, 100, 300, parameterNames.size * 30 + 100)
+        frame.setBounds(100, 100, 600, parameterNames.size * 30 + 100)
         frame.defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
         frame.isVisible = true
     }

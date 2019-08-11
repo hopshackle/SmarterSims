@@ -4,7 +4,7 @@ import ggi.*
 
 class SimpleActionDoNothing(val defaultWait: Int) : SimpleActionPlayerInterface {
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int) = NoAction(playerRef, defaultWait)
-    override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int) = emptyList<Action>()
+    override fun getLastPlan() = emptyList<Action>()
     override fun reset() = this
     override fun getAgentType() = "SimpleActionDoNothing"
     override fun getForwardModelInterface() = this
@@ -18,7 +18,7 @@ object SimpleActionRandom : SimpleActionPlayerInterface {
         return allActions.random()
     }
 
-    override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int) = emptyList<Action>()
+    override fun getLastPlan() = emptyList<Action>()
     override fun reset() = this
     override fun getAgentType() = "SimpleActionRandom"
     override fun getForwardModelInterface() = this

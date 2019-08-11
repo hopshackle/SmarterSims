@@ -28,6 +28,7 @@ data class RHCAAgent(
     private var opponentScores = mutableListOf<Double>()
     private var currentParents = listOf<IntArray>()
     private var opponentParents = listOf<IntArray>()
+    var currentPlan = emptyList<Action>()
 
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
         val startTime = System.currentTimeMillis()
@@ -40,19 +41,19 @@ data class RHCAAgent(
             opponentPopulation = (0 until populationSize).map { randomPoint(gameState.nActions(), sequenceLength) }
         }
 
-        val initialiseTime = System.currentTimeMillis()
         if (useShiftBuffer) {
             val numberToShiftLeft = gameState.codonsPerAction()
             currentPopulation = currentPopulation.map { p -> shiftLeftAndRandomAppend(p, numberToShiftLeft, gameState.nActions()) }
             opponentPopulation = opponentPopulation.map { p -> shiftLeftAndRandomAppend(p, numberToShiftLeft, gameState.nActions()) }
         }
 
-        val shiftTime = System.currentTimeMillis()
-        var currentBest: IntArray
+        var lastBest = intArrayOf()
+        var currentBest = intArrayOf()
         var iterations = 0
         var breedTime = 0L
         var scoreTime = 0L
         do {
+            lastBest = currentBest
             val iterationStart = System.currentTimeMillis()
             scoreCurrentPopulation(gameState, playerRef)
             currentBest = currentScores.zip(currentPopulation).maxBy { p -> p.first }?.second ?: currentPopulation[0]
@@ -71,11 +72,12 @@ data class RHCAAgent(
         StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
         StatsCollator.addStatistics("${name}_ScoreTime", scoreTime)
         StatsCollator.addStatistics("${name}_BreedTime", breedTime)
-        StatsCollator.addStatistics("${name}_InitTime", shiftTime - startTime)
         StatsCollator.addStatistics("${name}_Evals", iterations)
-        StatsCollator.addStatistics("${name}_HorizonUsed", elapsedLengthOfPlan(currentBest, gameState.copy(), playerRef))
+        StatsCollator.addStatistics("${name}_HorizonUsed", elapsedLengthOfPlan(lastBest, gameState.copy(), playerRef))
 
-        return gameState.translateGene(playerRef, currentBest)
+        currentPlan = convertGenomeToActionList(lastBest, gameState.copy(), playerRef)
+
+        return gameState.translateGene(playerRef, lastBest)
     }
 
     private fun scoreCurrentPopulation(gameState: ActionAbstractGameState, playerId: Int) {
@@ -112,14 +114,16 @@ data class RHCAAgent(
         // and include them in the next generation
 
         // then we mutate them to get the next generation
-        (effectiveParentSize until populationSize).forEach { i ->
-            currentPopulation += (mutate(currentParents[RHEARandom.nextInt(effectiveParentSize)], probMutation, nActions, flipAtLeastOneValue = flipAtLeastOneValue))
-            opponentPopulation += (mutate(opponentParents[RHEARandom.nextInt(effectiveParentSize)], probMutation, nActions, flipAtLeastOneValue = flipAtLeastOneValue))
+        currentPopulation = currentParents + (effectiveParentSize until populationSize).map {
+            (mutate(currentParents[RHEARandom.nextInt(effectiveParentSize)], probMutation, nActions, flipAtLeastOneValue = flipAtLeastOneValue))
+        }
+        opponentPopulation = opponentParents + (effectiveParentSize until populationSize).map {
+            (mutate(opponentParents[RHEARandom.nextInt(effectiveParentSize)], probMutation, nActions, flipAtLeastOneValue = flipAtLeastOneValue))
         }
     }
 
-    override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
-        return convertGenomeToActionList(currentParents[0], gameState.copy(), playerRef)
+    override fun getLastPlan(): List<Action> {
+        return currentPlan
     }
 
     override fun getForwardModelInterface(): SimpleActionPlayerInterface {

@@ -2,14 +2,14 @@ package groundWar.executables
 
 import agents.MCTS.*
 import agents.RHEA.*
+import ggi.SimpleActionPlayerInterface
 import groundWar.*
-import groundWar.views.PlanView
-import groundWar.views.WorldView
+import groundWar.views.*
 import utilities.*
 import java.awt.*
 import java.io.*
 import javax.swing.*
-import kotlin.random.Random
+import kotlin.streams.toList
 
 var paused: Boolean = false
 
@@ -30,10 +30,24 @@ fun main(args: Array<String>) {
             fortDefenderExpBonus = 0.1
     )
 
-    runWithParams(params, if (args.size > 0) args[0] else "")
+    val blueParams = if (args.size > 0) {
+        val fileAsLines = BufferedReader(FileReader(args[0])).lines().toList()
+        createAgentParamsFromString(fileAsLines)
+    } else AgentParams()
+    val redParams = if (args.size > 1) {
+        val fileAsLines = BufferedReader(FileReader(args[1])).lines().toList()
+        createAgentParamsFromString(fileAsLines)
+    } else AgentParams()
+
+    val blueAgent = blueParams.createAgent("BLUE")
+    val redAgent = redParams.createAgent("RED")
+    runWithParams(params, blueAgent, redAgent, if (args.size > 2) args[2] else "")
 }
 
-fun runWithParams(params: EventGameParams, mapFile: String = "") {
+fun runWithParams(params: EventGameParams,
+                  blueAgent: SimpleActionPlayerInterface,
+                  redAgent: SimpleActionPlayerInterface,
+                  mapFile: String = "") {
     val fileAsLines = if (mapFile != "") BufferedReader(FileReader(mapFile)).readLines().joinToString("\n") else ""
     val world = if (fileAsLines == "") World(params = params) else createWorld(fileAsLines, params)
     if (mapFile != "" && !fileAsLines.startsWith("{")) {
@@ -47,25 +61,8 @@ fun runWithParams(params: EventGameParams, mapFile: String = "") {
     game.scoreFunction[PlayerId.Blue] = interimScoreFunction
     game.scoreFunction[PlayerId.Red] = interimScoreFunction
     StatsCollator.clear()
-    val blueOpponentModel =
-            //         DoNothingAgent()
-            HeuristicAgent(2.0, 1.1)
-    //        SimpleActionEvoAgent(SimpleEvoAgent(name = "OppEA", nEvals = 10, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon))
-    val blueAgent =
-    //    SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 1000, timeLimit = 100, sequenceLength = 40,
-    //    useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = false,
-            //    horizon = 200, opponentModel = blueOpponentModel))
-            MCTSTranspositionTableAgentMaster(MCTSParameters(maxActions = 40, maxDepth = 12, C=0.03, timeLimit = 200, maxPlayouts = 2000, horizon = 200), LandCombatStateFunction,
-                    opponentModel = null, name = "BLUE")
 
     game.registerAgent(0, blueAgent)
-    val redAgent =
-            SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 20000, timeLimit = 100, sequenceLength = 12, useMutationTransducer = false,
-                    probMutation = 0.1, horizon = 50,
-                    //    MCTSTranspositionTableAgentMaster(MCTSParameters(maxActions = 40, timeLimit = 100, maxPlayouts = 2000, horizon = 100), LandCombatStateFunction,
-                    name = "RED"),
-                    opponentModel = HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)))
-    // HeuristicAgent(2.0, 1.1)
     game.registerAgent(1, redAgent)
 
     class ListComponent : JComponent() {

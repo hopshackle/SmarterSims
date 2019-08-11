@@ -8,6 +8,8 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
                            val opponentModel: SimpleActionPlayerInterface = SimpleActionDoNothing(underlyingAgent.horizon)
 ) : SimpleActionPlayerInterface {
 
+    var currentPlan = emptyList<Action>()
+
     override fun reset(): SimpleActionPlayerInterface {
         underlyingAgent.reset()
         opponentModel.reset()
@@ -30,6 +32,7 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
                 return NoAction(playerRef, 1000)
             val gene = genome.sliceArray(0 until intPerAction)
             val chosen = gameState.translateGene(playerRef, gene)
+            currentPlan = convertGenomeToActionList(genome, gameState.copy(), playerRef)
             return chosen
         }
         throw AssertionError("Unexpected type of GameState $gameState")
@@ -40,9 +43,8 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
                 ?: intArrayOf()).copyOf(), underlyingAgent.horizon)
     }
 
-    override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
-        val genome = underlyingAgent.buffer
-        return convertGenomeToActionList(genome, gameState.copy(), playerRef)
+    override fun getLastPlan(): List<Action> {
+        return currentPlan
     }
 
     override fun backPropagate(finalScore: Double) {}
@@ -101,8 +103,8 @@ class SimpleActionEvoAgentRollForward(var genome: IntArray, val horizon: Int = 1
         }
     }
 
-    override fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action> {
-        return convertGenomeToActionList(genome, gameState, playerRef)
+    override fun getLastPlan(): List<Action> {
+        TODO("Not implemented")
     }
 
     override fun reset() = this

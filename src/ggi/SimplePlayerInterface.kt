@@ -11,7 +11,7 @@ interface SimpleActionPlayerInterface: SimplePlayerInterface {
         throw AssertionError("Should not use")
     }
     fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action
-    fun getPlan(gameState: ActionAbstractGameState, playerRef: Int): List<Action>
+    fun getLastPlan(): List<Action>
     override fun reset(): SimpleActionPlayerInterface
     fun getForwardModelInterface(): SimpleActionPlayerInterface
     fun backPropagate(finalScore: Double)

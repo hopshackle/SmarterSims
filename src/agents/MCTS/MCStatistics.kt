@@ -54,8 +54,7 @@ class TTNode(
         val filteredOptions = validOptions.filter { actionMap[it]!!.visitCount == 0 }
         return if (filteredOptions.isEmpty()) {
             throw AssertionError("No unexplored options to choose from")
-        }
-        else filteredOptions.random()
+        } else filteredOptions.random()
     }
 
     fun getUCTAction(validOptions: List<Action>): Action {
@@ -66,7 +65,10 @@ class TTNode(
     fun getBestAction(): Action {
         val chosenAction = actionMap.maxBy {
             when (params.selectionMethod) {
-                MCTSSelectionMethod.SIMPLE -> it.value.mean
+                MCTSSelectionMethod.SIMPLE -> when (it.value.visitCount) {
+                    0 -> 0.0
+                    else -> it.value.mean
+                }
                 MCTSSelectionMethod.ROBUST -> it.value.visitCount.toDouble()
             }
         }?.key ?: throw AssertionError("Unexpected")
