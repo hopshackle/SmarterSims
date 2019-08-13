@@ -23,7 +23,7 @@ class ControlView {
     val propertyMap: MutableMap<String, Any?> = EventGameParams::class.memberProperties.map { it.name to it.get(params) }.toMap().toMutableMap()
     val parameterNames = listOf("nAttempts", "minConnections", "maxDistance", "width", "height", "startingForce", "lanchesterCoeff", "lanchesterExp",
             "percentFort", "fortAttackerDivisor", "fortDefenderExpBonus", "fogOfWar", "fogStrengthAssumption", "speed",
-            "OODALoop", "minAssaultFactor", "seed")
+            "OODALoop", "orderDelay", "minAssaultFactor", "seed")
     var runningThread = Thread()
 
     val defaultBlueAgent = """
@@ -130,6 +130,7 @@ class ControlView {
                         fogStrengthAssumption = propertyMap["fogStrengthAssumption"] as DoubleArray,
                         speed = propertyMap["speed"] as DoubleArray,
                         OODALoop = propertyMap["OODALoop"] as IntArray,
+                        orderDelay = propertyMap["orderDelay"] as IntArray,
                         minAssaultFactor = propertyMap["minAssaultFactor"] as DoubleArray,
                         seed = propertyMap["seed"] as Long
                 )

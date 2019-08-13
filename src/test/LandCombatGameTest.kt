@@ -5,10 +5,9 @@ import agents.RHEA.*
 import groundWar.*
 import groundWar.EventGameParams
 import math.Vec2d
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.math.abs
-import kotlin.random.Random
-import kotlin.test.*
 
 // we create a simple world of 3 cities. One Blue and one Red, with a Neutral world sandwiched between them
 private val cities = listOf(
@@ -28,8 +27,70 @@ private val routes = listOf(
 val params = EventGameParams(speed = doubleArrayOf(5.0, 5.0), width = 20, height = 20, seed = 10)
 val world = World(cities, routes, params = params)
 val game = LandCombatGame(world)
+val delayWorld = world.copy(params = params.copy(orderDelay = intArrayOf(10, 10)))
+val delayGame = LandCombatGame(delayWorld)
 
 object TransitTest {
+
+    @Test
+    fun transitCreatedWithDelay() {
+        val fullInvasion = delayGame.translateGene(0, intArrayOf(0, 1, 9, 1))
+        val gameCopy = delayGame.copy()
+        fullInvasion.apply(gameCopy)
+        gameCopy.next(1)
+
+        assertEquals(gameCopy.world.currentTransits.size, 0)
+        gameCopy.next(10)
+        assertEquals(gameCopy.world.currentTransits.size, 1)
+        assertEquals(gameCopy.world.currentTransits[0], Transit(10.0, 0, 2, PlayerId.Blue, 10, 12))
+    }
+
+    @Test
+    fun transitLaunchedAfterCityFallsIsIgnored() {
+        // we set up a Red force to conquer a BLue city
+        // with a Blue LaunchExpedition to leave the city that is delayed until after the city has fallen
+        // we then check that the LaunchExpedition does nothing...no TransitStart or TransitEnd generated
+        // and MakeDecision still correctly in place
+        delayGame.world.cities[1].pop = 20.0
+        val gameCopy = delayGame.copy()
+        LaunchExpedition(PlayerId.Red, 1, 0, 1.0, 32).apply(gameCopy)
+        gameCopy.next(11)
+
+        LaunchExpedition(PlayerId.Blue, 0, 2, 1.0, 32).apply(gameCopy)
+        gameCopy.next(11)
+
+        assertEquals(gameCopy.world.cities[0].owner, PlayerId.Red)
+        assertEquals(gameCopy.eventQueue.size, 1)
+        assertEquals(gameCopy.eventQueue.filter { it.action is TransitEnd }.size, 1)
+        assertEquals(gameCopy.eventQueue.peek().action, TransitEnd(PlayerId.Blue, 0, 2, 23))
+
+        assertEquals(gameCopy.world.currentTransits.size, 0)
+    }
+
+    @Test
+    fun transitLaunchedAfterPopReducedIsUpdated() {
+        val gameCopy = delayGame.copy()
+        LaunchExpedition(PlayerId.Red, 1, 0, 0.5, 32).apply(gameCopy)
+        gameCopy.next(11)
+
+        LaunchExpedition(PlayerId.Blue, 0, 2, 1.0, 32).apply(gameCopy)
+        gameCopy.next(11)
+
+        assertEquals(gameCopy.world.cities[0].owner, PlayerId.Blue)
+        assertEquals(gameCopy.world.cities[0].pop, 0.0)
+
+        assertEquals(gameCopy.eventQueue.size, 1)
+        assertEquals(gameCopy.eventQueue.filter { it.action is TransitEnd }.size, 1)
+        assertEquals(gameCopy.eventQueue.peek().action, TransitEnd(PlayerId.Blue, 0, 2, 23))
+
+        assertEquals(gameCopy.world.currentTransits.size, 1)
+        assertEquals(gameCopy.world.currentTransits[0].fromCity, 0)
+        assertEquals(gameCopy.world.currentTransits[0].toCity, 2)
+        assertEquals(gameCopy.world.currentTransits[0].playerId, PlayerId.Blue)
+        assertEquals(gameCopy.world.currentTransits[0].startTime, 21)
+        assertEquals(gameCopy.world.currentTransits[0].endTime, 23)
+        assertEquals(gameCopy.world.currentTransits[0].nPeople, 7.47, 0.01)
+    }
 
     @Test
     fun TransitHasMaxForce() {
@@ -38,6 +99,7 @@ object TransitTest {
         assert(fullInvasion is LaunchExpedition)
         val gameCopy = game.copy()
         fullInvasion.apply(gameCopy)
+        gameCopy.next(1)
         assertEquals(gameCopy.world.currentTransits.size, 1)
         val transit = gameCopy.world.currentTransits.first()
         assertEquals(transit.fromCity, 0)
@@ -55,6 +117,7 @@ object TransitTest {
         val gameCopy = game.copy()
         gameCopy.world.cities[1].pop = 1.0
         tokenInvasion.apply(gameCopy)
+        gameCopy.next(1)
         assertEquals(gameCopy.world.currentTransits.size, 1)
         val transit = gameCopy.world.currentTransits.first()
         assertEquals(transit.fromCity, 1)
@@ -98,6 +161,7 @@ object BattleTest {
         // 1 = cityFrom, 0 = 1st route (hence to 0)
         fullInvasion.apply(gameCopy)
         opposingForce.apply(gameCopy)
+        gameCopy.next(1)
         val nextEvent = gameCopy.eventQueue.peek()
         assertEquals(nextEvent.tick, 2)
         assert(nextEvent.action is Battle)
@@ -112,17 +176,18 @@ object BattleTest {
         // 1 = cityFrom, 0 = 1st route (hence to 0)
         fullInvasion.apply(gameCopy)
         opposingForce.apply(gameCopy)
+        gameCopy.next(1)
         val nextEvent = gameCopy.eventQueue.peek()
         assert(nextEvent.action is Battle)
         val startingTransits = gameCopy.world.currentTransits.toList()
         assertEquals(startingTransits.size, 2)
         assertEquals(startingTransits[0], Transit(10.0, 0, 1, PlayerId.Blue, 0, 4))
-        assert(Math.abs(startingTransits[1].nPeople - 6.0) < 0.01)
+        assert(abs(startingTransits[1].nPeople - 6.0) < 0.01)
         assertEquals(startingTransits[1], Transit(startingTransits[1].nPeople, 1, 0, PlayerId.Red, 0, 4))
         nextEvent.action.apply(gameCopy)
         val endingTransits = gameCopy.world.currentTransits.toList()
         assertEquals(endingTransits.size, 1)
-        assert(Math.abs(endingTransits[0].nPeople - 6.592) < 0.01)
+        assert(abs(endingTransits[0].nPeople - 6.592) < 0.01)
         assertEquals(endingTransits[0], Transit(endingTransits[0].nPeople, 0, 1, PlayerId.Blue, 0, 4))
         assert(endingTransits[0] !== startingTransits[0])
     }
@@ -136,13 +201,17 @@ object BattleTest {
         // 1 = cityFrom, 0 = 1st route (hence to 0)
         fullInvasion.apply(gameCopy)
         opposingForce.apply(gameCopy)
-        assertEquals(gameCopy.eventQueue.filter { e -> e.action is Battle }.size, 1)
+        assertEquals(gameCopy.eventQueue.filter { e -> e.action is TransitStart }.size, 2)
+        assertEquals(gameCopy.eventQueue.filter { e -> e.action is TransitEnd }.size, 2)
 
         gameCopy.next(1)
+        assertEquals(gameCopy.eventQueue.filter { e -> e.action is Battle }.size, 1)
+
         val opposingForce2 = gameCopy.translateGene(1, intArrayOf(1, 0, 9, 1))
         // 1 = cityFrom, 0 = 1st route (hence to 0)
         opposingForce2.apply(gameCopy)
-        assertEquals(gameCopy.eventQueue.filter { e -> e.action is Battle }.size, 1)
+        assertEquals(gameCopy.eventQueue.filter { e -> e.action is TransitStart }.size, 1)
+        gameCopy.next(1)
 
         val nextEvent = gameCopy.eventQueue.peek()
         assert(nextEvent.action is Battle)
@@ -176,6 +245,7 @@ class MakeDecisionTest {
         assertEquals(gameCopy.eventQueue.size, 0)
         assertEquals(fullInvasion.nextDecisionPoint(0, gameCopy), 16)
         fullInvasion.apply(gameCopy)
+        gameCopy.next(1)
         assertEquals(gameCopy.eventQueue.size, 1)         // no MakeDecision created
         gameCopy.registerAgent(0, SimpleActionEvoAgent())
         assertEquals(gameCopy.eventQueue.size, 2)           // Make Decision now added
@@ -265,11 +335,11 @@ class MakeDecisionTest {
         assertEquals(gameCopy.eventQueue.size, 1)
         assertEquals(gameCopy.eventQueue.history.size, 0)
         gameCopy.next(1)
-        val event = gameCopy.eventQueue.peek()
+
         assertTrue(gameCopy.eventQueue.size in listOf(1, 2))
         assertTrue(gameCopy.eventQueue.any { e -> e.action == MakeDecision(0) })
 
-        assertEquals(gameCopy.eventQueue.history.size, 2)
+        assertTrue(gameCopy.eventQueue.history.size in listOf(2, 3))
         assertEquals(gameCopy.eventQueue.history[0].action, MakeDecision(0))
         assertFalse(gameCopy.eventQueue.history[1].action is MakeDecision)
     }

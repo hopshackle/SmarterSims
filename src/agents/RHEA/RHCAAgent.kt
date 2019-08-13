@@ -47,8 +47,8 @@ data class RHCAAgent(
             opponentPopulation = opponentPopulation.map { p -> shiftLeftAndRandomAppend(p, numberToShiftLeft, gameState.nActions()) }
         }
 
-        var lastBest = intArrayOf()
-        var currentBest = intArrayOf()
+        var lastBest: IntArray
+        var currentBest = currentPopulation[0]
         var iterations = 0
         var breedTime = 0L
         var scoreTime = 0L

@@ -22,6 +22,7 @@ fun main(args: Array<String>) {
             minConnections = 3,
             speed = doubleArrayOf(5.0, 5.0),
             OODALoop = intArrayOf(25, 25),
+            orderDelay = intArrayOf(0, 0),
             minAssaultFactor = doubleArrayOf(2.0, 2.0),
             lanchesterCoeff = doubleArrayOf(0.05, 0.05),
             lanchesterExp = doubleArrayOf(0.5, 0.5),

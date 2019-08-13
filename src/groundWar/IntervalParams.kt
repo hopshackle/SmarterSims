@@ -28,6 +28,7 @@ fun createIntervalParamsFromString(details: List<String>): IntervalParams {
             lanchesterCoeff = paramMap.getOrDefault("lanchesterCoeff", intervalList("0.2 : 0.2")),
             lanchesterExp = paramMap.getOrDefault("lanchesterExp", intervalList("0.5 : 0.5")),
             OODALoop = paramMap.getOrDefault("OODALoop", intervalList("10 : 10")),
+            orderDelay = paramMap.getOrDefault("orderDelay", intervalList("10 : 10")),
             minAssaultFactor = paramMap.getOrDefault("minAssaultFactor", intervalList("1.0 : 1.0")),
             nAttempts = paramMap.getOrDefault("nAttempts", listOf(interval("20")))[0],
             width = paramMap.getOrDefault("width", listOf(interval("1000")))[0],
@@ -51,6 +52,7 @@ data class IntervalParams(
         val lanchesterCoeff: List<Interval>,
         val lanchesterExp: List<Interval>,
         val OODALoop: List<Interval>,
+        val orderDelay: List<Interval>,
         val minAssaultFactor: List<Interval>,
         val nAttempts: Interval,
         val width: Interval,
@@ -85,6 +87,7 @@ data class IntervalParams(
                     lanchesterCoeff = lanchesterCoeff.map { it.sampleFrom().toDouble() }.toDoubleArray(),
                     lanchesterExp = lanchesterExp.map { it.sampleFrom().toDouble() }.toDoubleArray(),
                     OODALoop = OODALoop.map { it.sampleFrom().toInt() }.toIntArray(),
+                    orderDelay = orderDelay.map { it.sampleFrom().toInt() }.toIntArray(),
                     minAssaultFactor = minAssaultFactor.map { it.sampleFrom().toDouble() }.toDoubleArray()
             )
 }
@@ -112,6 +115,7 @@ data class EventGameParams(
         val lanchesterExp: DoubleArray = doubleArrayOf(0.5, 0.5),    // should be between 0.0 and 1.0
         // agent behaviour
         val OODALoop: IntArray = intArrayOf(10, 10),
+        val orderDelay: IntArray = intArrayOf(0, 0),
         val minAssaultFactor: DoubleArray = doubleArrayOf(0.1, 0.1)
 )
 

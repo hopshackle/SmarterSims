@@ -4,27 +4,32 @@ import ggi.Action
 import ggi.ActionAbstractGameState
 import kotlin.math.min
 
+
 data class TransitStart(val transit: Transit) : Action {
+
     override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
             val world = state.world
             val city = world.cities[transit.fromCity]
-            if (city.owner == transit.playerId) {
-                if (city.pop < transit.nPeople)
-                    throw AssertionError("Invalid Transit - maximum force move is limited to city population")
-                city.pop -= transit.nPeople
+            if (city.owner != transit.playerId)
+                return // do nothing
+            val actualTransit = if (city.pop < transit.nPeople) {
+                transit.copy(city.pop)
             } else {
-                throw AssertionError("Invalid Transit - must be from city owned by playerId")
+                transit
             }
-            val enemyCollision = world.nextCollidingTransit(transit, state.nTicks())
-            world.addTransit(transit)
+            city.pop -= actualTransit.nPeople
+            val enemyCollision = world.nextCollidingTransit(actualTransit, state.nTicks())
+            world.addTransit(actualTransit)
             if (enemyCollision != null) {
-                state.eventQueue.add(transit.collisionEvent(enemyCollision, world, state.nTicks()))
+                state.eventQueue.add(actualTransit.collisionEvent(enemyCollision, world, state.nTicks()))
             }
         }
     }
 
-    override fun visibleTo(player: Int, state: ActionAbstractGameState) = if (state is LandCombatGame) state.world.checkVisible(transit, numberToPlayerID(player)) else true
+    override fun visibleTo(player: Int, state: ActionAbstractGameState): Boolean {
+        return if (state is LandCombatGame) state.world.checkVisible(transit, numberToPlayerID(player)) else true
+    }
 }
 
 data class TransitEnd(val player: PlayerId, val fromCity: Int, val toCity: Int, val endTime: Int) : Action {
@@ -40,16 +45,16 @@ data class TransitEnd(val player: PlayerId, val fromCity: Int, val toCity: Int, 
 
     override fun visibleTo(player: Int, state: ActionAbstractGameState): Boolean {
         if (state is LandCombatGame) {
-            val transit = getTransit(state)
-            return transit != null && state.world.checkVisible(transit, numberToPlayerID(player))
+            return state.world.checkVisible(Transit(0.0, fromCity, toCity, this.player, 0, endTime), numberToPlayerID(player))
         }
         return true
     }
 
+
     private fun getTransit(state: LandCombatGame): Transit? {
-        return state.world.currentTransits.filter {
+        return state.world.currentTransits.firstOrNull {
             it.endTime == endTime && it.playerId == player && it.fromCity == fromCity && it.toCity == toCity
-        }.firstOrNull()
+        }
     }
 }
 
@@ -152,11 +157,13 @@ data class LaunchExpedition(val player: PlayerId, val origin: Int, val destinati
             val world = state.world
             if (isValid(state)) {
                 val distance = world.cities[origin].location.distanceTo(world.cities[destination].location)
-                val arrivalTime = state.nTicks() + (distance / world.params.speed[playerIDToNumber(player)]).toInt()
+                val delayTime = state.world.params.orderDelay[playerIDToNumber(player)]
+                val arrivalTime = state.nTicks() + (distance / world.params.speed[playerIDToNumber(player)]).toInt() + delayTime
+                val startTime = state.nTicks() + delayTime
                 val forcesSent = forcesSent(state)
-                val transit = Transit(forcesSent, origin, destination, player, state.nTicks(), arrivalTime)
-                // we execute the troop departure immediately
-                TransitStart(transit).apply(state)
+                val transit = Transit(forcesSent, origin, destination, player, startTime, arrivalTime)
+                // we execute the troop departure immediately (with delay)
+                state.eventQueue.add(Event(startTime, TransitStart(transit)))
                 // and put their arrival in the queue for the game state
                 state.eventQueue.add(Event(arrivalTime, TransitEnd(transit.playerId, transit.fromCity, transit.toCity, transit.endTime)))
             }

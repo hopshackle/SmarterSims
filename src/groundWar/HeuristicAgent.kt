@@ -52,7 +52,7 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
                 val proportion = target.pop * attackRatio / attacker.pop
                 return LaunchExpedition(playerId,
                         attackRef,
-                        targetCityCode(this, attackRef, targetRef),
+                        targetRef,
                         proportion,
                         gameState.world.params.OODALoop[player])
             }
@@ -77,19 +77,13 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
                 return LaunchExpedition(
                         playerId,
                         fromRef,
-                        targetCityCode(this, fromRef, toRef),
+                        toRef,
                         1.0,
                         gameState.world.params.OODALoop[player])
             }
         }
 
         return NoAction(player, gameState.world.params.OODALoop[player])
-    }
-
-    fun targetCityCode(world: World, attacker: Int, target: Int): Int {
-        val routes = world.allRoutesFromCity[attacker] ?: emptyList()
-        val index = routes.indexOfFirst { it.toCity == target }
-        return index
     }
 
     override fun getLastPlan(): List<Action> {

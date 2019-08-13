@@ -172,9 +172,11 @@ class FogTests {
         // We should now have cities 4 and 8 as Blue, and 3 as Red
         // If Red invades 1 (which is visible to 8), then Blue's projection will not see the result
         LaunchExpedition(PlayerId.Red, 3, 1, 1.0, 10).apply(game)
-        val blueVersion = game.copy(0).next(50)
+        val blueVersion = game.copy(0)
+        blueVersion.next(50)
         assertEquals(blueVersion.world.cities[1].owner, PlayerId.Neutral)
-        val redVersion = game.copy(1).next(50)
+        val redVersion = game.copy(1)
+        redVersion.next(50)
         assertEquals(redVersion.world.cities[1].owner, PlayerId.Red)
         val masterVersion = game.copy().next(50)
         assertEquals(masterVersion.world.cities[1].owner, PlayerId.Red)
@@ -188,8 +190,8 @@ class FogTests {
         foggyWorld.cities[8].owner = PlayerId.Blue
         foggyWorld.cities[8].pop = 5.0
         val game = LandCombatGame(foggyWorld)
-  //      game.eventQueue.add(Event(10, MakeDecision(1)))  // R
-  //      game.eventQueue.add(Event(10, MakeDecision(0))) // B
+        //      game.eventQueue.add(Event(10, MakeDecision(1)))  // R
+        //      game.eventQueue.add(Event(10, MakeDecision(0))) // B
         assertFalse(game.world.checkVisible(6, PlayerId.Blue))
         game.eventQueue.add(Event(10, CityInflux(PlayerId.Red, 10.0, 6))) // R
         game.eventQueue.add(Event(10, CityInflux(PlayerId.Red, 10.0, 1, 3))) // RB
@@ -217,7 +219,7 @@ class FogTests {
 
         assertEquals(masterVersion.eventQueue.size, 13)
 
-  //      assert(redVersion.eventQueue.contains(Event(5, MakeDecision(1))))
+        //      assert(redVersion.eventQueue.contains(Event(5, MakeDecision(1))))
         assert(redVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Red, 10.0, 6))))
         assert(redVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Red, 10.0, 1, 3))))
         assert(redVersion.eventQueue.contains(Event(14, TransitEnd(PlayerId.Blue, 1, 3, 20))))
@@ -226,7 +228,7 @@ class FogTests {
         assert(redVersion.eventQueue.contains(Event(13, LaunchExpedition(PlayerId.Red, 3, 1, 1.0, 10)))) // R
         assertEquals(redVersion.eventQueue.size, 6)
 
-    //    assert(blueVersion.eventQueue.contains(Event(5, MakeDecision(0)))) // B
+        //    assert(blueVersion.eventQueue.contains(Event(5, MakeDecision(0)))) // B
         assert(blueVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Red, 10.0, 1, 3)))) // RB
         assert(blueVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Blue, 10.0, 1, 4)))) // RB
         assert(blueVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Blue, 10.0, 2, 4)))) // B
