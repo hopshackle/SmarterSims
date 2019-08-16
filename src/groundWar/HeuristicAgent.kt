@@ -94,5 +94,5 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
 
     override fun getForwardModelInterface(): SimpleActionPlayerInterface = this
 
-    override fun backPropagate(finalScore: Double) {}
+    override fun backPropagate(finalScore: Double, finalTime: Int) {}
 }

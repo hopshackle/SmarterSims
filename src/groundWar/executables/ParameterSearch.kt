@@ -137,9 +137,11 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
                             horizon = RHEASearchSpace.values[1][settings[1]] as Int,
                             useShiftBuffer = RHEASearchSpace.values[2][settings[2]] as Boolean,
                             probMutation = RHEASearchSpace.values[3][settings[3]] as Double,
-                            flipAtLeastOneValue = RHEASearchSpace.values[4][settings[4]] as Boolean
+                            flipAtLeastOneValue = RHEASearchSpace.values[4][settings[4]] as Boolean,
+                            discountFactor = RHEASearchSpace.values[5][settings[5]] as Double
                     ),
-                    opponentModel = opponentModel ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
+                    opponentModel = opponentModel
+                            ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
             )
             RHCASearchSpace -> RHCAAgent(
                     timeLimit = 50,
@@ -150,7 +152,8 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
                     flipAtLeastOneValue = RHCASearchSpace.values[4][settings[4]] as Boolean,
                     populationSize = RHCASearchSpace.values[5][settings[5]] as Int,
                     parentSize = RHCASearchSpace.values[6][settings[6]] as Int,
-                    evalsPerGeneration = RHCASearchSpace.values[7][settings[7]] as Int
+                    evalsPerGeneration = RHCASearchSpace.values[7][settings[7]] as Int,
+                    discountFactor = RHCASearchSpace.values[8][settings[8]] as Double
             )
             MCTSSearchSpace -> MCTSTranspositionTableAgentMaster(MCTSParameters(
                     C = MCTSSearchSpace.values[3][settings[3]] as Double,
@@ -160,7 +163,8 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
                     horizon = MCTSSearchSpace.values[1][settings[1]] as Int,
                     pruneTree = MCTSSearchSpace.values[2][settings[2]] as Boolean,
                     maxDepth = MCTSSearchSpace.values[0][settings[0]] as Int,
-                    maxActions = MCTSSearchSpace.values[4][settings[4]] as Int
+                    maxActions = MCTSSearchSpace.values[4][settings[4]] as Int,
+                    discountRate = MCTSSearchSpace.values[7][settings[7]] as Double
             ),
                     stateFunction = LandCombatStateFunction,
                     rolloutPolicy = MCTSSearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface,
@@ -196,13 +200,14 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
 
 object RHEASearchSpace : SearchSpace {
 
-    private val names = arrayOf("SequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne")
+    private val names = arrayOf("sequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne", "discountFactor")
     val values = arrayOf(
-            arrayOf(4, 8, 12, 24, 48, 100, 200),                    // sequenceLength
-            arrayOf(10, 25, 50, 100, 200, 400, 1000),               // horizon
+            arrayOf(4, 8, 12, 24, 48, 100),                    // sequenceLength
+            arrayOf(50, 100, 200, 400, 1000),               // horizon
             arrayOf(false, true),                                   // useShiftBuffer
             arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
-            arrayOf(false, true)                           // flipAtLeastOne
+            arrayOf(false, true),                           // flipAtLeastOne
+            arrayOf(1.0, 0.999, 0.99, 0.95, 0.9)            // discount rate
             /*       arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
                            HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
                            HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
@@ -223,14 +228,15 @@ object RHCASearchSpace : SearchSpace {
 
     private val names = arrayOf("SequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne", "populationSize", "parentSize", "evalsPerGeneration")
     val values = arrayOf(
-            arrayOf(4, 8, 12, 24, 48, 100, 200),                    // sequenceLength
-            arrayOf(10, 25, 50, 100, 200, 400, 1000),               // horizon
+            arrayOf(4, 8, 12, 24, 48, 100),                    // sequenceLength
+            arrayOf(50, 100, 200, 400, 1000),               // horizon
             arrayOf(false, true),                                   // useShiftBuffer
             arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
             arrayOf(false, true),                           // flipAtLeastOne
-            arrayOf(8, 16, 32, 64, 128, 256),                       //populationSize
+            arrayOf(8, 16, 32, 64, 128),                       //populationSize
             arrayOf(1, 2, 4),                               // parentSize
-            arrayOf(5, 10, 20, 30)                            // evalsPerGeneration
+            arrayOf(5, 10, 20, 30),                            // evalsPerGeneration
+            arrayOf(1.0, 0.999, 0.99, 0.95, 0.9)            // discount rate
             /*       arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
                            HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
                            HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
@@ -249,15 +255,16 @@ object RHCASearchSpace : SearchSpace {
 
 object MCTSSearchSpace : SearchSpace {
 
-    private val names = arrayOf("maxDepth", "horizon", "pruneTree", "C", "maxActions", "rolloutPolicy", "selectionPolicy")
+    private val names = arrayOf("maxDepth", "horizon", "pruneTree", "C", "maxActions", "rolloutPolicy", "selectionPolicy", "discountFactor")
     val values = arrayOf(
-            arrayOf(4, 8, 12, 24, 48),                  // maxDepth (==sequenceLength)
-            arrayOf(10, 25, 50, 100, 200, 400, 1000),               // horizon
+            arrayOf(4, 8, 12, 24),                  // maxDepth (==sequenceLength)
+            arrayOf(50, 100, 200, 400, 1000),               // horizon
             arrayOf(false, true),                           // pruneTree
-            arrayOf(0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0),           // C
-            arrayOf(5, 10, 20, 40, 80),             // maxActions
+            arrayOf(0.03, 0.3, 3.0, 30.0),           // C
+            arrayOf(20, 40, 80),             // maxActions
             arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom),                          // rolloutPolicy
-            arrayOf(MCTSSelectionMethod.SIMPLE, MCTSSelectionMethod.ROBUST)  // selection policy
+            arrayOf(MCTSSelectionMethod.SIMPLE, MCTSSelectionMethod.ROBUST),  // selection policy
+            arrayOf(1.0, 0.999, 0.995, 0.99)            // discount rate
             /*       arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
                            HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
                            HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),

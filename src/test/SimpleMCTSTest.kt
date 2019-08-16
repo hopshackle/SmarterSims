@@ -6,6 +6,7 @@ import groundWar.*
 import ggi.*
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
+import kotlin.math.pow
 
 class SimpleMazeGame(val playerCount: Int, val target: Int) : ActionAbstractGameState {
 
@@ -138,6 +139,7 @@ class MCTSMasterTest {
         assertEquals(agents[2].getBestAction(testState), Move(2, Direction.LEFT))
     }
 
+
     @Test
     fun resetTreeDoesSo() {
         bestActionWithSimpleSelection()
@@ -154,7 +156,7 @@ class MCTSMasterTest {
     fun firstActionEnsuresStateIsAddedToTree() {
         val childAgents = agents.map(MCTSTranspositionTableAgentMaster::getForwardModelInterface)
                 .map { it as MCTSTranspositionTableAgentChild }.toList()
-        childAgents.withIndex().forEach{ (i, it) ->
+        childAgents.withIndex().forEach { (i, it) ->
             it.getAction(simpleMazeGame, i)
         }
         assertEquals(childAgents[0].tree.size, 1)
@@ -237,22 +239,34 @@ class MCTSChildTest {
         var rolloutCalls = 0
         var expansionCalls = 0
         var treeCalls = 0
+        var actionIndex = 0
+        var hardcodedActions = listOf<Action>()
+
         // to make trajectory visible for testing
         fun trajectory() = trajectory
 
+        private fun nextHardCodedAction(): Action? {
+            if (actionIndex >= hardcodedActions.size) {
+                return null
+            } else {
+                actionIndex++
+                return hardcodedActions[actionIndex - 1]
+            }
+        }
+
         override fun rollout(state: ActionAbstractGameState, playerRef: Int): Action {
             rolloutCalls++
-            return super.rollout(state, playerRef)
+            return nextHardCodedAction() ?: super.rollout(state, playerRef)
         }
 
         override fun expansionPolicy(node: TTNode, state: ActionAbstractGameState, possibleActions: List<Action>): Action {
             expansionCalls++
-            return super.expansionPolicy(node, state, possibleActions)
+            return nextHardCodedAction() ?: super.expansionPolicy(node, state, possibleActions)
         }
 
         override fun treePolicy(node: TTNode, state: ActionAbstractGameState, possibleActions: List<Action>): Action {
             treeCalls++
-            return super.treePolicy(node, state, possibleActions)
+            return nextHardCodedAction() ?: super.treePolicy(node, state, possibleActions)
         }
 
     }
@@ -284,12 +298,12 @@ class MCTSChildTest {
             statesEnRoute.add(MazeStateFunction(simpleMazeGame))
         }
         assertEquals(childAgent.trajectory().size, 5)
-        childAgent.backPropagate(5.0)
+        childAgent.backPropagate(5.0, 5)
         assertEquals(tree.size, 2)
         assertTrue(tree.containsKey(root))
         assertTrue(tree.containsKey(statesEnRoute[0]))
 
-        (0 until 5).forEach { i -> assertEquals(actionsSelected[i], childAgent.trajectory().poll().third) }
+        (0 until 5).forEach { i -> assertEquals(actionsSelected[i], childAgent.trajectory().poll().chosenAction) }
     }
 
     @Test
@@ -335,7 +349,24 @@ class MCTSChildTest {
         assertEquals(childAgent.treeCalls, 0)
         assertEquals(childAgent.expansionCalls, 0)
         assertEquals(childAgent.rolloutCalls, 100)
+    }
 
+    @Test
+    fun correctUpdatesWithDiscount() {
+        val thisParams = params.copy(discountRate = 0.95)
+        var discountAgent = MCTSChildTestAgent(tree, mutableMapOf(), thisParams, MazeStateFunction)
+        val testState = simpleMazeGame.copy() as ActionAbstractGameState
+        val root = MazeStateFunction(testState)
+        val rootNode = TTNode(thisParams, testState.possibleActions(0))
+        tree[root] = rootNode
+
+        testState.registerAgent(0, discountAgent)
+        discountAgent.hardcodedActions = List(10) { Move(0, Direction.RIGHT) }
+
+        testState.next(10)
+        discountAgent.backPropagate(1.0, testState.nTicks())
+        assertEquals(rootNode.actionMap[Move(0, Direction.RIGHT)]?.visitCount, 1)
+        assertEquals(rootNode.actionMap[Move(0, Direction.RIGHT)]?.mean, 0.95.pow(9))
     }
 }
 

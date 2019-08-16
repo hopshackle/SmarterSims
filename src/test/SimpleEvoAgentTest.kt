@@ -6,6 +6,7 @@ import groundWar.EventGameParams
 import math.Vec2d
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import kotlin.math.pow
 import kotlin.random.Random
 
 class SimpleEvoAgentTest {
@@ -141,6 +142,31 @@ class SimpleEvoAgentTest {
 
         assertTrue(game.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 1 && e.tick == 16 })
         assertTrue(game.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 0 && e.tick == 19 })
+    }
+
+    @Test
+    fun discountIsAppliedCorrectly() {
+        val blueGenome2 = intArrayOf(0, 1, 5, 1, 1, 1, 1, 0)
+        val projectedState2 = game.copy()
+        var reward = evaluateSequenceDelta(projectedState2, blueGenome2, 0, 0.99, 1)
+        assert(projectedState2.world.cities[2].owner == PlayerId.Neutral)
+        assertEquals(projectedState2.nTicks(), 1)
+        assert(game.world.cities[2].owner == PlayerId.Neutral)
+        assertEquals(projectedState2.world.currentTransits.size, 1)
+        assertEquals(reward, 0.0)
+        // blue force now in transit
+
+        val redGenome1 = intArrayOf(1, 0, 9, 1, 1, 1, 1, 0)
+        val projectedState3 = projectedState2.copy()
+        reward = evaluateSequenceDelta(projectedState3, redGenome1, 1, 0.99, 2)
+        assertEquals(projectedState2.nTicks(), 1)
+        assertEquals(projectedState3.nTicks(), 3)
+        assertEquals(reward, -1.0 * 0.99.pow(2)) // blue force reaches neutral city
+
+        val redGenome2 = intArrayOf(1, 0, 9, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0)
+        val projectedState4 = projectedState2.copy()
+        reward = evaluateSequenceDelta(projectedState4, redGenome2, 1, 0.99, 6)
+        assertEquals(reward, 1.0 * 0.99.pow(6)) // blue force reaches neutral city, and red force conquers blue base
     }
 
 }

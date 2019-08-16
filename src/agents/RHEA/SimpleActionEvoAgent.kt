@@ -47,7 +47,7 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
         return currentPlan
     }
 
-    override fun backPropagate(finalScore: Double) {}
+    override fun backPropagate(finalScore: Double, finalTime: Int) {}
 }
 
 fun convertGenomeToActionList(genome: IntArray?, gameState: AbstractGameState, playerRef: Int): List<Action> {
@@ -92,8 +92,11 @@ Will take actions using a specified genome...until the sequence runs out
  */
 class SimpleActionEvoAgentRollForward(var genome: IntArray, val horizon: Int = 1) : SimpleActionPlayerInterface {
 
+    val scoreByTime = mutableListOf<Pair<Int, Double>>()
+
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
         val intPerAction = gameState.codonsPerAction()
+        scoreByTime.add(Pair(gameState.nTicks(), gameState.score(playerRef)))
         if (genome.size >= intPerAction) {
             val gene = genome.sliceArray(0 until intPerAction)
             genome = genome.sliceArray(intPerAction until genome.size)
@@ -115,5 +118,5 @@ class SimpleActionEvoAgentRollForward(var genome: IntArray, val horizon: Int = 1
         return SimpleActionEvoAgentRollForward(genome.copyOf(), horizon)
     }
 
-    override fun backPropagate(finalScore: Double) {}
+    override fun backPropagate(finalScore: Double, finalTime: Int) {}
 }

@@ -14,5 +14,5 @@ interface SimpleActionPlayerInterface: SimplePlayerInterface {
     fun getLastPlan(): List<Action>
     override fun reset(): SimpleActionPlayerInterface
     fun getForwardModelInterface(): SimpleActionPlayerInterface
-    fun backPropagate(finalScore: Double)
+    fun backPropagate(finalScore: Double, finalTime: Int)
 }

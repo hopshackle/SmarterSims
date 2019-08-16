@@ -8,7 +8,7 @@ class SimpleActionDoNothing(val defaultWait: Int) : SimpleActionPlayerInterface 
     override fun reset() = this
     override fun getAgentType() = "SimpleActionDoNothing"
     override fun getForwardModelInterface() = this
-    override fun backPropagate(finalScore: Double) {}
+    override fun backPropagate(finalScore: Double, finalTime: Int) {}
     override fun toString() = "SimpleActionDoNothing"
 }
 
@@ -22,6 +22,6 @@ object SimpleActionRandom : SimpleActionPlayerInterface {
     override fun reset() = this
     override fun getAgentType() = "SimpleActionRandom"
     override fun getForwardModelInterface() = this
-    override fun backPropagate(finalScore: Double) {}
+    override fun backPropagate(finalScore: Double, finalTime: Int) {}
     override fun toString() = "SimpleActionRandom"
 }

@@ -130,8 +130,8 @@ data class AgentParams(
 ) {
     fun createAgent(colour: String): SimpleActionPlayerInterface {
         val params = algoParams.split(",")
-        fun getParam(name: String): String {
-            return params.firstOrNull { it.contains(name) }?.let { it.split(":")[1] } ?: "0"
+        fun getParam(name: String, default: String): String {
+            return params.firstOrNull { it.contains(name) }?.let { it.split(":")[1] } ?: default
         }
 
         val oppParams = opponentModel.split(":")
@@ -146,29 +146,51 @@ data class AgentParams(
         }
         return when (algorithm) {
             "Heuristic" -> {
-                val options = getParam("options").split("|").map(HeuristicOptions::valueOf)
-                HeuristicAgent(getParam("attack").toDouble(), getParam("defence").toDouble(), options)
+                val options = getParam("options", "WITHDRAW|ATTACK").split("|").map(HeuristicOptions::valueOf)
+                HeuristicAgent(getParam("attack", "3.0").toDouble(), getParam("defence", "1.2").toDouble(), options)
             }
             "RHEA" -> SimpleActionEvoAgent(
-                    underlyingAgent = SimpleEvoAgent(nEvals = evalBudget, timeLimit = timeBudget, sequenceLength = sequenceLength, horizon = planningHorizon,
-                            useMutationTransducer = params.contains("useMutationTransducer"), useShiftBuffer = params.contains("useShiftBuffer"),
+                    underlyingAgent = SimpleEvoAgent(
+                            nEvals = evalBudget,
+                            timeLimit = timeBudget,
+                            sequenceLength = sequenceLength,
+                            horizon = planningHorizon,
+                            useMutationTransducer = params.contains("useMutationTransducer"),
+                            useShiftBuffer = params.contains("useShiftBuffer"),
                             flipAtLeastOneValue = params.contains("flipAtLeastOneValue"),
-                            probMutation = getParam("probMutation").toDouble(), name = colour + "_RHEA"),
+                            probMutation = getParam("probMutation", "0.01").toDouble(),
+                            discountFactor = getParam("discountFactor", "1.0").toDouble(),
+                            name = colour + "_RHEA"),
                     opponentModel = opponentModel ?: SimpleActionDoNothing(1000))
-            "RHCA" -> RHCAAgent(flipAtLeastOneValue = params.contains("flipAtLeastOneValue"), probMutation = getParam("probMutation").toDouble(),
-                    sequenceLength = sequenceLength, evalsPerGeneration = getParam("evalsPerGeneration").toInt(),
-                    populationSize = getParam("populationSize").toInt(), timeLimit = timeBudget, parentSize = getParam("parentSize").toInt(),
-                    useShiftBuffer = params.contains("useShiftBuffer"), horizon = planningHorizon, name = colour + "_RHCA")
-            "MCTS" -> MCTSTranspositionTableAgentMaster(MCTSParameters(C = getParam("C").toDouble(),
-                    maxPlayouts = evalBudget, timeLimit = timeBudget, maxActions = getParam("maxActions").toInt(),
-                    maxDepth = sequenceLength, horizon = planningHorizon, pruneTree = params.contains("pruneTree"),
-                    selectionMethod = MCTSSelectionMethod.valueOf(getParam("selectionPolicy"))),
+            "RHCA" -> RHCAAgent(
+                    flipAtLeastOneValue = params.contains("flipAtLeastOneValue"),
+                    probMutation = getParam("probMutation", "0.01").toDouble(),
+                    sequenceLength = sequenceLength,
+                    evalsPerGeneration = getParam("evalsPerGeneration", "10").toInt(),
+                    populationSize = getParam("populationSize", "10").toInt(),
+                    timeLimit = timeBudget,
+                    parentSize = getParam("parentSize", "1").toInt(),
+                    useShiftBuffer = params.contains("useShiftBuffer"),
+                    horizon = planningHorizon,
+                    discountFactor = getParam("discountFactor", "1.0").toDouble(),
+                    name = colour + "_RHCA")
+            "MCTS" -> MCTSTranspositionTableAgentMaster(
+                    MCTSParameters(
+                            C = getParam("C", "1.0").toDouble(),
+                            maxPlayouts = evalBudget,
+                            timeLimit = timeBudget,
+                            maxActions = getParam("maxActions", "20").toInt(),
+                            maxDepth = sequenceLength,
+                            horizon = planningHorizon,
+                            pruneTree = params.contains("pruneTree"),
+                            discountRate = getParam("discountFactor", "1.0").toDouble(),
+                            selectionMethod = MCTSSelectionMethod.valueOf(getParam("selectionPolicy", "SIMPLE"))),
                     stateFunction = LandCombatStateFunction,
-                    rolloutPolicy = when (getParam("rolloutPolicy")) {
+                    rolloutPolicy = when (getParam("rolloutPolicy", "DoNothing")) {
                         "Heuristic" -> HeuristicAgent(3.0, 1.0, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
                         "DoNothing" -> SimpleActionDoNothing(1000)
                         "Random", "" -> SimpleActionRandom
-                        else -> throw AssertionError("Unknown rollout policy " + getParam("rolloutPolicy"))
+                        else -> throw AssertionError("Unknown rollout policy " + getParam("rolloutPolicy", "None"))
                     },
                     opponentModel = opponentModel,
                     name = colour + "_MCTS")

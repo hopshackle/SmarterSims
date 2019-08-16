@@ -131,7 +131,7 @@ data class RHCAAgent(
         return SimpleActionEvoAgentRollForward(currentParents[0], horizon)
     }
 
-    override fun backPropagate(finalScore: Double) {}
+    override fun backPropagate(finalScore: Double, finalTime: Int) {}
 
     override fun reset(): SimpleActionPlayerInterface {
         currentPopulation = listOf()

@@ -4,6 +4,7 @@ import agents.DoNothingAgent
 import agents.SimpleActionDoNothing
 import ggi.*
 import utilities.StatsCollator
+import kotlin.math.pow
 import kotlin.random.Random
 
 internal var RHEARandom = Random(System.currentTimeMillis())
@@ -17,42 +18,43 @@ fun evaluateSequenceDelta(gameState: AbstractGameState,
     val intPerAction = gameState.codonsPerAction()
     val actions = IntArray(2 * intPerAction)
     var runningScore = if (gameState is ActionAbstractGameState) gameState.score(playerId) else gameState.score()
-    var discount = 1.0
-    var delta = 0.0
+    var runningTime = gameState.nTicks()
 
-    fun discount(nextScore: Double) {
-        val tickDelta = nextScore - runningScore
-        runningScore = nextScore
-        delta += tickDelta * discount
-        discount *= discountFactor
+    fun discount(results: List<Pair<Int, Double>>): Double {
+        var discount = 1.0
+        var delta = 0.0
+        results.forEach { (time, score) ->
+            val tickDelta = score - runningScore
+            val timeDelta = time - runningTime
+            discount *= discountFactor.pow(timeDelta)
+            runningScore = score
+            delta += tickDelta * discount
+        }
+        return delta
     }
 
-    if (gameState is ActionAbstractGameState) {
+    val retValue = if (gameState is ActionAbstractGameState) {
         val mutatedAgent = SimpleActionEvoAgentRollForward(seq, horizon)
         gameState.registerAgent(playerId, mutatedAgent)
         if (opponentModel is SimpleActionPlayerInterface)
             gameState.registerAgent(1 - playerId, opponentModel)
         else
             gameState.registerAgent(1 - playerId, SimpleActionDoNothing(horizon))
-        if (discountFactor < 1.0) {
-            throw AssertionError("Discount not currently implemented for ActionAbstractGameState")
-            // TODO: need to get vector of future rewards back, along with the times at which they occur to calculate this
-        }
+
+        // to apply a discount here, can I record the score at each point using the childAgent?
         gameState.next(if (horizon > 0) horizon else seq.size)
-        discount(gameState.score(playerId))
-        return delta
+        discount(mutatedAgent.scoreByTime + Pair(gameState.nTicks(), gameState.score(playerId)))
     } else {
+        val scoreByTime = mutableListOf<Pair<Int, Double>>()
         for (action in seq) {
             actions[playerId * intPerAction] = action
             actions[(1 - playerId) * intPerAction] = opponentModel.getAction(gameState, 1 - playerId)
             gameState.next(actions)
-            discount(gameState.score())
+            scoreByTime.add(Pair(gameState.nTicks(), if (playerId == 0) gameState.score() else -gameState.score()))
         }
+        discount(scoreByTime)
     }
-    return if (playerId == 0)
-        delta
-    else
-        -delta
+    return retValue
 }
 
 fun shiftLeftAndRandomAppend(startingArray: IntArray, nShift: Int, nActions: Int): IntArray {

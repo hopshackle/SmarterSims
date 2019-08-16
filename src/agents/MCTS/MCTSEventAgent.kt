@@ -2,13 +2,11 @@ package agents.MCTS
 
 import agents.SimpleActionDoNothing
 import ggi.*
-import groundWar.LandCombatGame
-import groundWar.LandCombatStateFunction
-import groundWar.MakeDecision
+import groundWar.*
 import test.game
 import utilities.StatsCollator
 import java.util.*
-import kotlin.math.pow
+import kotlin.math.*
 
 class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
                                         val stateFunction: StateSummarizer,
@@ -57,7 +55,7 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
 
             (0 until clonedState.playerCount()).forEach {
                 val reward = clonedState.score(it)
-                clonedState.getAgent(it).backPropagate(reward)
+                clonedState.getAgent(it).backPropagate(reward, clonedState.nTicks())
             }
             iteration++
         } while (iteration < params.maxPlayouts && System.currentTimeMillis() < startTime + params.timeLimit)
@@ -145,7 +143,7 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
         return MCTSTranspositionTableAgentChild(tree, stateLinks, stateToActionMap, params, stateFunction, rolloutPolicy)
     }
 
-    override fun backPropagate(finalScore: Double) {
+    override fun backPropagate(finalScore: Double, finalTime: Int) {
         // should never need to back-propagate here...that is done in the Child agent
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
@@ -183,7 +181,9 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
 
     // node, possibleActions from node, action taken
 
-    protected val trajectory: Deque<Triple<String, List<Action>, Action>> = ArrayDeque()
+    data class TrajectoryInstance(val stateRep: String, val time: Int, val score: Double, val allActions: List<Action>, val chosenAction: Action)
+
+    protected val trajectory: Deque<TrajectoryInstance> = ArrayDeque()
     var firstAction = true
     var debug = false
     private var actionCount = 0
@@ -234,7 +234,8 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
             else -> treePolicy(node, gameState, possibleActions(gameState, currentState, playerRef))
         }
 
-        trajectory.addLast(Triple(currentState, possibleActions(gameState, currentState, playerRef), actionChosen))
+        trajectory.addLast(TrajectoryInstance(currentState, gameState.nTicks(), gameState.score(playerRef),
+                possibleActions(gameState, currentState, playerRef), actionChosen))
         return actionChosen
     }
 
@@ -283,14 +284,19 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         return this
     }
 
-    override fun backPropagate(finalScore: Double) {
+    override fun backPropagate(finalScore: Double, finalTime: Int) {
         // Here we go forwards through the trajectory
         // we decrement nodesExpanded as we need to expand a node
         // We can discount if needed
-        var totalDiscount = params.discountRate.pow(trajectory.size.toDouble())
+        // this is the incremental reward...
+        // TODO: MAX option will require us to go backwards through the trajectory to calculate update value
+        val startTime = trajectory.first.time
+        trajectory.add(TrajectoryInstance("GAME_OVER", finalTime, finalScore, listOf(), NoAction(0, 1)))
+        val incrementalRewardsAtTime = trajectory.map { Pair(it.score, it.time) }.zipWithNext()
+                .map { (a, b) -> Pair(b.first - a.first, b.second - startTime) }
+        val discountedReward = incrementalRewardsAtTime.map{it.first * params.discountRate.pow(it.second)}.sum()
         var previousState = ""
-        trajectory.forEach { (state, possibleActions, action) ->
-            totalDiscount /= params.discountRate
+        trajectory.forEach { (state, _, _, possibleActions, action) ->
             val node = tree[state]
             when {
                 node == null && nodesToExpand > 0 -> {
@@ -299,7 +305,9 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
                     // Add new node (with no visits as yet; that will be sorted during back-propagation)
                 }
                 node == null -> Unit // do nothing
-                else -> node.update(action, possibleActions, finalScore * totalDiscount)
+                else -> {
+                    node.update(action, possibleActions, discountedReward)
+                }
             }
             if (tree.contains(previousState)) {
                 val nextStates = stateLinks.getOrPut(previousState, { mutableSetOf() })
