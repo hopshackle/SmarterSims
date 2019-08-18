@@ -57,7 +57,7 @@ fun runWithParams(params: EventGameParams,
         output.close()
     }
     val targets = mapOf(PlayerId.Blue to listOf(0, 2, 4, 5), PlayerId.Red to listOf(0, 1, 3, 5))
-    val game = LandCombatGame(world, targets = emptyMap(), codons = 3)
+    val game = LandCombatGame(world, targets = emptyMap())
 
     game.scoreFunction[PlayerId.Blue] = interimScoreFunction
     game.scoreFunction[PlayerId.Red] = interimScoreFunction

@@ -101,19 +101,19 @@ class CityCreationTest {
         assertEquals(game1.cityGenes, 1)
         assertEquals(game1.routeGenes, 1)
         assertEquals(game1.nActions(), 10)
-        assertEquals(game1.codonsPerAction(), 4)
+        assertEquals(game1.codonsPerAction(), 3)
 
         val game2 = LandCombatGame(World(params = cityCreationParams.copy(nAttempts = 100)))
         assertEquals(game2.cityGenes, 2)
         assertEquals(game2.routeGenes, 2)
         assertEquals(game2.nActions(), 10)
-        assertEquals(game2.codonsPerAction(), 6)
+        assertEquals(game2.codonsPerAction(), 5)
 
         val game3 = LandCombatGame(World(params = cityCreationParams.copy(nAttempts = 50)))
         assertEquals(game3.cityGenes, 2)
         assertEquals(game3.routeGenes, 1)
         assertEquals(game3.nActions(), 10)
-        assertEquals(game3.codonsPerAction(), 5)
+        assertEquals(game3.codonsPerAction(), 4)
     }
 
 }

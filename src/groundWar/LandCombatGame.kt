@@ -18,7 +18,7 @@ data class Event(val tick: Int, val action: Action) : Comparable<Event> {
     }
 }
 
-class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List<Int>> = emptyMap(), val codons: Int = 4) : ActionAbstractGameState {
+class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List<Int>> = emptyMap()) : ActionAbstractGameState {
 
     val LCG_rnd = Random(params.seed)
     // the first digits are the city...so we need at least the number of cities
@@ -58,7 +58,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     }
 
     private fun copyHelper(world: World): LandCombatGame {
-        val state = LandCombatGame(world, targets, codons)
+        val state = LandCombatGame(world, targets)
         state.scoreFunction = scoreFunction
         state.eventQueue.currentTime = nTicks()
         return state
@@ -75,7 +75,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
 
     override fun playerCount() = 2
 
-    override fun codonsPerAction() = cityGenes + routeGenes + codons - 2
+    override fun codonsPerAction() = cityGenes + routeGenes + 1
 
     override fun nActions() = 10
 
@@ -98,16 +98,8 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
 
         val origin = rawFromGene % world.cities.size
         val destination = destinationCity(origin, rawToGene)
-        val encodedWait = when (codons) {
-            4 -> (gene[cityGenes + routeGenes + 1] + 1).pow(2)
-            3 -> (gene[cityGenes + routeGenes] + 1).pow(2)  // normally this is the proportion gene
-            else -> throw AssertionError("Only 3 or 4 base encoding supported")
-        }
-        val actualWait = when (codons) {
-            4 -> max(encodedWait, world.params.OODALoop[player])
-            3 -> world.params.OODALoop[player]
-            else -> throw AssertionError("Only 3 or 4 base encoding supported")
-        }
+        val encodedWait = (gene[cityGenes + routeGenes] + 1).pow(2)  // normally this is the proportion gene
+        val actualWait = world.params.OODALoop[player]
 
         val proposedAction = LaunchExpedition(playerId, origin, destination, proportion, actualWait)
         if (!proposedAction.isValid(this))

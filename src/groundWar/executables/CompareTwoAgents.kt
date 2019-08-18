@@ -54,7 +54,7 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
         }
         val world = World(params = params)
 
-        val game = LandCombatGame(world, codons = 3)
+        val game = LandCombatGame(world)
         game.scoreFunction[PlayerId.Blue] = interimScoreFunction
         game.scoreFunction[PlayerId.Red] = interimScoreFunction
         game.registerAgent(0, agents[numberToPlayerID(0)] ?: SimpleActionDoNothing(1000))

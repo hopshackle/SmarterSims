@@ -179,7 +179,7 @@ data class LaunchExpedition(val playerId: PlayerId, val origin: Int, val destina
 
     override fun nextDecisionPoint(player: Int, state: ActionAbstractGameState): Pair<Int, Int> {
         val minTime = state.nTicks() + wait
-        return return Pair(minTime, minTime)
+        return Pair(minTime, minTime)
     }
 
     fun isValid(state: LandCombatGame): Boolean {

@@ -238,12 +238,12 @@ class MakeDecisionTest {
 
     @Test
     fun makeDecisionSpawnedOnAgentRegistrationNotLaunchExpedition() {
-        val fullInvasion = game.translateGene(0, intArrayOf(0, 1, 2, 4))
+        val fullInvasion = game.translateGene(0, intArrayOf(0, 1, 2))
         // 0 = cityFrom, 1 = 2nd route (hence to 2)
         assert(fullInvasion is LaunchExpedition)
         val gameCopy = game.copy()
         assertEquals(gameCopy.eventQueue.size, 0)
-        assertEquals(fullInvasion.nextDecisionPoint(0, gameCopy).first, 25)
+        assertEquals(fullInvasion.nextDecisionPoint(0, gameCopy).first, 10)
         fullInvasion.apply(gameCopy)
         gameCopy.next(1)
         assertEquals(gameCopy.eventQueue.size, 1)         // no MakeDecision created
@@ -420,7 +420,7 @@ class TranslateGeneTests {
         assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 2, expectedDestination, 1.0, 10))
 
         val totalCityCode = 2 + game3.world.cities.size
-        expedition = game3.translateGene(0, intArrayOf(totalCityCode / 10, totalCityCode % 10, totalRouteCode / 10, totalRouteCode % 10, 9, 4)) as LaunchExpedition
-        assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 2, expectedDestination, 1.0, 25))
+        expedition = game3.translateGene(0, intArrayOf(totalCityCode / 10, totalCityCode % 10, totalRouteCode / 10, totalRouteCode % 10, 9)) as LaunchExpedition
+        assertEquals(expedition, LaunchExpedition(PlayerId.Blue, 2, expectedDestination, 1.0, 10))
     }
 }
