@@ -2,10 +2,12 @@ package groundWar
 
 import ggi.Action
 import ggi.ActionAbstractGameState
+import kotlin.math.abs
 import kotlin.math.min
 
 
 data class TransitStart(val transit: Transit) : Action {
+    override val player = playerIDToNumber(transit.playerId)
 
     override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
@@ -32,12 +34,14 @@ data class TransitStart(val transit: Transit) : Action {
     }
 }
 
-data class TransitEnd(val player: PlayerId, val fromCity: Int, val toCity: Int, val endTime: Int) : Action {
+data class TransitEnd(val playerId: PlayerId, val fromCity: Int, val toCity: Int, val endTime: Int) : Action {
+    override val player = playerIDToNumber(playerId)
+
     override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
             val transit = getTransit(state)
             if (transit != null) {
-                CityInflux(player, transit.nPeople, toCity, fromCity).apply(state)
+                CityInflux(playerId, transit.nPeople, toCity, fromCity).apply(state)
                 state.world.removeTransit(transit)
             }
         }
@@ -45,7 +49,7 @@ data class TransitEnd(val player: PlayerId, val fromCity: Int, val toCity: Int, 
 
     override fun visibleTo(player: Int, state: ActionAbstractGameState): Boolean {
         if (state is LandCombatGame) {
-            return state.world.checkVisible(Transit(0.0, fromCity, toCity, this.player, 0, endTime), numberToPlayerID(player))
+            return state.world.checkVisible(Transit(0.0, fromCity, toCity, playerId, 0, endTime), numberToPlayerID(player))
         }
         return true
     }
@@ -53,30 +57,31 @@ data class TransitEnd(val player: PlayerId, val fromCity: Int, val toCity: Int, 
 
     private fun getTransit(state: LandCombatGame): Transit? {
         return state.world.currentTransits.firstOrNull {
-            it.endTime == endTime && it.playerId == player && it.fromCity == fromCity && it.toCity == toCity
+            it.endTime == endTime && it.playerId == playerId && it.fromCity == fromCity && it.toCity == toCity
         }
     }
 }
 
-data class CityInflux(val player: PlayerId, val pop: Double, val destination: Int, val origin: Int = -1) : Action {
+data class CityInflux(val playerId: PlayerId, val pop: Double, val destination: Int, val origin: Int = -1) : Action {
+    override val player = playerIDToNumber(playerId)
+
     override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
             val world = state.world
             val city = world.cities[destination]
-            if (city.owner == player) {
+            if (city.owner == playerId) {
                 city.pop += pop
             } else {
                 val p = world.params
-                val playerRef = playerIDToNumber(player)
                 val result = lanchesterClosedFormBattle(pop, city.pop,
-                        p.lanchesterCoeff[playerRef] / if (city.fort) p.fortAttackerDivisor else 1.0,
-                        p.lanchesterExp[playerRef],
-                        p.lanchesterCoeff[1 - playerRef],
-                        p.lanchesterExp[1 - playerRef] + if (city.fort) p.fortDefenderExpBonus else 0.0
+                        p.lanchesterCoeff[player] / if (city.fort) p.fortAttackerDivisor else 1.0,
+                        p.lanchesterExp[player],
+                        p.lanchesterCoeff[1 - player],
+                        p.lanchesterExp[1 - player] + if (city.fort) p.fortDefenderExpBonus else 0.0
                 )
                 if (result > 0.0) {
                     // attackers win
-                    city.owner = player
+                    city.owner = playerId
                     city.pop = result
                 } else {
                     // defenders win
@@ -92,8 +97,8 @@ data class CityInflux(val player: PlayerId, val pop: Double, val destination: In
         val playerId = numberToPlayerID(player)
         if (state is LandCombatGame)
             with(state.world) {
-                if (origin == -1) return this@CityInflux.player == playerId || checkVisible(destination, playerId)
-                return checkVisible(Transit(0.0, origin, destination, this@CityInflux.player, 0, 0), playerId)
+                if (origin == -1) return this@CityInflux.playerId == playerId || checkVisible(destination, playerId)
+                return checkVisible(Transit(0.0, origin, destination, this@CityInflux.playerId, 0, 0), playerId)
                 // If we could see a Transit by another player on that route, then we can see the CityInflux
             }
         return true
@@ -101,6 +106,7 @@ data class CityInflux(val player: PlayerId, val pop: Double, val destination: In
 }
 
 data class Battle(val transit1: Transit, val transit2: Transit) : Action {
+    override val player = -1
     override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
             val p = state.world.params
@@ -116,7 +122,7 @@ data class Battle(val transit1: Transit, val transit2: Transit) : Action {
 
             state.world.removeTransit(losingTransit)
             state.world.removeTransit(winningTransit)
-            if (Math.abs(result).toInt() == 0) {
+            if (abs(result).toInt() == 0) {
                 // do nothing
             } else {
                 val successorTransit = winningTransit.copy(nPeople = Math.abs(result));
@@ -138,7 +144,8 @@ data class Battle(val transit1: Transit, val transit2: Transit) : Action {
     }
 }
 
-data class LaunchExpedition(val player: PlayerId, val origin: Int, val destination: Int, val proportion: Double, val wait: Int) : Action {
+data class LaunchExpedition(val playerId: PlayerId, val origin: Int, val destination: Int, val proportion: Double, val wait: Int) : Action {
+    override val player = playerIDToNumber(playerId)
 
     fun forcesSent(state: ActionAbstractGameState): Double {
         if (state is LandCombatGame) {
@@ -157,11 +164,11 @@ data class LaunchExpedition(val player: PlayerId, val origin: Int, val destinati
             val world = state.world
             if (isValid(state)) {
                 val distance = world.cities[origin].location.distanceTo(world.cities[destination].location)
-                val delayTime = state.world.params.orderDelay[playerIDToNumber(player)]
-                val arrivalTime = state.nTicks() + (distance / world.params.speed[playerIDToNumber(player)]).toInt() + delayTime
+                val delayTime = state.world.params.orderDelay[player]
+                val arrivalTime = state.nTicks() + (distance / world.params.speed[player]).toInt() + delayTime
                 val startTime = state.nTicks() + delayTime
                 val forcesSent = forcesSent(state)
-                val transit = Transit(forcesSent, origin, destination, player, startTime, arrivalTime)
+                val transit = Transit(forcesSent, origin, destination, playerId, startTime, arrivalTime)
                 // we execute the troop departure immediately (with delay)
                 state.eventQueue.add(Event(startTime, TransitStart(transit)))
                 // and put their arrival in the queue for the game state
@@ -170,12 +177,13 @@ data class LaunchExpedition(val player: PlayerId, val origin: Int, val destinati
         }
     }
 
-    override fun nextDecisionPoint(player: Int, state: ActionAbstractGameState): Int {
-        return state.nTicks() + wait
+    override fun nextDecisionPoint(player: Int, state: ActionAbstractGameState): Pair<Int, Int> {
+        val minTime = state.nTicks() + wait
+        return return Pair(minTime, minTime)
     }
 
     fun isValid(state: LandCombatGame): Boolean {
-        return state.world.cities[origin].owner == player &&
+        return state.world.cities[origin].owner == playerId &&
                 state.world.cities[origin].pop > 0 &&
                 origin != destination &&
                 state.world.allRoutesFromCity.getOrDefault(origin, emptyList()).any { r -> r.toCity == destination } &&
@@ -186,18 +194,18 @@ data class LaunchExpedition(val player: PlayerId, val origin: Int, val destinati
         val forceStrength = forcesSent(state)
 
         with(state.world) {
-            if (cities[destination].owner == player) return true
-            if (cities[destination].pop > forceStrength / params.minAssaultFactor[playerIDToNumber(player)])
+            if (cities[destination].owner == playerId) return true
+            if (cities[destination].pop > forceStrength / params.minAssaultFactor[player])
                 return false
             val forcesOnArc = currentTransits
-                    .filter { it.fromCity == destination && it.toCity == origin && it.playerId != player }
+                    .filter { it.fromCity == destination && it.toCity == origin && it.playerId != playerId }
                     .sumByDouble(Transit::nPeople)
-            if (forcesOnArc > forceStrength / params.minAssaultFactor[playerIDToNumber(player)])
+            if (forcesOnArc > forceStrength / params.minAssaultFactor[player])
                 return false
         }
         return true
     }
 
     // only visible to planning player
-    override fun visibleTo(player: Int, state: ActionAbstractGameState) = player == playerIDToNumber(this.player)
+    override fun visibleTo(player: Int, state: ActionAbstractGameState) = player == playerIDToNumber(playerId)
 }

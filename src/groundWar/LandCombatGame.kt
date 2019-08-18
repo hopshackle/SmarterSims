@@ -18,7 +18,7 @@ data class Event(val tick: Int, val action: Action) : Comparable<Event> {
     }
 }
 
-class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List<Int>> = emptyMap()) : ActionAbstractGameState {
+class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List<Int>> = emptyMap(), val codons: Int = 4) : ActionAbstractGameState {
 
     val LCG_rnd = Random(params.seed)
     // the first digits are the city...so we need at least the number of cities
@@ -58,7 +58,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     }
 
     private fun copyHelper(world: World): LandCombatGame {
-        val state = LandCombatGame(world, targets)
+        val state = LandCombatGame(world, targets, codons)
         state.scoreFunction = scoreFunction
         state.eventQueue.currentTime = nTicks()
         return state
@@ -75,7 +75,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
 
     override fun playerCount() = 2
 
-    override fun codonsPerAction() = cityGenes + routeGenes + 2
+    override fun codonsPerAction() = cityGenes + routeGenes + codons - 2
 
     override fun nActions() = 10
 
@@ -89,20 +89,29 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         // if the gene does not encode a valid LaunchExpedition, then we interpret it as a Wait action
         // if we take a real action, then we must wait for a minimum period before the next one
         val playerId = numberToPlayerID(player)
-        if (world.cities.filter{it.owner == playerId}.sumByDouble(City::pop) +
-                world.currentTransits.filter{it.playerId == playerId}.sumByDouble(Transit::nPeople) < 0.001)
+        if (world.cities.filter { it.owner == playerId }.sumByDouble(City::pop) +
+                world.currentTransits.filter { it.playerId == playerId }.sumByDouble(Transit::nPeople) < 0.001)
             return NoAction(player, 1000)   // no units left
         val rawFromGene = gene.take(cityGenes).reversed().mapIndexed { i, v -> 10.0.pow(i.toDouble()) * v }.sum().toInt()
         val rawToGene = gene.takeLast(gene.size - cityGenes).take(routeGenes).reversed().mapIndexed { i, v -> 10.0.pow(i.toDouble()) * v }.sum().toInt()
         val proportion = 0.1 * (gene[cityGenes + routeGenes] + 1)
-        val encodedWait = gene[cityGenes + routeGenes + 1].pow(2)
-//        val encodedWait = 2.pow(gene[cityGenes + routeGenes + 1])
-        val actualWait = max(encodedWait, world.params.OODALoop[player])
+
         val origin = rawFromGene % world.cities.size
         val destination = destinationCity(origin, rawToGene)
+        val encodedWait = when (codons) {
+            4 -> (gene[cityGenes + routeGenes + 1] + 1).pow(2)
+            3 -> (gene[cityGenes + routeGenes] + 1).pow(2)  // normally this is the proportion gene
+            else -> throw AssertionError("Only 3 or 4 base encoding supported")
+        }
+        val actualWait = when (codons) {
+            4 -> max(encodedWait, world.params.OODALoop[player])
+            3 -> world.params.OODALoop[player]
+            else -> throw AssertionError("Only 3 or 4 base encoding supported")
+        }
+
         val proposedAction = LaunchExpedition(playerId, origin, destination, proportion, actualWait)
         if (!proposedAction.isValid(this))
-            return NoAction(player, max(encodedWait, 1))
+            return InterruptibleWait(player, max(encodedWait, 10))
         return proposedAction
     }
 

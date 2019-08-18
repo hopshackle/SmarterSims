@@ -1,9 +1,6 @@
 package groundWar
 
-import ggi.SimpleActionPlayerInterface
-import ggi.Action
-import ggi.ActionAbstractGameState
-import ggi.NoAction
+import ggi.*
 import kotlin.random.Random
 
 enum class HeuristicOptions {
@@ -31,7 +28,7 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
                 }
             }
         }
-        return NoAction(playerRef, 10)
+        return InterruptibleWait(playerRef, 10)
     }
 
     private fun attackOption(gameState: LandCombatGame, player: Int): Action {

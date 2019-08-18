@@ -27,7 +27,7 @@ class EventQueue(val eventQueue: Queue<Event> = PriorityQueue()) : Queue<Event> 
         } else {
             playerAgentMap[player] = agent
             if (eventQueue.none { e -> e.action is MakeDecision && e.action.playerRef == player }) {
-                eventQueue.add(Event(currentTime, MakeDecision(player)))
+                eventQueue.add(Event(currentTime, MakeDecision(player, currentTime)))
             }
         }
     }
@@ -50,27 +50,48 @@ class EventQueue(val eventQueue: Queue<Event> = PriorityQueue()) : Queue<Event> 
                     throw AssertionError("Should not have an event on the queue that should have been processed in the past")
                 }
                 currentTime = event.tick
+                val visibleTo = playerAgentMap.keys
+                        .filterNot { a -> a == event.action.player }
+                        .filter { a -> event.action.visibleTo(a, state) }
                 event.action.apply(state)
                 history.add(event)
                 //           println("Triggered event: ${event} in Game $this")
+                visibleTo.forEach {
+                    interruptWait(it)
+                }
             } else {
                 currentTime = timeToFinish
             }
         } while (timeToFinish > currentTime && !state.isTerminal())
     }
+
+    private fun interruptWait(agent: Int) {
+        val decision = this.firstOrNull { it.action.player == agent && it.action is MakeDecision }
+        if (decision != null) {
+            val md = decision.action as MakeDecision
+            val earliestDecisionTime = if (md.minActivationTime > currentTime + 1) md.minActivationTime else currentTime + 1
+            if (earliestDecisionTime < decision.tick) {
+                // move MakeDecision
+                this.remove(decision)
+                this.add(Event(earliestDecisionTime, MakeDecision(agent, earliestDecisionTime)))
+            }
+        }
+    }
 }
 
-data class MakeDecision(val playerRef: Int) : Action {
+data class MakeDecision(val playerRef: Int, val minActivationTime: Int) : Action {
+    override val player = playerRef
+
     override fun apply(state: ActionAbstractGameState) {
         val agent = state.getAgent(playerRef)
         val perceivedState = state.copy(playerRef) as ActionAbstractGameState
         val action = agent.getAction(perceivedState, playerRef)
         state.planEvent(state.nTicks(), action)
-        val nextDecisionTime = action.nextDecisionPoint(playerRef, state)
+        val (nextDecisionTime, earliestDecisionTime) = action.nextDecisionPoint(playerRef, state)
         when {
             nextDecisionTime == -1 -> throw AssertionError("No action from MakeDecision should have -1 as next point")
             nextDecisionTime <= state.nTicks() -> throw AssertionError("Next Decision point must be in the future")
-            else -> state.planEvent(action.nextDecisionPoint(playerRef, state), MakeDecision(playerRef))
+            else -> state.planEvent(nextDecisionTime, MakeDecision(playerRef, earliestDecisionTime))
         }
     }
 

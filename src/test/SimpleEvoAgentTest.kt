@@ -122,26 +122,26 @@ class SimpleEvoAgentTest {
 
     @Test
     fun rollForwardForSeveralTicksWithOneAction() {
-        val blueGenome = intArrayOf(1, 0, 5, 3, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0)
-        // Blue first of all gives a Wait order for 9 time units, then a March order (which will take 2 time units to arrive) to invade the Neutral city
-        // MakeDecision should be at tick = 18 (9 + 10), as the default wait after a LaunchExpedition is 10
-        val redGenome = intArrayOf(1, 1, 2, 4, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0)
+        val blueGenome = intArrayOf(1, 0, 5, 2, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0)
+        // Blue first of all gives a Wait order for 10 time units, then a March order (which will take 2 time units to arrive) to invade the Neutral city
+        // MakeDecision should be at tick = 20 (10 + 10), as the default wait after a LaunchExpedition is 10
+        val redGenome = intArrayOf(1, 1, 2, 3, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0)
         // Red gives an expedition order immediately to attack the Neutral city, that takes 3 time units
         // Make Decision should be at tick = 16
         val blueAgent = SimpleActionEvoAgentRollForward(blueGenome)
         val redAgent = SimpleActionEvoAgentRollForward(redGenome)
         game.registerAgent(0, blueAgent)
         game.registerAgent(1, redAgent)
-        game.next(10)
-        assertEquals(game.nTicks(), 10)
+        game.next(11)
+        assertEquals(game.nTicks(), 11)
         assertEquals(game.score(0), -1.0)
         assertEquals(game.score(1), 1.0)
         assert(game.world.cities[2].owner == PlayerId.Red)
         assertEquals(game.world.currentTransits.size, 1)
         assertTrue(game.world.currentTransits[0].playerId == PlayerId.Blue)
 
-        assertTrue(game.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 1 && e.tick == 16 })
-        assertTrue(game.eventQueue.any { e -> e.action is MakeDecision && e.action.playerRef == 0 && e.tick == 19 })
+        assertEquals(game.eventQueue.first { e -> e.action is MakeDecision && e.action.playerRef == 1}.tick, 16 )
+        assertEquals(game.eventQueue.first { e -> e.action is MakeDecision && e.action.playerRef == 0}.tick, 20 )
     }
 
     @Test

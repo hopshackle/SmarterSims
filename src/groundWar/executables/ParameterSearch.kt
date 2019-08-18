@@ -179,7 +179,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
         val redAgent = HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
         val world = World(params = params.copy(seed = System.currentTimeMillis()))
 
-        val game = LandCombatGame(world)
+        val game = LandCombatGame(world, codons = 3)
         game.scoreFunction[PlayerId.Blue] = interimScoreFunction
         game.scoreFunction[PlayerId.Red] = interimScoreFunction
         game.registerAgent(0, blueAgent)
@@ -226,7 +226,7 @@ object RHEASearchSpace : SearchSpace {
 
 object RHCASearchSpace : SearchSpace {
 
-    private val names = arrayOf("SequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne", "populationSize", "parentSize", "evalsPerGeneration")
+    private val names = arrayOf("sequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne", "populationSize", "parentSize", "evalsPerGeneration", "discountFactor")
     val values = arrayOf(
             arrayOf(4, 8, 12, 24, 48, 100),                    // sequenceLength
             arrayOf(50, 100, 200, 400, 1000),               // horizon

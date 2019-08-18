@@ -163,7 +163,7 @@ fun getPlan(gameState: ActionAbstractGameState, tree: Map<String, TTNode>, state
             retValue.add(action)
             val nextDecisionTime = action.nextDecisionPoint(playerRef, forwardModel)
             action.apply(forwardModel)
-            forwardModel.next(nextDecisionTime - forwardModel.nTicks())
+            forwardModel.next(nextDecisionTime.first - forwardModel.nTicks())
             count++
         }
     } while (count < 10 && action != null)

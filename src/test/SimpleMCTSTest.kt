@@ -58,7 +58,8 @@ class SimpleMazeGame(val playerCount: Int, val target: Int) : ActionAbstractGame
 
 enum class Direction { LEFT, RIGHT }
 
-data class Move(val player: Int, val direction: Direction) : Action {
+data class Move(val playerRef: Int, val direction: Direction) : Action {
+    override val player = playerRef
     override fun apply(state: ActionAbstractGameState) {
         if (state is SimpleMazeGame) {
             when (direction) {
@@ -68,8 +69,8 @@ data class Move(val player: Int, val direction: Direction) : Action {
         }
     }
 
-    override fun nextDecisionPoint(player: Int, state: ActionAbstractGameState): Int {
-        return state.nTicks() + 1
+    override fun nextDecisionPoint(player: Int, state: ActionAbstractGameState): Pair<Int, Int> {
+        return Pair(state.nTicks() + 1, 0)
     }
 
     override fun visibleTo(player: Int, state: ActionAbstractGameState) = true

@@ -54,7 +54,7 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
         }
         val world = World(params = params)
 
-        val game = LandCombatGame(world)
+        val game = LandCombatGame(world, codons = 3)
         game.scoreFunction[PlayerId.Blue] = interimScoreFunction
         game.scoreFunction[PlayerId.Red] = interimScoreFunction
         game.registerAgent(0, agents[numberToPlayerID(0)] ?: SimpleActionDoNothing(1000))
@@ -80,6 +80,18 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
         StatsCollator.addStatistics("ElapsedTime", System.currentTimeMillis() - startTime)
         StatsCollator.addStatistics("BLUE_Decisions", decisions.first.size)
         StatsCollator.addStatistics("RED_Decisions", decisions.second.size)
+        StatsCollator.addStatistics("BLUE_LaunchExpedition", game.eventQueue.history
+                .filter { it.action is LaunchExpedition && it.action.playerId == PlayerId.Blue }
+                .count())
+        StatsCollator.addStatistics("RED_LaunchExpedition", game.eventQueue.history
+                .filter { it.action is LaunchExpedition && it.action.playerId == PlayerId.Red }
+                .count())
+        StatsCollator.addStatistics("BLUE_Wait", game.eventQueue.history
+                .filter { it.action is InterruptibleWait && it.action.playerRef == 0 }
+                .count())
+        StatsCollator.addStatistics("RED_Wait", game.eventQueue.history
+                .filter { it.action is InterruptibleWait && it.action.playerRef == 1 }
+                .count())
     }
     println("$blueWins wins for Blue, $redWins for Red and $draws draws out of $maxGames")
     println(StatsCollator.summaryString())

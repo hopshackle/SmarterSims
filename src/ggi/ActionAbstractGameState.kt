@@ -1,14 +1,36 @@
 package ggi
 
 data class NoAction(val playerRef: Int, val waitTime: Int) : Action {
+    override val player = playerRef
     override fun apply(state: ActionAbstractGameState) {}
-            // Do absolutely nothing
+    // Do absolutely nothing
 
-    override fun nextDecisionPoint(player: Int, state: ActionAbstractGameState) = state.nTicks() + waitTime
+    override fun nextDecisionPoint(player: Int, state: ActionAbstractGameState) : Pair<Int, Int> {
+        val nextTime = state.nTicks() + waitTime
+        return Pair(nextTime, nextTime)
+        // No interrupt possible on a NoAction
+    }
 
     // only visible to planning player
     override fun visibleTo(player: Int, state: ActionAbstractGameState) = player == playerRef
 }
+
+data class InterruptibleWait(val playerRef: Int, val waitTime: Int) : Action {
+    override val player = playerRef
+    override fun apply(state: ActionAbstractGameState) {}
+    // Do absolutely nothing
+
+    override fun nextDecisionPoint(player: Int, state: ActionAbstractGameState) : Pair<Int, Int> {
+        val nextTime = state.nTicks() + waitTime
+        return Pair(nextTime, state.nTicks())
+        // We can always interrupt a Wait
+    }
+
+    // only visible to planning player
+    override fun visibleTo(player: Int, state: ActionAbstractGameState) = player == playerRef
+}
+
+
 
 interface ActionAbstractGameState : AbstractGameState {
 
@@ -49,9 +71,10 @@ interface ActionAbstractGameState : AbstractGameState {
 }
 
 interface Action {
+    val player: Int
     fun apply(state: ActionAbstractGameState)
     fun visibleTo(player: Int, state: ActionAbstractGameState): Boolean
-    fun nextDecisionPoint(player: Int, state:ActionAbstractGameState): Int = -1
+    fun nextDecisionPoint(player: Int, state: ActionAbstractGameState): Pair<Int, Int> = Pair(-1, -1)
 }
 
 interface StateSummarizer {

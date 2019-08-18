@@ -19,6 +19,7 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
     override fun getAgentType() = "SimpleActionEvoAgent: $underlyingAgent"
 
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
+        val startTime = System.currentTimeMillis()
         if (gameState is LandCombatGame) {
             val intPerAction = gameState.codonsPerAction()
             // the underlyingAgent does all the work on mutating the genome
@@ -59,7 +60,7 @@ fun convertGenomeToActionList(genome: IntArray?, gameState: AbstractGameState, p
             val action = gameState.translateGene(playerRef, gene)
             val finishTime = action.nextDecisionPoint(playerRef, gameState)
             action.apply(gameState)
-            gameState.next(finishTime - gameState.nTicks())
+            gameState.next(finishTime.first - gameState.nTicks())
             action
         }
         return retValue
@@ -80,7 +81,7 @@ fun elapsedLengthOfPlan(genome: IntArray, gameState: AbstractGameState, playerRe
             val action = gameState.translateGene(playerRef, gene)
             val nextDecisionTime = action.nextDecisionPoint(playerRef, gameState)
             action.apply(gameState)
-            gameState.next(nextDecisionTime - gameState.nTicks())
+            gameState.next(nextDecisionTime.first - gameState.nTicks())
             i++
         } while (i < genome.size / intPerAction)
     }
@@ -100,7 +101,11 @@ class SimpleActionEvoAgentRollForward(var genome: IntArray, val horizon: Int = 1
         if (genome.size >= intPerAction) {
             val gene = genome.sliceArray(0 until intPerAction)
             genome = genome.sliceArray(intPerAction until genome.size)
-            return gameState.translateGene(playerRef, gene)
+            val retValue = gameState.translateGene(playerRef, gene)
+            if (retValue is InterruptibleWait) {
+                return NoAction(retValue.playerRef, retValue.waitTime)
+            }
+            return retValue
         } else {
             return NoAction(playerRef, horizon)
         }
