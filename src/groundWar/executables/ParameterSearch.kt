@@ -195,8 +195,8 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
         }
         nEvals++
         //     println("Game score ${settings.joinToString()} is ${game.score(0).toInt()}")
-        logger.log(finalScore, settings, false)
-        return finalScore
+        logger.log(finalScore / 2.0, settings, false)
+        return finalScore / 2.0
     }
 
     override fun searchSpace() = searchSpace

@@ -12,7 +12,7 @@ fun main(args: Array<String>) {
     // args[1] is the directory that contains agentParams to use
     // args[2] is the file that contains intervalParams to use (this is used with a fixed set at the moment, it is not resampled for each game)
     val maxGames = if (args.size > 0) args[0].toInt() else 100
-    val fileNames = File(args[1]).walk().filterNot { it.isDirectory }.toList()
+    val fileNames = File(args[1]).walk().maxDepth(1).filterNot { it.isDirectory }.toList()
     val allAgents = fileNames.map {
         println(it)
         val fileAsLines = BufferedReader(FileReader(it)).lines().toList()
