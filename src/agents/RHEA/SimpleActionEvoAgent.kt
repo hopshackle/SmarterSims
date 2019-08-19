@@ -3,6 +3,7 @@ package agents.RHEA
 import agents.SimpleActionDoNothing
 import ggi.*
 import groundWar.LandCombatGame
+import org.json.JSONObject
 
 class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(),
                            val opponentModel: SimpleActionPlayerInterface = SimpleActionDoNothing(underlyingAgent.horizon)
@@ -19,7 +20,6 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
     override fun getAgentType() = "SimpleActionEvoAgent: $underlyingAgent"
 
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
-        val startTime = System.currentTimeMillis()
         if (gameState is LandCombatGame) {
             val intPerAction = gameState.codonsPerAction()
             // the underlyingAgent does all the work on mutating the genome
@@ -49,6 +49,7 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
     }
 
     override fun backPropagate(finalScore: Double, finalTime: Int) {}
+
 }
 
 fun convertGenomeToActionList(genome: IntArray?, gameState: AbstractGameState, playerRef: Int): List<Action> {

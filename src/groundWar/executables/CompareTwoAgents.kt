@@ -4,6 +4,7 @@ import ggi.*
 import agents.*
 import groundWar.*
 import intervals.interval
+import test.world
 import utilities.*
 import java.io.*
 import java.lang.AssertionError
@@ -34,22 +35,20 @@ fun main(args: Array<String>) {
     runGames(maxGames, agentParams1.createAgent("BLUE"), agentParams2.createAgent("RED"), intervalParams)
 }
 
-fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: SimpleActionPlayerInterface, intervalParams: IntervalParams? = null, eventParams: EventGameParams? = null) {
+fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: SimpleActionPlayerInterface,
+             intervalParams: IntervalParams? = null, eventParams: EventGameParams? = null, worldSeeds: LongArray = longArrayOf()) {
 
     val agents = mapOf(PlayerId.Blue to blueAgent, PlayerId.Red to redAgent)
-    var blueWins = 0
-    var redWins = 0
-    var draws = 0
-    var blueScore = 0.0
 
     for (r in 1..maxGames) {
 
         agents[PlayerId.Blue]?.reset()
         agents[PlayerId.Red]?.reset()
 
+        val seedToUse = if (worldSeeds.isEmpty()) System.currentTimeMillis() else worldSeeds[(r - 1) % worldSeeds.size]
         val params = when {
-            eventParams != null -> eventParams.copy(seed = System.currentTimeMillis())
-            intervalParams == null -> EventGameParams(seed = System.currentTimeMillis())
+            eventParams != null -> eventParams.copy(seed = seedToUse)
+            intervalParams == null -> EventGameParams(seed = seedToUse)
             else -> intervalParams.sampleParams()
         }
         val world = World(params = params)
@@ -66,15 +65,12 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
         if (abs(abs(gameScore) - abs(redScore)) > 0.001) {
             throw AssertionError("Should be zero sum!")
         }
-        blueScore += gameScore
+
         val decisions = game.eventQueue.history.map(Event::action).filterIsInstance<MakeDecision>().partition { m -> m.playerRef == 0 }
         println(String.format("Game %2d\tScore: %6.1f\tCities: %2d\tRoutes: %2d\tseed: %d\tTime: %3d\tTicks: %4d\tDecisions: %d:%d", r, gameScore, world.cities.size, world.routes.size, params.seed,
                 System.currentTimeMillis() - startTime, game.nTicks(), decisions.first.size, decisions.second.size))
-        when {
-            gameScore > 0.0 -> blueWins++
-            gameScore < 0.0 -> redWins++
-            else -> draws++
-        }
+
+        StatsCollator.addStatistics("BLUE_wins", if (gameScore > 0.0) 1.0 else 0.0)
         StatsCollator.addStatistics("BLUE_SCORE", gameScore)
         StatsCollator.addStatistics("GameLength", game.nTicks())
         StatsCollator.addStatistics("ElapsedTime", System.currentTimeMillis() - startTime)
@@ -93,6 +89,4 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
                 .filter { it.action is InterruptibleWait && it.action.playerRef == 1 }
                 .count())
     }
-    println("$blueWins wins for Blue, $redWins for Red and $draws draws out of $maxGames")
-    println(StatsCollator.summaryString())
 }

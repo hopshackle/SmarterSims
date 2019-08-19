@@ -225,7 +225,10 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         val node = tree[currentState]
         if (debug) println(String.format("Action %d, Tick: %d, Current State %s, Node %s, ", actionCount, gameState.nTicks(), currentState, if (node == null) "null" else "exists"))
         val actionChosen = when {
-            node == null && actionCount == 1 -> throw AssertionError("Should always find state on first call")
+            node == null && actionCount == 1 -> {
+                println(this)
+                throw AssertionError("Should always find state on first call")
+            }
             node == null || actionsTaken > params.maxDepth -> rollout(gameState, playerRef)
             node.hasUnexploredActions() -> {
                 nodesToExpand = nodesPerIteration
@@ -290,7 +293,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         // We can discount if needed
         // this is the incremental reward...
         // TODO: MAX option will require us to go backwards through the trajectory to calculate update value
-        val startTime = trajectory.first.time
+        val startTime = if (trajectory.isNotEmpty()) trajectory.first.time else System.currentTimeMillis().toInt()
         trajectory.add(TrajectoryInstance("GAME_OVER", finalTime, finalScore, listOf(), NoAction(0, 1)))
         val incrementalRewardsAtTime = trajectory.map { Pair(it.score, it.time) }.zipWithNext()
                 .map { (a, b) -> Pair(b.first - a.first, b.second - startTime) }

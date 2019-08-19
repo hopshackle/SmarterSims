@@ -19,6 +19,8 @@ import kotlin.streams.toList
 
 fun main(args: Array<String>) {
     if (args.size < 4) AssertionError("Must specify at least four parameters: 3-Tuples? RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
+    val totalRuns = args[2].split("|")[0].toInt()
+    val reportEvery = args[2].split("|").getOrNull(1)?.toInt() ?: totalRuns
     val searchSpace = when (args[1]) {
         "RHEA" -> RHEASearchSpace
         "MCTS", "MCTS2" -> MCTSSearchSpace
@@ -70,7 +72,6 @@ fun main(args: Array<String>) {
     }
     if (args[1] == "MCTS2" && args.size > 5)
         throw AssertionError("Opponent model not used in MCTS2")
-    val reportEvery = min(stateSpaceSize / 2, args[2].toInt())
     val logger = EvolutionLogger()
     println("Search space consists of $stateSpaceSize states and $twoTupleSize possible 2-Tuples" +
             "${if (use3Tuples) " and $threeTupleSize possible 3-Tuples" else ""}:")
@@ -78,9 +79,7 @@ fun main(args: Array<String>) {
         println(String.format("%20s has %d values %s", searchSpace.name(it), searchSpace.nValues(it),
                 (0 until searchSpace.nValues(it)).map { i -> searchSpace.value(it, i) }.joinToString()))
     }
-    repeat(args[2].toInt() / reportEvery) {
-        val runsSoFar = nTupleSystem.numberOfSamples()
-        // TODO: Add in final runs remainder in the last iteration
+    repeat(totalRuns / reportEvery) {
         ntbea.runTrial(GroundWarEvaluator(searchSpace, params, logger, opponentModel), reportEvery)
         // tuples gets cleared out
         println("Current best sampled point (using mean estimate): " + nTupleSystem.bestOfSampled.joinToString() +
@@ -115,6 +114,7 @@ fun main(args: Array<String>) {
             bestAgent,
             HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
             eventParams = params)
+    println(StatsCollator.summaryString())
 }
 
 class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGameParams, val logger: EvolutionLogger, val opponentModel: SimpleActionPlayerInterface?) : SolutionEvaluator {
@@ -176,18 +176,27 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
     override fun evaluate(settings: IntArray): Double {
         val blueAgent = getAgent(settings)
         val redAgent = HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
-        val world = World(params = params.copy(seed = System.currentTimeMillis()))
+        val seedToUse = System.currentTimeMillis()
 
-        val game = LandCombatGame(world)
-        game.scoreFunction[PlayerId.Blue] = interimScoreFunction
-        game.scoreFunction[PlayerId.Red] = interimScoreFunction
-        game.registerAgent(0, blueAgent)
-        game.registerAgent(1, redAgent)
-        game.next(1000)
+        var swappedRoles = false
+        var netScore = 0.0
+        var finalScore = 0.0
+        repeat (2) {
+            val world = World(params = params.copy(seed = seedToUse))
+            val game = LandCombatGame(world)
+            game.scoreFunction[PlayerId.Blue] = interimScoreFunction
+            game.scoreFunction[PlayerId.Red] = interimScoreFunction
+            game.registerAgent(0, if (swappedRoles) redAgent else blueAgent)
+            game.registerAgent(1, if (swappedRoles) blueAgent else redAgent)
+            game.next(1000)
+            swappedRoles = true
+            netScore += game.score(if (swappedRoles) 1 else 0)
+            finalScore += finalScoreFunction(game, if (swappedRoles) 1 else 0)
+        }
         nEvals++
         //     println("Game score ${settings.joinToString()} is ${game.score(0).toInt()}")
-        logger.log(game.score(0), settings, false)
-        return finalScoreFunction(game, 0)
+        logger.log(finalScore, settings, false)
+        return finalScore
     }
 
     override fun searchSpace() = searchSpace
@@ -201,7 +210,7 @@ object RHEASearchSpace : SearchSpace {
 
     private val names = arrayOf("sequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne", "discountFactor")
     val values = arrayOf(
-            arrayOf(3, 6, 12, 24, 48, 100),                    // sequenceLength
+            arrayOf(3, 6, 12, 24, 48),                    // sequenceLength
             arrayOf(50, 100, 200, 400, 1000),               // horizon
             arrayOf(false, true),                                   // useShiftBuffer
             arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
@@ -227,12 +236,12 @@ object RHCASearchSpace : SearchSpace {
 
     private val names = arrayOf("sequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne", "populationSize", "parentSize", "evalsPerGeneration", "discountFactor")
     val values = arrayOf(
-            arrayOf(3, 6, 12, 24, 48),                    // sequenceLength
+            arrayOf(3, 6, 12, 24),                    // sequenceLength
             arrayOf(50, 100, 200, 400, 1000),               // horizon
             arrayOf(false, true),                                   // useShiftBuffer
             arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
             arrayOf(false, true),                           // flipAtLeastOne
-            arrayOf(8, 16, 32, 64, 128),                       //populationSize
+            arrayOf(32, 64, 128),                       //populationSize
             arrayOf(1, 2, 4),                               // parentSize
             arrayOf(5, 10, 20, 30),                            // evalsPerGeneration
             arrayOf(1.0, 0.999, 0.99, 0.95)            // discount rate
@@ -256,7 +265,7 @@ object MCTSSearchSpace : SearchSpace {
 
     private val names = arrayOf("maxDepth", "horizon", "pruneTree", "C", "maxActions", "rolloutPolicy", "selectionPolicy", "discountFactor")
     val values = arrayOf(
-            arrayOf(3, 6, 12, 24),                  // maxDepth (==sequenceLength)
+            arrayOf(3, 6, 12),                  // maxDepth (==sequenceLength)
             arrayOf(50, 100, 200, 400, 1000),               // horizon
             arrayOf(false, true),                           // pruneTree
             arrayOf(0.03, 0.3, 3.0, 30.0),           // C

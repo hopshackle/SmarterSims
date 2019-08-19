@@ -26,7 +26,6 @@ fun numberToPlayerID(player: Int): PlayerId {
     }
 }
 
-
 data class City(val location: Vec2d, val radius: Int = 25, var pop: Double = 0.0,
                 var owner: PlayerId = PlayerId.Neutral, val name: String = "", val fort: Boolean = false)
 
@@ -117,7 +116,7 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
     init {
         if (cities.isEmpty()) initialise()
         allRoutesFromCity = routes.groupBy(Route::fromCity)
-        if (cities.none { it.owner == PlayerId.Blue || it.owner == PlayerId.Red }) setPlayerBases()
+        if (cities.all { it.owner == PlayerId.Neutral}) setPlayerBases()
     }
 
     private fun initialise() {

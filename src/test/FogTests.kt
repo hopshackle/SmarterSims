@@ -126,6 +126,31 @@ class FogTests {
     }
 
     @Test
+    fun testFogWithNoForces() {
+        foggyWorld.cities.forEach { c ->
+            c.owner = PlayerId.Blue
+        }
+        val fogCopyRed = foggyWorld.deepCopyWithFog(PlayerId.Red)
+        assertTrue(fogCopyRed.cities.all { it.owner == PlayerId.Fog && it.pop == 1.0 })
+    }
+
+    @Test
+    fun testFogOnGameCopy() {
+        foggyWorld.cities.forEach { c ->
+            c.owner = PlayerId.Blue
+        }
+        val game = LandCombatGame(foggyWorld)
+        val gameCopy = game.copy(1)
+        assertTrue(gameCopy.world.cities.all {
+            it.owner == PlayerId.Fog && it.pop == 1.0
+        })
+        val gameCopy2 = gameCopy.copy()
+        assertTrue(gameCopy2.world.cities.all {
+            it.owner == PlayerId.Fog && it.pop == 1.0
+        })
+    }
+
+    @Test
     fun testFogOnCityCopy() {
         foggyWorld.cities[0].owner = PlayerId.Red
         val fullCopy = foggyWorld.deepCopy()
@@ -162,7 +187,7 @@ class FogTests {
                         }
                     }
                 }
-        assert(check.all { b -> b == true })
+        assert(check.all { it })
     }
 
     @Test

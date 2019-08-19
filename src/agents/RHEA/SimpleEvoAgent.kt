@@ -173,7 +173,6 @@ data class SimpleEvoAgent(
         } while (iterations < nEvals && System.currentTimeMillis() - startTime < timeLimit)
         StatsCollator.addStatistics("${name}_ToGene", solution[1])
         StatsCollator.addStatistics("${name}_ProportionsGene", solution[2])
-        StatsCollator.addStatistics("${name}_WaitGene", solution[3])
         StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
         StatsCollator.addStatistics("${name}_Evals", iterations)
         StatsCollator.addStatistics("${name}_HorizonUsed", elapsedLengthOfPlan(solution, gameState.copy(), playerId))
