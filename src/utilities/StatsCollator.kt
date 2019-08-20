@@ -34,7 +34,7 @@ object StatsCollator {
         return statistics.entries
                 .map { (k, _) ->
                     String.format("%-20s = %.4g, SE = %.2g\n", k, getStatistics(k),
-                            sqrt(((squares[k]!! / count[k]!!) - getStatistics(k).pow(2.0) / (count[k]!! - 1).toDouble())))
+                            sqrt(((squares[k]!! / count[k]!!) - getStatistics(k).pow(2.0)) / (count[k]!! - 1).toDouble()))
                 }
                 .sorted()
                 .joinToString(separator = "")

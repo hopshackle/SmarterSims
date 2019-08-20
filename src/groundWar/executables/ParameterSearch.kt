@@ -110,6 +110,7 @@ fun main(args: Array<String>) {
         println("")
     }
     val bestAgent = GroundWarEvaluator(searchSpace, params, logger, opponentModel).getAgent(nTupleSystem.bestOfSampled)
+    StatsCollator.clear()
     runGames(1000,
             bestAgent,
             HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
