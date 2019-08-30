@@ -24,8 +24,8 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     // the first digits are the city...so we need at least the number of cities
     // then the second is the destination...so we need to maximum degree of a node
     // then the next two are proprtion of force and wait time
-    val cityGenes = Math.log10(world.cities.size.toDouble() - 1.0).toInt() + 1
-    val routeGenes = Math.log10((world.allRoutesFromCity.map { (_, v) -> v.size }.max()
+    val cityGenes = log10(world.cities.size.toDouble() - 1.0).toInt() + 1
+    val routeGenes = log10((world.allRoutesFromCity.map { (_, v) -> v.size }.max()
             ?: 2).toDouble() - 1.0).toInt() + 1
 
     val eventQueue = EventQueue()

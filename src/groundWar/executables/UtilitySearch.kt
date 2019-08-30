@@ -18,7 +18,7 @@ fun main(args: Array<String>) {
     // 2: number of trials
     // 3: STD/EXP_MEAN/EXP_FULL
 
-    if (args.size < 4) AssertionError("Must specify at least three parameters: Agent file, 3-Tuples?, trials, STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
+    if (args.size < 4) throw AssertionError("Must specify at least three parameters: Agent file, 3-Tuples?, trials, STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
     val totalRuns = args[2].split("|")[0].toInt()
     val reportEvery = args[2].split("|").getOrNull(1)?.toInt() ?: totalRuns
     val nTupleSystem = when {
@@ -28,9 +28,12 @@ fun main(args: Array<String>) {
             val minWeight = args[3].split(":")[1].toDouble()
             NTupleSystemExp(30, minWeight = minWeight)
         }
-        args[3].startsWith("EXP_SQRT") -> {
+        args[3].startsWith("EXP_SQRT:") -> {
             val minWeight = args[3].split(":")[1].toDouble()
             NTupleSystemExp(30, minWeight = minWeight, exploreWithSqrt = true)
+        }
+        args[3].startsWith("EXP_SQRT") -> {
+            NTupleSystemExp(30, expWeightExplore = false, exploreWithSqrt = true)
         }
         else -> throw AssertionError("Unknown NTuple parameter: " + args[3])
     }
@@ -100,5 +103,28 @@ fun main(args: Array<String>) {
             println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), nTupleSystem.getMeanEstimate(k.v)))
         }
         println("")
+    }
+}
+
+
+class UtilitySearchSpace(val agentParams: AgentParams) : HopshackleSearchSpace() {
+    override val names: Array<String>
+        get() = arrayOf("visibilityNode", "visibilityArc", "theirCity", "ownForce", "theirForce")
+    override val values: Array<Array<*>>
+        get() = arrayOf(
+                arrayOf(0.0, 0.1, 0.5, 1.0, 5.0),
+                arrayOf(0.0, 0.1, 0.5, 1.0, 5.0),
+                arrayOf(0.0, -1.0, -5.0, -10.0),
+                arrayOf(0.0, 0.1, 0.5, 1.0, 3.0),
+                arrayOf(0.0, -0.1, -0.5, -1.0, -3.0)
+        )
+
+    fun getScoreFunction(settings: IntArray): (LandCombatGame, Int) -> Double {
+        return compositeScoreFunction(
+                visibilityScore(values[0][settings[0]] as Double, values[1][settings[1]] as Double),
+                simpleScoreFunction(5.0, values[3][settings[3]] as Double,
+                        values[2][settings[2]] as Double, values[4][settings[4]] as Double)
+        )
+
     }
 }

@@ -3,6 +3,7 @@ package groundWar
 import math.Vec2d
 import kotlin.random.Random
 import org.json.*
+import java.io.File
 import kotlin.math.abs
 
 enum class PlayerId {
@@ -102,7 +103,8 @@ data class Transit(val nPeople: Double, val fromCity: Int, val toCity: Int, val 
 }
 
 data class World(var cities: List<City> = ArrayList(), var routes: List<Route> = ArrayList(),
-                 val params: EventGameParams = EventGameParams()) {
+                 val params: EventGameParams = EventGameParams(),
+                 val imageFile: String? = null) {
 
     val random = Random(params.seed)
 
@@ -116,7 +118,7 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
     init {
         if (cities.isEmpty()) initialise()
         allRoutesFromCity = routes.groupBy(Route::fromCity)
-        if (cities.all { it.owner == PlayerId.Neutral}) setPlayerBases()
+        if (cities.all { it.owner == PlayerId.Neutral }) setPlayerBases()
     }
 
     private fun initialise() {
@@ -292,6 +294,7 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
 
     fun toJSON(): JSONObject {
         val json = JSONObject()
+        if (imageFile != null) json.put("image", imageFile)
         json.put("height", params.height)
         json.put("width", params.width)
         json.put("cities", cities.map {
@@ -324,11 +327,22 @@ fun createWorld(data: String, params: EventGameParams): World {
 fun createWorldFromJSON(data: String, params: EventGameParams): World {
 
     val json = JSONObject(data)
+    val image = json.getString("image")
     val height = json.getInt("height")
     val width = json.getInt("width")
     val cities = json.getJSONArray("cities").map {
         val c = it as JSONObject
-        City(Vec2d(c.getDouble("x"), c.getDouble("y")), radius = params.radius, pop = 0.0, fort = c.getBoolean("fort"), name = c.getString("name"))
+        City(Vec2d(c.getDouble("x"), c.getDouble("y")),
+                radius = params.radius,
+                owner = when (c.getString("owner")) {
+                    "RED", "red" -> PlayerId.Red
+                    "BLUE", "blue" -> PlayerId.Blue
+                    else -> PlayerId.Neutral
+                },
+                pop = c.getDouble("population"),
+                fort = c.getBoolean("fort"),
+                name = c.getString("name")
+        )
     }
     // name, x, y, fort are expected values
     val routes = json.getJSONArray("routes").flatMap {
@@ -341,7 +355,7 @@ fun createWorldFromJSON(data: String, params: EventGameParams): World {
     }
     // from, to are expected values (referring to city names)
 
-    return World(cities, routes, params = params.copy(height = height, width = width))
+    return World(cities, routes, params = params.copy(height = height, width = width), imageFile = if (image != "") image else null)
 }
 
 fun createWorldFromMap(data: String, params: EventGameParams): World {

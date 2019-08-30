@@ -39,15 +39,27 @@ fun main(args: Array<String>) {
         val fileAsLines = BufferedReader(FileReader(args[1])).lines().toList()
         createAgentParamsFromString(fileAsLines)
     } else AgentParams()
+    val scoreParams = args.firstOrNull { it.startsWith("SC|") }
+    val scoreFunction = if (scoreParams != null) {
+        val params = scoreParams.split("|").filterNot { it == "SC" }.map { it.toDouble() }
+        compositeScoreFunction(
+                simpleScoreFunction(params[1], params[3], params[2], params[4]),
+                visibilityScore(params[5], params[6])
+        )
+    } else
+        interimScoreFunction
 
     val blueAgent = blueParams.createAgent("BLUE")
     val redAgent = redParams.createAgent("RED")
-    runWithParams(params, blueAgent, redAgent, if (args.size > 2) args[2] else "")
+    runWithParams(params, blueAgent, redAgent,
+            iScoreFunction = scoreFunction,
+            mapFile = if (args.size > 2) args[2] else "")
 }
 
 fun runWithParams(params: EventGameParams,
                   blueAgent: SimpleActionPlayerInterface,
                   redAgent: SimpleActionPlayerInterface,
+                  iScoreFunction: (LandCombatGame, Int) -> Double = interimScoreFunction,
                   mapFile: String = "") {
     val fileAsLines = if (mapFile != "") BufferedReader(FileReader(mapFile)).readLines().joinToString("\n") else ""
     val world = if (fileAsLines == "") World(params = params) else createWorld(fileAsLines, params)
@@ -59,8 +71,8 @@ fun runWithParams(params: EventGameParams,
     val targets = mapOf(PlayerId.Blue to listOf(0, 2, 4, 5), PlayerId.Red to listOf(0, 1, 3, 5))
     val game = LandCombatGame(world, targets = emptyMap())
 
-    game.scoreFunction[PlayerId.Blue] = interimScoreFunction
-    game.scoreFunction[PlayerId.Red] = interimScoreFunction
+    game.scoreFunction[PlayerId.Blue] = iScoreFunction
+    game.scoreFunction[PlayerId.Red] = iScoreFunction
     StatsCollator.clear()
 
     game.registerAgent(0, blueAgent)

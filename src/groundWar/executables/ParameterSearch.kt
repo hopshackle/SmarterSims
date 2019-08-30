@@ -34,9 +34,12 @@ fun main(args: Array<String>) {
             val minWeight = args[3].split(":")[1].toDouble()
             NTupleSystemExp(30, minWeight = minWeight)
         }
-        args[3].startsWith("EXP_SQRT") -> {
+        args[3].startsWith("EXP_SQRT:") -> {
             val minWeight = args[3].split(":")[1].toDouble()
             NTupleSystemExp(30, minWeight = minWeight, exploreWithSqrt = true)
+        }
+        args[3].startsWith("EXP_SQRT") -> {
+            NTupleSystemExp(30, expWeightExplore = false, exploreWithSqrt = true)
         }
         else -> throw AssertionError("Unknown NTuple parameter: " + args[3])
     }
@@ -178,42 +181,42 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
     }
 
     override fun evaluate(settings: IntArray): Double {
-        val blueAgent = getAgent(settings)
-        val redAgent = HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
         val seedToUse = System.currentTimeMillis()
 
-        var swappedRoles = false
         var netScore = 0.0
         var finalScore = 0.0
         repeat(2) {
-            val startTime = System.currentTimeMillis()
+            val heuristicOpponent = HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
             val world = World(params = params.copy(seed = seedToUse))
             val game = LandCombatGame(world)
-            if (swappedRoles) {
-                game.registerAgent(0, redAgent)
-                game.registerAgent(1, blueAgent)
-                game.scoreFunction[PlayerId.Red] = if (searchSpace is UtilitySearchSpace)
-                    searchSpace.getScoreFunction(settings)
-                else interimScoreFunction
-                game.scoreFunction[PlayerId.Blue] = interimScoreFunction
+            game.scoreFunction[PlayerId.Red] = interimScoreFunction
+            game.scoreFunction[PlayerId.Blue] = interimScoreFunction
+            if (it == 1) {
+                if (searchSpace is UtilitySearchSpace) {
+                    game.registerAgent(0, getAgent(intArrayOf())) // note that settings do not define this for UtilitySearch
+                    game.registerAgent(1, getAgent(intArrayOf()))
+                    game.scoreFunction[PlayerId.Red] = searchSpace.getScoreFunction(settings)
+                } else {
+                    game.registerAgent(0, heuristicOpponent)
+                    game.registerAgent(1, getAgent(settings))
+                }
             } else {
-                game.registerAgent(0, blueAgent)
-                game.registerAgent(1, redAgent)
-                game.scoreFunction[PlayerId.Blue] = if (searchSpace is UtilitySearchSpace)
-                    searchSpace.getScoreFunction(settings)
-                else interimScoreFunction
-                game.scoreFunction[PlayerId.Red] = interimScoreFunction
+                if (searchSpace is UtilitySearchSpace) {
+                    game.registerAgent(0, getAgent(intArrayOf())) // note that settings do not define this for UtilitySearch
+                    game.registerAgent(1, getAgent(intArrayOf()))
+                    game.scoreFunction[PlayerId.Blue] = searchSpace.getScoreFunction(settings)
+                } else {
+                    game.registerAgent(0, getAgent(settings))
+                    game.registerAgent(1, heuristicOpponent)
+                }
             }
 
             game.next(1000)
-            swappedRoles = true
-            netScore += game.score(if (swappedRoles) 1 else 0)
-            finalScore += finalScoreFunction(game, if (swappedRoles) 1 else 0)
-//            println(String.format("Game %2d\tScore: %6.1f\tCities: %2d\tRoutes: %2d\tseed: %d\tTime: %3d\tTicks: %4d", nEvals, finalScore, world.cities.size, world.routes.size, params.seed,
- //                   System.currentTimeMillis() - startTime, game.nTicks()))
-
+            netScore += game.score(if (it == 1) 1 else 0)
+            finalScore += finalScoreFunction(game, if (it == 1) 1 else 0)
         }
         nEvals++
+        //     println("Game score ${settings.joinToString()} is ${game.score(0).toInt()}")
         logger.log(finalScore / 2.0, settings, false)
         return finalScore / 2.0
     }
@@ -298,27 +301,4 @@ object MCTSSearchSpace : HopshackleSearchSpace() {
                                HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
                        ) */
         )
-}
-
-class UtilitySearchSpace(val agentParams: AgentParams) : HopshackleSearchSpace() {
-    override val names: Array<String>
-        get() = arrayOf("visibilityNode", "visibilityArc", "ownCity", "theirCity", "ownForce", "theirForce")
-    override val values: Array<Array<*>>
-        get() = arrayOf(
-                arrayOf(0.0, 0.1, 0.5, 1.0, 5.0),
-                arrayOf(0.0, 0.1, 0.5, 1.0, 5.0),
-                arrayOf(0.0, 1.0, 5.0, 10.0),
-                arrayOf(0.0, -1.0, -5.0, -10.0),
-                arrayOf(0.0, 0.1, 0.5, 1.0, 3.0),
-                arrayOf(0.0, -0.1, -0.5, -1.0, -3.0)
-        )
-
-    fun getScoreFunction(settings: IntArray): (LandCombatGame, Int) -> Double {
-        return compositeScoreFunction(
-                visibilityScore(values[0][settings[0]] as Double, values[1][settings[1]] as Double),
-                simpleScoreFunction(values[2][settings[2]] as Double, values[4][settings[4]] as Double,
-                        values[3][settings[3]] as Double, values[5][settings[5]] as Double)
-        )
-
-    }
 }
