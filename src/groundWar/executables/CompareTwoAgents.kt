@@ -32,11 +32,29 @@ fun main(args: Array<String>) {
         createIntervalParamsFromString(fileAsLines)
     } else null
 
-    runGames(maxGames, agentParams1.createAgent("BLUE"), agentParams2.createAgent("RED"), intervalParams)
+    fun createScoreFunction(input: String?): (LandCombatGame, Int) -> Double {
+        if (input != null) {
+            val params = input.split("|").filterNot { it.startsWith("SC") }.map { it.toDouble() }
+            return compositeScoreFunction(
+                    simpleScoreFunction(params[0], params[2], params[1], params[3]),
+                    visibilityScore(params[4], params[5])
+            )
+        }
+        return interimScoreFunction
+    }
+
+    val blueScoreFunction = createScoreFunction(args.firstOrNull { it.startsWith("SCB") })
+    val redScoreFunction = createScoreFunction(args.firstOrNull { it.startsWith("SCR") })
+
+    StatsCollator.clear()
+    runGames(maxGames, agentParams1.createAgent("BLUE"), agentParams2.createAgent("RED"), intervalParams,
+            scoreFunctions = arrayOf(blueScoreFunction, redScoreFunction))
+    println(StatsCollator.summaryString())
 }
 
 fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: SimpleActionPlayerInterface,
-             intervalParams: IntervalParams? = null, eventParams: EventGameParams? = null, worldSeeds: LongArray = longArrayOf()) {
+             intervalParams: IntervalParams? = null, eventParams: EventGameParams? = null, worldSeeds: LongArray = longArrayOf(),
+             scoreFunctions: Array<(LandCombatGame, Int) -> Double> = arrayOf(interimScoreFunction, interimScoreFunction)) {
 
     val agents = mapOf(PlayerId.Blue to blueAgent, PlayerId.Red to redAgent)
 
@@ -54,8 +72,8 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
         val world = World(params = params)
 
         val game = LandCombatGame(world)
-        game.scoreFunction[PlayerId.Blue] = interimScoreFunction
-        game.scoreFunction[PlayerId.Red] = interimScoreFunction
+        game.scoreFunction[PlayerId.Blue] = scoreFunctions[0]
+        game.scoreFunction[PlayerId.Red] = scoreFunctions[1]
         game.registerAgent(0, agents[numberToPlayerID(0)] ?: SimpleActionDoNothing(1000))
         game.registerAgent(1, agents[numberToPlayerID(1)] ?: SimpleActionDoNothing(1000))
         val startTime = System.currentTimeMillis()

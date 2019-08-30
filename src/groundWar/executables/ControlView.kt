@@ -136,7 +136,8 @@ class ControlView {
                 )
                 val blueAgent = createAgentParamsFromString(blueAgentDetails.text.split("\n")).createAgent("BLUE")
                 val redAgent = createAgentParamsFromString(redAgentDetails.text.split("\n")).createAgent("RED")
-                runningThread = Thread { runWithParams(simParams, blueAgent, redAgent, mapNameField.text) }
+                runningThread = Thread { runWithParams(simParams, blueAgent, redAgent,
+                        mapFile = mapNameField.text) }
                 runningThread.start()
             }
         }

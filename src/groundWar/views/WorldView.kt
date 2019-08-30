@@ -8,6 +8,10 @@ import java.awt.geom.*
 import java.awt.geom.Rectangle2D
 import javax.swing.JComponent
 import kotlin.math.roundToInt
+import java.io.File
+import javax.imageio.ImageIO
+import java.awt.Color
+
 
 class WorldView(var game: LandCombatGame) : JComponent() {
 
@@ -32,9 +36,13 @@ class WorldView(var game: LandCombatGame) : JComponent() {
 
             //       val b = (1 + Math.sin(game.nTicks().toDouble() * 0.01 * Math.PI).toFloat()) / 2f
             // println(b)
-            g.color = oliveGreen
-            g.fillRect(0, 0, getWidth(), getHeight())
-
+            if (imageFile != null) {
+                val img = ImageIO.read(File(imageFile))
+                g.drawImage(img, 0, 0, this@WorldView)
+            } else {
+                g.color = oliveGreen
+                g.fillRect(0, 0, getWidth(), getHeight())
+            }
             // now need to work out a scale
             val xScale = getWidth() / params.width.toDouble()
             val yScale = getHeight() / params.height.toDouble()
