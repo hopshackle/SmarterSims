@@ -119,6 +119,11 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
         if (cities.isEmpty()) initialise()
         allRoutesFromCity = routes.groupBy(Route::fromCity)
         if (cities.all { it.owner == PlayerId.Neutral }) setPlayerBases()
+
+        if (imageFile != null) {
+            if (!File(imageFile).exists())
+                throw AssertionError("Image file not found: " + imageFile)
+        }
     }
 
     private fun initialise() {
@@ -327,19 +332,19 @@ fun createWorld(data: String, params: EventGameParams): World {
 fun createWorldFromJSON(data: String, params: EventGameParams): World {
 
     val json = JSONObject(data)
-    val image = json.getString("image")
+    val image = if (json.has("image")) json.getString("image") else null
     val height = json.getInt("height")
     val width = json.getInt("width")
     val cities = json.getJSONArray("cities").map {
         val c = it as JSONObject
         City(Vec2d(c.getDouble("x"), c.getDouble("y")),
                 radius = params.radius,
-                owner = when (c.getString("owner")) {
+                owner = if (c.has("owner")) when (c.getString("owner")) {
                     "RED", "red" -> PlayerId.Red
                     "BLUE", "blue" -> PlayerId.Blue
                     else -> PlayerId.Neutral
-                },
-                pop = c.getDouble("population"),
+                } else PlayerId.Neutral,
+                pop = if (c.has("pop")) c.getDouble("pop") else 0.0,
                 fort = c.getBoolean("fort"),
                 name = c.getString("name")
         )
