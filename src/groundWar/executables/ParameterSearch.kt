@@ -186,6 +186,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
         var netScore = 0.0
         var finalScore = 0.0
         repeat(2) {
+            val startTime = System.currentTimeMillis()
             val world = World(params = params.copy(seed = seedToUse))
             val game = LandCombatGame(world)
             if (swappedRoles) {
@@ -208,9 +209,11 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
             swappedRoles = true
             netScore += game.score(if (swappedRoles) 1 else 0)
             finalScore += finalScoreFunction(game, if (swappedRoles) 1 else 0)
+//            println(String.format("Game %2d\tScore: %6.1f\tCities: %2d\tRoutes: %2d\tseed: %d\tTime: %3d\tTicks: %4d", nEvals, finalScore, world.cities.size, world.routes.size, params.seed,
+ //                   System.currentTimeMillis() - startTime, game.nTicks()))
+
         }
         nEvals++
-        //     println("Game score ${settings.joinToString()} is ${game.score(0).toInt()}")
         logger.log(finalScore / 2.0, settings, false)
         return finalScore / 2.0
     }
