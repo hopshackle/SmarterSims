@@ -17,9 +17,9 @@ fun simpleScoreFunction(ourCityValue: Double, ourForceValue: Double, theirCityVa
             val ourCities = cities.count { c -> c.owner == playerId }
             val theirCities = cities.count { c -> c.owner == if (playerId == PlayerId.Blue) PlayerId.Red else PlayerId.Blue }
             // then add the total of all forces
-            val ourForces = cities.filter { c -> c.owner == playerId }.sumByDouble(City::pop) +
+            val ourForces = cities.filter { c -> c.owner == playerId }.sumByDouble{it.pop.size} +
                     currentTransits.filter { t -> t.playerId == playerId }.sumByDouble(Transit::nPeople)
-            val enemyForces = cities.filter { c -> c.owner != playerId }.sumByDouble(City::pop) +
+            val enemyForces = cities.filter { c -> c.owner != playerId }.sumByDouble{it.pop.size} +
                     currentTransits.filter { t -> t.playerId != playerId }.sumByDouble(Transit::nPeople)
             ourCityValue * ourCities + ourForceValue * ourForces + theirCityValue * theirCities + theirForceValue * enemyForces
         }
@@ -32,9 +32,9 @@ fun specificTargetScoreFunction(targetValue: Double = 100.0,
         val playerColour = numberToPlayerID(player)
         with(game.world) {
             val targetsAcquired = game.targets[playerColour]?.count { i -> cities[i].owner == playerColour } ?: 0
-            val ourForces = cities.filter { c -> c.owner == playerColour }.sumByDouble(City::pop) +
+            val ourForces = cities.filter { c -> c.owner == playerColour }.sumByDouble{it.pop.size} +
                     currentTransits.filter { t -> t.playerId == playerColour }.sumByDouble(Transit::nPeople)
-            val enemyForces = cities.filter { c -> c.owner != playerColour }.sumByDouble(City::pop) +
+            val enemyForces = cities.filter { c -> c.owner != playerColour }.sumByDouble{it.pop.size} +
                     currentTransits.filter { t -> t.playerId != playerColour }.sumByDouble(Transit::nPeople)
             targetsAcquired * targetValue + ourForces * ownForceValue - enemyForces * enemyForceValue
         }

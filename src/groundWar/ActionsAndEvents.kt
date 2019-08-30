@@ -15,12 +15,12 @@ data class TransitStart(val transit: Transit) : Action {
             val city = world.cities[transit.fromCity]
             if (city.owner != transit.playerId)
                 return // do nothing
-            val actualTransit = if (city.pop < transit.nPeople) {
-                transit.copy(city.pop)
+            val actualTransit = if (city.pop.size < transit.nPeople) {
+                transit.copy(city.pop.size)
             } else {
                 transit
             }
-            city.pop -= actualTransit.nPeople
+            city.pop = city.pop.copy(size = city.pop.size - actualTransit.nPeople)
             val enemyCollision = world.nextCollidingTransit(actualTransit, state.nTicks())
             world.addTransit(actualTransit)
             if (enemyCollision != null) {
@@ -70,10 +70,10 @@ data class CityInflux(val playerId: PlayerId, val pop: Double, val destination: 
             val world = state.world
             val city = world.cities[destination]
             if (city.owner == playerId) {
-                city.pop += pop
+                city.pop = city.pop.copy(size = city.pop.size + pop)
             } else {
                 val p = world.params
-                val result = lanchesterClosedFormBattle(pop, city.pop,
+                val result = lanchesterClosedFormBattle(pop, city.pop.size,
                         p.lanchesterCoeff[player] / if (city.fort) p.fortAttackerDivisor else 1.0,
                         p.lanchesterExp[player],
                         p.lanchesterCoeff[1 - player],
@@ -82,10 +82,10 @@ data class CityInflux(val playerId: PlayerId, val pop: Double, val destination: 
                 if (result > 0.0) {
                     // attackers win
                     city.owner = playerId
-                    city.pop = result
+                    city.pop = Force(result)
                 } else {
                     // defenders win
-                    city.pop = -result
+                    city.pop = Force(-result)
                 }
             }
         }
@@ -150,7 +150,7 @@ data class LaunchExpedition(val playerId: PlayerId, val origin: Int, val destina
     fun forcesSent(state: ActionAbstractGameState): Double {
         if (state is LandCombatGame) {
             with(state.world) {
-                val sourceCityPop = cities[origin].pop
+                val sourceCityPop = cities[origin].pop.size
                 var forcesSent = proportion * sourceCityPop
                 if (forcesSent < 1.0) forcesSent = min(1.0, sourceCityPop)
                 return forcesSent
@@ -184,7 +184,7 @@ data class LaunchExpedition(val playerId: PlayerId, val origin: Int, val destina
 
     fun isValid(state: LandCombatGame): Boolean {
         return state.world.cities[origin].owner == playerId &&
-                state.world.cities[origin].pop > 0 &&
+                state.world.cities[origin].pop.size > 0 &&
                 origin != destination &&
                 state.world.allRoutesFromCity.getOrDefault(origin, emptyList()).any { r -> r.toCity == destination } &&
                 meetsMinStrengthCriterion(state)
@@ -195,7 +195,7 @@ data class LaunchExpedition(val playerId: PlayerId, val origin: Int, val destina
 
         with(state.world) {
             if (cities[destination].owner == playerId) return true
-            if (cities[destination].pop > forceStrength / params.minAssaultFactor[player])
+            if (cities[destination].pop.size > forceStrength / params.minAssaultFactor[player])
                 return false
             val forcesOnArc = currentTransits
                     .filter { it.fromCity == destination && it.toCity == origin && it.playerId != playerId }

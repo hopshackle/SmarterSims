@@ -67,7 +67,7 @@ class WorldView(var game: LandCombatGame) : JComponent() {
                 g.draw(ellipse)
                 g.setColor(playerCols[c.owner])
                 g.fill(ellipse)
-                val label = if (c.owner == PlayerId.Fog) "?" else "${c.pop.roundToInt()}"
+                val label = if (c.owner == PlayerId.Fog) "?" else "${c.pop.size.roundToInt()}"
                 DrawUtil().centreString(g, label, xScale * c.location.x, yScale * c.location.y)
                 DrawUtil().centreString(g, c.name, xScale * (c.location.x + params.radius + 20), yScale * (c.location.y + params.radius + 20), Color.WHITE)
             }

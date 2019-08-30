@@ -16,7 +16,7 @@ object LandCombatStateFunction : StateSummarizer {
                 state.world.cities.forEach {
                     append(playerIDToNumber(it.owner))
                     append(",")
-                    append(it.pop.roundToInt())
+                    append(it.pop.size.roundToInt())
                     append("|")
                 }
                 state.world.routes.forEach { arc ->

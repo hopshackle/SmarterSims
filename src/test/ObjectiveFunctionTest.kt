@@ -34,14 +34,14 @@ class ObjectiveFunctionTest {
         val action1 = LaunchExpedition(PlayerId.Blue, world.cities.indexOf(blueCity), 1, 0.5, 2)
         action1.apply(game)
         game.next(1)
-        assertEquals(blueCity.pop, 50.0)
+        assertEquals(blueCity.pop.size, 50.0)
         assertEquals(simpleScoreFunction(5.0, 1.0, -5.0, -1.0)(game, 0), 0.0)
         assertEquals(simpleScoreFunction(5.0, 1.0, -5.0, -1.0)(game, 1), 0.0)
 
         val action2 = LaunchExpedition(PlayerId.Red, world.cities.indexOf(redCity), 0, 0.25, 2)
         action2.apply(game)
         game.next(1)
-        assertEquals(redCity.pop, 75.0)
+        assertEquals(redCity.pop.size, 75.0)
         assertEquals(simpleScoreFunction(5.0, 1.0, -5.0, -1.0)(game, 0), 0.0)
         assertEquals(simpleScoreFunction(5.0, 1.0, -5.0, -1.0)(game, 1), 0.0)
     }
