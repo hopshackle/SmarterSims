@@ -39,14 +39,14 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
                     .flatMap { c ->
                         allRoutesFromCity[cities.indexOf(c)]?.map { Pair(cities[it.toCity], c) } ?: emptyList()
                     }
-                    .filter { (attacker, target) -> attacker.owner == playerId && attacker.pop > target.pop * attackRatio }
+                    .filter { (attacker, target) -> attacker.owner == playerId && attacker.pop.size > target.pop.size * attackRatio }
                     .filter { (attacker, target) -> currentTransits.none { it.playerId == playerId && it.fromCity == cities.indexOf(attacker) && it.toCity == cities.indexOf(target) } }
             // given a choice of many targets, we pick one at random
             if (eligibleTargets.isNotEmpty()) {
                 val (attacker, target) = eligibleTargets.random(rnd)
                 val attackRef = cities.indexOf(attacker)
                 val targetRef = cities.indexOf(target)
-                val proportion = target.pop * attackRatio / attacker.pop
+                val proportion = target.pop.size * attackRatio / attacker.pop.size
                 return LaunchExpedition(playerId,
                         attackRef,
                         targetRef,
@@ -61,8 +61,8 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
         val playerId = numberToPlayerID(player)
         with(gameState.world) {
             val threatenedCities = cities.filter { c ->
-                c.owner == playerId && c.pop > 0.0 &&
-                        currentTransits.any { t -> t.toCity == cities.indexOf(c) && t.playerId != playerId && t.nPeople > c.pop * defenseRatio }
+                c.owner == playerId && c.pop.size > 0.0 &&
+                        currentTransits.any { t -> t.toCity == cities.indexOf(c) && t.playerId != playerId && t.nPeople > c.pop.size * defenseRatio }
             }
             val escapeRoutes: List<Pair<Int, Int>> = threatenedCities.flatMap { c ->
                 (allRoutesFromCity[cities.indexOf(c)] ?: emptyList())

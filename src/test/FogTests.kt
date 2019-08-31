@@ -131,7 +131,7 @@ class FogTests {
             c.owner = PlayerId.Blue
         }
         val fogCopyRed = foggyWorld.deepCopyWithFog(PlayerId.Red)
-        assertTrue(fogCopyRed.cities.all { it.owner == PlayerId.Fog && it.pop == 1.0 })
+        assertTrue(fogCopyRed.cities.all { it.owner == PlayerId.Fog && it.pop.size == 1.0 })
     }
 
     @Test
@@ -142,11 +142,11 @@ class FogTests {
         val game = LandCombatGame(foggyWorld)
         val gameCopy = game.copy(1)
         assertTrue(gameCopy.world.cities.all {
-            it.owner == PlayerId.Fog && it.pop == 1.0
+            it.owner == PlayerId.Fog && it.pop.size == 1.0
         })
         val gameCopy2 = gameCopy.copy()
         assertTrue(gameCopy2.world.cities.all {
-            it.owner == PlayerId.Fog && it.pop == 1.0
+            it.owner == PlayerId.Fog && it.pop.size == 1.0
         })
     }
 
@@ -213,7 +213,7 @@ class FogTests {
         // 4 is Blue, 3 is Red
         // 1 is visible to both 3 and 4
         foggyWorld.cities[8].owner = PlayerId.Blue
-        foggyWorld.cities[8].pop = 5.0
+        foggyWorld.cities[8].pop = Force(5.0)
         val game = LandCombatGame(foggyWorld)
         //      game.eventQueue.add(Event(10, MakeDecision(1)))  // R
         //      game.eventQueue.add(Event(10, MakeDecision(0))) // B

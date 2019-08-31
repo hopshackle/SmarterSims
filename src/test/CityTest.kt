@@ -158,7 +158,7 @@ class WorldCreationTests {
             -C--F-
         """.trimIndent()
         val world = createWorld(mapString, EventGameParams())
-        world.cities.forEach { it.pop = 0.0; it.owner = PlayerId.Neutral }
+        world.cities.forEach { it.pop = Force(0.0); it.owner = PlayerId.Neutral }
         assertEquals(world.cities.size, 4)
         assertEquals(world.cities[0], City(Vec2d(75.0, 75.0), name = "City_1"))
         assertEquals(world.cities[1], City(Vec2d(275.0, 125.0), name = "City_2"))

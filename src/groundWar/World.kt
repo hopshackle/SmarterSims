@@ -27,8 +27,16 @@ fun numberToPlayerID(player: Int): PlayerId {
     }
 }
 
-data class City(val location: Vec2d, val radius: Int = 25, var pop: Double = 0.0,
-                var owner: PlayerId = PlayerId.Neutral, val name: String = "", val fort: Boolean = false)
+data class Force(val size: Double, val fatigue: Double = 0.0, val timeStamp: Long = 0)
+
+data class City(val location: Vec2d, val radius: Int = 25, var pop: Force = Force(0.0),
+                var owner: PlayerId = PlayerId.Neutral, val name: String = "", val fort: Boolean = false) {
+
+    // constructor for old style population
+//    constructor(location: Vec2d, radius: Int = 25, pop: Double, owner: PlayerId = PlayerId.Neutral,
+//                name: String = "", fort: Boolean = false) :
+//            this(location, radius, Force(pop), owner, name, fort)
+}
 
 data class Route(val fromCity: Int, val toCity: Int, val length: Double, val terrainDifficulty: Double)
 
@@ -136,7 +144,7 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
                 val isFort = random.nextDouble() < percentFort;
                 val location = Vec2d(radius + random.nextDouble((width - 2.0 * radius)),
                         radius + random.nextDouble((height - 2.0 * radius)))
-                val city = City(location, radius, 0.0, name = n.toString(), fort = isFort)
+                val city = City(location, radius, name = n.toString(), fort = isFort)
                 if (canPlace(city, cities, citySeparation)) {
                     cities += city
                     n++
@@ -181,9 +189,9 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
             redBase = random.nextInt(cities.size)
         }
         cities[blueBase].owner = PlayerId.Blue
-        cities[blueBase].pop = params.startingForce[0].toDouble()
+        cities[blueBase].pop = Force(params.startingForce[0].toDouble())
         cities[redBase].owner = PlayerId.Red
-        cities[redBase].pop = params.startingForce[1].toDouble()
+        cities[redBase].pop = Force(params.startingForce[1].toDouble())
     }
 
     private fun linkRandomCityTo(cityIndex: Int): Boolean {
@@ -227,7 +235,7 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
         val state = copy()
         state.cities = ArrayList(cities.withIndex().map { (i, c) ->
             if (checkVisible(i, perspective)) City(c.location, c.radius, c.pop, c.owner, c.name, c.fort)
-            else City(c.location, c.radius, params.fogStrengthAssumption[playerIDToNumber(perspective)], PlayerId.Fog, c.name, c.fort)
+            else City(c.location, c.radius, Force(params.fogStrengthAssumption[playerIDToNumber(perspective)]), PlayerId.Fog, c.name, c.fort)
         })
         state.currentTransits = ArrayList(currentTransits.filter { t -> checkVisible(t, perspective) }) // each Transit is immutable, but not the list of active ones
         state.routes = routes       // immutable, so safe
@@ -344,7 +352,7 @@ fun createWorldFromJSON(data: String, params: EventGameParams): World {
                     "BLUE", "blue" -> PlayerId.Blue
                     else -> PlayerId.Neutral
                 } else PlayerId.Neutral,
-                pop = if (c.has("pop")) c.getDouble("pop") else 0.0,
+                pop = Force(if (c.has("pop")) c.getDouble("pop") else 0.0),
                 fort = c.getBoolean("fort"),
                 name = c.getString("name")
         )
@@ -372,7 +380,7 @@ fun createWorldFromMap(data: String, params: EventGameParams): World {
     val cities: List<City> = lines.withIndex().flatMap { (y, line) ->
         line.withIndex().filter { it.value in listOf('C', 'F') }.map { (x, char) ->
             cityCount++
-            City(Vec2d(x * 50.0 + 25, y * 50.0 + 25), params.radius, 0.0, name = "City_$cityCount", fort = char == 'F')
+            City(Vec2d(x * 50.0 + 25, y * 50.0 + 25), params.radius, name = "City_$cityCount", fort = char == 'F')
         }.toList()
     }
 
