@@ -26,11 +26,11 @@ fun main(args: Array<String>) {
         args[3] == "EXP_MEAN" -> NTupleSystemExp(30, expWeightExplore = false)
         args[3].startsWith("EXP_FULL") -> {
             val minWeight = args[3].split(":")[1].toDouble()
-            NTupleSystemExp(30, minWeight = minWeight)
+            NTupleSystemExp(30, minWeight)
         }
         args[3].startsWith("EXP_SQRT:") -> {
             val minWeight = args[3].split(":")[1].toDouble()
-            NTupleSystemExp(30, minWeight = minWeight, exploreWithSqrt = true)
+            NTupleSystemExp(30, minWeight, exploreWithSqrt = true)
         }
         args[3].startsWith("EXP_SQRT") -> {
             NTupleSystemExp(30, expWeightExplore = false, exploreWithSqrt = true)

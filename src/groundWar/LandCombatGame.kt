@@ -1,7 +1,6 @@
 package groundWar
 
 import ggi.*
-import test.params
 import kotlin.math.*
 import kotlin.collections.*
 import kotlin.random.Random
@@ -20,7 +19,7 @@ data class Event(val tick: Int, val action: Action) : Comparable<Event> {
 
 class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List<Int>> = emptyMap()) : ActionAbstractGameState {
 
-    val LCG_rnd = Random(params.seed)
+    val LCG_rnd = Random(world.params.seed)
     // the first digits are the city...so we need at least the number of cities
     // then the second is the destination...so we need to maximum degree of a node
     // then the next two are proprtion of force and wait time

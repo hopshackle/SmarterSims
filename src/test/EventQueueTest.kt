@@ -28,9 +28,9 @@ class InterruptWaitTests() {
             Route(0, 3, 10.0, 1.0)
     )
 
-    val params = EventGameParams(speed = doubleArrayOf(5.0, 5.0), width = 20, height = 20, seed = 10, fogOfWar = true)
-    val world = World(cities, routes, params = params)
-    val game = LandCombatGame(world)
+    private val params = EventGameParams(speed = doubleArrayOf(5.0, 5.0), width = 20, height = 20, seed = 10, fogOfWar = true)
+    private val world = World(cities, routes, params = params)
+    private val game = LandCombatGame(world)
 
     @BeforeEach
     fun setup() {

@@ -30,13 +30,7 @@ fun numberToPlayerID(player: Int): PlayerId {
 data class Force(val size: Double, val fatigue: Double = 0.0, val timeStamp: Long = 0)
 
 data class City(val location: Vec2d, val radius: Int = 25, var pop: Force = Force(0.0),
-                var owner: PlayerId = PlayerId.Neutral, val name: String = "", val fort: Boolean = false) {
-
-    // constructor for old style population
-//    constructor(location: Vec2d, radius: Int = 25, pop: Double, owner: PlayerId = PlayerId.Neutral,
-//                name: String = "", fort: Boolean = false) :
-//            this(location, radius, Force(pop), owner, name, fort)
-}
+                var owner: PlayerId = PlayerId.Neutral, val name: String = "", val fort: Boolean = false)
 
 data class Route(val fromCity: Int, val toCity: Int, val length: Double, val terrainDifficulty: Double)
 

@@ -24,11 +24,11 @@ private val routes = listOf(
         Route(2, 1, 10.0, 1.0)
 )
 
-val params = EventGameParams(speed = doubleArrayOf(5.0, 5.0), width = 20, height = 20, seed = 10)
-val world = World(cities, routes, params = params)
-val game = LandCombatGame(world)
-val delayWorld = world.copy(params = params.copy(orderDelay = intArrayOf(10, 10)))
-val delayGame = LandCombatGame(delayWorld)
+private val params = EventGameParams(speed = doubleArrayOf(5.0, 5.0), width = 20, height = 20, seed = 10)
+private val world = World(cities, routes, params = params)
+private val game = LandCombatGame(world)
+private val delayWorld = world.copy(params = params.copy(orderDelay = intArrayOf(10, 10)))
+private val delayGame = LandCombatGame(delayWorld)
 
 object TransitTest {
 

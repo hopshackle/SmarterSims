@@ -1,9 +1,29 @@
 package test
 
 import groundWar.*
+import math.Vec2d
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import kotlin.random.Random
+
+// we create a simple world of 3 cities. One Blue and one Red, with a Neutral world sandwiched between them
+private val cities = listOf(
+        City(Vec2d(0.0, 0.0), 0, Force(10.0), PlayerId.Blue),
+        City(Vec2d(0.0, 20.0), 0, Force(10.0), PlayerId.Red),
+        City(Vec2d(0.0, 10.0), 0, owner = PlayerId.Neutral)
+)
+private val routes = listOf(
+        Route(0, 1, 20.0, 1.0),
+        Route(0, 2, 10.0, 1.0),
+        Route(1, 0, 20.0, 1.0),
+        Route(1, 2, 10.0, 1.0),
+        Route(2, 0, 10.0, 1.0),
+        Route(2, 1, 10.0, 1.0)
+)
+
+private val params = EventGameParams(speed = doubleArrayOf(5.0, 5.0), width = 20, height = 20, seed = 10)
+private val world = World(cities, routes, params = params)
+private val game = LandCombatGame(world)
 
 class ObjectiveFunctionTest {
     @Test
