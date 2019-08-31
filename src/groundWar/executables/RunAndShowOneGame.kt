@@ -41,10 +41,10 @@ fun main(args: Array<String>) {
     } else AgentParams()
     val scoreParams = args.firstOrNull { it.startsWith("SC|") }
     val scoreFunction = if (scoreParams != null) {
-        val params = scoreParams.split("|").filterNot { it == "SC" }.map { it.toDouble() }
+        val sp = scoreParams.split("|").filterNot { it == "SC" }.map { it.toDouble() }
         compositeScoreFunction(
-                simpleScoreFunction(params[1], params[3], params[2], params[4]),
-                visibilityScore(params[5], params[6])
+                simpleScoreFunction(sp[1], sp[3], sp[2], sp[4]),
+                visibilityScore(sp[5], sp[6])
         )
     } else
         interimScoreFunction
