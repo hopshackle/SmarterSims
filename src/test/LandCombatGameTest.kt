@@ -42,7 +42,7 @@ object TransitTest {
         assertEquals(gameCopy.world.currentTransits.size, 0)
         gameCopy.next(10)
         assertEquals(gameCopy.world.currentTransits.size, 1)
-        assertEquals(gameCopy.world.currentTransits[0], Transit(10.0, 0, 2, PlayerId.Blue, 10, 12))
+        assertEquals(gameCopy.world.currentTransits[0], Transit(Force(10.0, timeStamp = 10), 0, 2, PlayerId.Blue, 10, 12))
     }
 
     @Test
@@ -51,8 +51,8 @@ object TransitTest {
         // with a Blue LaunchExpedition to leave the city that is delayed until after the city has fallen
         // we then check that the LaunchExpedition does nothing...no TransitStart or TransitEnd generated
         // and MakeDecision still correctly in place
-        delayGame.world.cities[1].pop = Force(20.0)
         val gameCopy = delayGame.copy()
+        gameCopy.world.cities[1].pop = Force(20.0)
         LaunchExpedition(PlayerId.Red, 1, 0, 1.0, 32).apply(gameCopy)
         gameCopy.next(11)
 
@@ -89,7 +89,8 @@ object TransitTest {
         assertEquals(gameCopy.world.currentTransits[0].playerId, PlayerId.Blue)
         assertEquals(gameCopy.world.currentTransits[0].startTime, 21)
         assertEquals(gameCopy.world.currentTransits[0].endTime, 23)
-        assertEquals(gameCopy.world.currentTransits[0].nPeople, 7.47, 0.01)
+        assertEquals(gameCopy.world.currentTransits[0].force.size, 7.47, 0.01)
+        assertEquals(gameCopy.world.currentTransits[0].force.effectiveSize, 7.47, 0.01)
     }
 
     @Test
@@ -105,7 +106,8 @@ object TransitTest {
         assertEquals(transit.fromCity, 0)
         assertEquals(transit.toCity, 2)
         assertEquals(transit.playerId, PlayerId.Blue)
-        assertEquals(transit.nPeople, 10.0)
+        assertEquals(transit.force.size, 10.0)
+        assertEquals(transit.force.effectiveSize, 10.0)
         assertEquals(transit.startTime, 0)
         assertEquals(transit.endTime, 2)
     }
@@ -123,7 +125,7 @@ object TransitTest {
         assertEquals(transit.fromCity, 1)
         assertEquals(transit.toCity, 0)
         assertEquals(transit.playerId, PlayerId.Red)
-        assertEquals(transit.nPeople, 1.0)
+        assertEquals(transit.force.size, 1.0)
         assertEquals(transit.startTime, 0)
         assertEquals(transit.endTime, 4)
     }
@@ -134,8 +136,8 @@ object TransitTest {
         val arrivalTime = gameCopy.nTicks() + (20.0 / world.params.speed[0]).toInt()
         assertEquals(arrivalTime, 4)
         assertEquals(gameCopy.nTicks(), 0)
-        val oneWay = Transit(5.0, 0, 1, PlayerId.Blue, 0, arrivalTime)
-        val otherWay = Transit(7.0, 1, 0, PlayerId.Red, 0, arrivalTime)
+        val oneWay = Transit(Force(5.0), 0, 1, PlayerId.Blue, 0, arrivalTime)
+        val otherWay = Transit(Force(7.0), 1, 0, PlayerId.Red, 0, arrivalTime)
         // note that the endTime on the Transit
         assertEquals(oneWay.currentPosition(0, gameCopy.world.cities).x, 0.0)
         assertEquals(oneWay.currentPosition(0, gameCopy.world.cities).y, 0.0)
@@ -181,14 +183,16 @@ object BattleTest {
         assert(nextEvent.action is Battle)
         val startingTransits = gameCopy.world.currentTransits.toList()
         assertEquals(startingTransits.size, 2)
-        assertEquals(startingTransits[0], Transit(10.0, 0, 1, PlayerId.Blue, 0, 4))
-        assert(abs(startingTransits[1].nPeople - 6.0) < 0.01)
-        assertEquals(startingTransits[1], Transit(startingTransits[1].nPeople, 1, 0, PlayerId.Red, 0, 4))
+        assertEquals(startingTransits[0], Transit(Force(10.0), 0, 1, PlayerId.Blue, 0, 4))
+        assert(abs(startingTransits[1].force.size - 6.0) < 0.01)
+        assert(abs(startingTransits[1].force.effectiveSize - 6.0) < 0.01)
+        assertEquals(startingTransits[1], Transit(Force(startingTransits[1].force.size), 1, 0, PlayerId.Red, 0, 4))
         nextEvent.action.apply(gameCopy)
         val endingTransits = gameCopy.world.currentTransits.toList()
         assertEquals(endingTransits.size, 1)
-        assert(abs(endingTransits[0].nPeople - 6.592) < 0.01)
-        assertEquals(endingTransits[0], Transit(endingTransits[0].nPeople, 0, 1, PlayerId.Blue, 0, 4))
+        assert(abs(endingTransits[0].force.size - 6.592) < 0.01)
+        assert(abs(endingTransits[0].force.effectiveSize - 6.592) < 0.01)
+        assertEquals(endingTransits[0], Transit(Force(endingTransits[0].force.size), 0, 1, PlayerId.Blue, 0, 4))
         assert(endingTransits[0] !== startingTransits[0])
     }
 
@@ -217,19 +221,20 @@ object BattleTest {
         assert(nextEvent.action is Battle)
         val startingTransits = gameCopy.world.currentTransits.toList()
         assertEquals(startingTransits.size, 3)
-        assertEquals(startingTransits[0], Transit(10.0, 0, 1, PlayerId.Blue, 0, 4))
-        assert(abs(startingTransits[1].nPeople - 6.0) < 0.01)
-        assertEquals(startingTransits[1], Transit(startingTransits[1].nPeople, 1, 0, PlayerId.Red, 0, 4))
-        assert(abs(startingTransits[2].nPeople - 4.0) < 0.01)
-        assertEquals(startingTransits[2], Transit(startingTransits[2].nPeople, 1, 0, PlayerId.Red, 1, 5))
+        assertEquals(startingTransits[0], Transit(Force(10.0), 0, 1, PlayerId.Blue, 0, 4))
+        assert(abs(startingTransits[1].force.size - 6.0) < 0.01)
+        assertEquals(startingTransits[1], Transit(Force(startingTransits[1].force.size), 1, 0, PlayerId.Red, 0, 4))
+        assert(abs(startingTransits[2].force.effectiveSize - 4.0) < 0.01)
+        assertEquals(startingTransits[2], Transit(Force(startingTransits[2].force.size, timeStamp = 1), 1, 0, PlayerId.Red, 1, 5))
         gameCopy.eventQueue.poll()
         nextEvent.action.apply(gameCopy)
-        val endingTransits = gameCopy.world.currentTransits.toList()
+        val endingTransits = gameCopy.world.currentTransits.toList() // after battle
         assertEquals(endingTransits.size, 2)
-        assert(abs(endingTransits[1].nPeople - 6.592) < 0.01)
-        assertEquals(endingTransits[1], Transit(endingTransits[1].nPeople, 0, 1, PlayerId.Blue, 0, 4))
-        assert(abs(endingTransits[0].nPeople - 4.0) < 0.01)
-        assertEquals(endingTransits[0], Transit(endingTransits[0].nPeople, 1, 0, PlayerId.Red, 1, 5))
+        assert(abs(endingTransits[1].force.size - 6.592) < 0.01)
+        assertEquals(endingTransits[1], Transit(Force(endingTransits[1].force.size, timeStamp = 0), 0, 1, PlayerId.Blue, 0, 4))
+        // TODO: After Battle we should really apply fatigue
+        assert(abs(endingTransits[0].force.effectiveSize - 4.0) < 0.01)
+        assertEquals(endingTransits[0], Transit(Force(endingTransits[0].force.size, timeStamp = 1), 1, 0, PlayerId.Red, 1, 5))
         assertEquals(gameCopy.eventQueue.filter { e -> e.action is Battle }.size, 1)
     }
 }
@@ -319,12 +324,12 @@ class MakeDecisionTest {
         gameCopy.planEvent(3, LaunchExpedition(PlayerId.Blue, 2, 3, .5, 10))
         gameCopy.planEvent(3, MakeDecision(0, 0))
         gameCopy.planEvent(3, MakeDecision(1, 0))
-        gameCopy.planEvent(4, TransitStart(Transit(3.0, 2, 5, PlayerId.Red, 3, 34)))
+        gameCopy.planEvent(4, TransitStart(Transit(Force(3.0), 2, 5, PlayerId.Red, 3, 34)))
 
         assertEquals(gameCopy.eventQueue.poll().action, MakeDecision(0, 0))
         assertEquals(gameCopy.eventQueue.poll().action, MakeDecision(1, 0))
         assertEquals(gameCopy.eventQueue.poll().action, LaunchExpedition(PlayerId.Blue, 2, 3, .5, 10))
-        assertEquals(gameCopy.eventQueue.poll().action, TransitStart(Transit(3.0, 2, 5, PlayerId.Red, 3, 34)))
+        assertEquals(gameCopy.eventQueue.poll().action, TransitStart(Transit(Force(3.0), 2, 5, PlayerId.Red, 3, 34)))
         assertEquals(gameCopy.eventQueue.poll().action, LaunchExpedition(PlayerId.Red, 6, 3, .5, 10))
     }
 

@@ -4,7 +4,7 @@ import math.Vec2d
 import kotlin.random.Random
 import org.json.*
 import java.io.File
-import kotlin.math.abs
+import kotlin.math.*
 
 enum class PlayerId {
     Blue, Red, Neutral, Fog
@@ -27,7 +27,14 @@ fun numberToPlayerID(player: Int): PlayerId {
     }
 }
 
-data class Force(val size: Double, val fatigue: Double = 0.0, val timeStamp: Long = 0)
+data class Force(val size: Double, val fatigue: Double = 0.0, val timeStamp: Int = 0) {
+    val effectiveSize = size * (1.0 - fatigue)
+    operator fun plus(other: Force): Force {
+        if (fatigue > 0.0 && other.fatigue > 0.0 && timeStamp != other.timeStamp)
+            throw AssertionError("Can only add fatigued forces with the same timestamp")
+        return Force(size + other.size, (other.fatigue * other.size + size * fatigue) / (size + other.size), max(timeStamp, other.timeStamp))
+    }
+}
 
 data class City(val location: Vec2d, val radius: Int = 25, var pop: Force = Force(0.0),
                 var owner: PlayerId = PlayerId.Neutral, val name: String = "", val fort: Boolean = false)
@@ -89,7 +96,7 @@ fun routesCross(start1: Vec2d, end1: Vec2d, start2: Vec2d, end2: Vec2d): Boolean
     return (t2 in 0.001..0.999 && t1 in 0.001..0.999) || (t1 == 0.0 && t2 in 0.001..0.999)
 }
 
-data class Transit(val nPeople: Double, val fromCity: Int, val toCity: Int, val playerId: PlayerId, val startTime: Int, val endTime: Int) {
+data class Transit(val force: Force, val fromCity: Int, val toCity: Int, val playerId: PlayerId, val startTime: Int, val endTime: Int) {
     fun currentPosition(time: Int, cities: List<City>): Vec2d {
         val proportion: Double = (time - startTime).toDouble() / (endTime - startTime).toDouble()
         return cities[fromCity].location + (cities[toCity].location - cities[fromCity].location) * proportion

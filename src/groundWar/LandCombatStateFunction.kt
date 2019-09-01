@@ -25,9 +25,9 @@ object LandCombatStateFunction : StateSummarizer {
                     append(",")
                     append(transitsOnArcByPlayer[PlayerId.Red]?.count() ?: 0)
                     append(",")
-                    append(transitsOnArcByPlayer[PlayerId.Blue]?.sumByDouble(Transit::nPeople)?.roundToInt() ?: 0)
+                    append(transitsOnArcByPlayer[PlayerId.Blue]?.sumByDouble{it.force.effectiveSize}?.roundToInt() ?: 0)
                     append(",")
-                    append(transitsOnArcByPlayer[PlayerId.Red]?.sumByDouble(Transit::nPeople)?.roundToInt() ?: 0)
+                    append(transitsOnArcByPlayer[PlayerId.Red]?.sumByDouble{it.force.effectiveSize}?.roundToInt() ?: 0)
                     append("|")
                 }
                 this

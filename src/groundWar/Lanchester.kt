@@ -18,9 +18,9 @@ fun lanchesterLinearBattle(attack: Double, defence: Double, attackerDamageCoeff:
     return if (defendingForce > 0.0) -defendingForce else attackingForce
 }
 
-fun lanchesterClosedFormBattle(attack: Double, defence: Double, attCoeff: Double, attExp: Double, defCoeff: Double, defExp: Double): Double {
+fun lanchesterClosedFormBattle(attack: Force, defence: Force, attCoeff: Double, attExp: Double, defCoeff: Double, defExp: Double): Double {
     // firstly calculate which side will win
-    val constant: Double = attCoeff * Math.pow(attack, attExp + 1) - defCoeff * Math.pow(defence, defExp + 1)
+    val constant: Double = attCoeff * Math.pow(attack.size, attExp + 1) - defCoeff * Math.pow(defence.size, defExp + 1)
     if (constant > 0.0) {
         // attacker wins
         return Math.pow(constant / attCoeff, 1.0 / (attExp + 1.0))

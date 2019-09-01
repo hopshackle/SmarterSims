@@ -89,7 +89,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         // if we take a real action, then we must wait for a minimum period before the next one
         val playerId = numberToPlayerID(player)
         if (world.cities.filter { it.owner == playerId }.sumByDouble { it.pop.size } +
-                world.currentTransits.filter { it.playerId == playerId }.sumByDouble(Transit::nPeople) < 0.001)
+                world.currentTransits.filter { it.playerId == playerId }.sumByDouble { it.force.effectiveSize } < 0.001)
             return NoAction(player, 1000)   // no units left
         val rawFromGene = gene.take(cityGenes).reversed().mapIndexed { i, v -> 10.0.pow(i.toDouble()) * v }.sum().toInt()
         val rawToGene = gene.takeLast(gene.size - cityGenes).take(routeGenes).reversed().mapIndexed { i, v -> 10.0.pow(i.toDouble()) * v }.sum().toInt()

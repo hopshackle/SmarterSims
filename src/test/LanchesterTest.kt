@@ -10,24 +10,24 @@ class LanchesterTest {
     @Test
     fun lanchesterOutnumber() {
         val defenceResult = lanchesterLinearBattle(10.0, 20.0, 0.05, 0.05)
-        assertEquals(defenceResult, lanchesterClosedFormBattle(10.0, 20.0, 0.05, 1.0, 0.05, 1.0), 0.5)
+        assertEquals(defenceResult, lanchesterClosedFormBattle(Force(10.0), Force(20.0), 0.05, 1.0, 0.05, 1.0), 0.5)
 
         val attackResult = lanchesterLinearBattle(20.0, 10.0, 0.05, 0.05)
-        assertEquals(attackResult, lanchesterClosedFormBattle(20.0, 10.0, 0.05, 1.0, 0.05, 1.0), 0.5)
+        assertEquals(attackResult, lanchesterClosedFormBattle(Force(20.0), Force(10.0), 0.05, 1.0, 0.05, 1.0), 0.5)
     }
 
     @Test
     fun lanchesterTie() {
-        assertEquals(0.0, lanchesterClosedFormBattle(10.0, 10.0, 0.05, 0.0, 0.05, 0.0), 0.05)
-        assertEquals(0.0, lanchesterClosedFormBattle(10.0, 10.0, 0.05, 1.0, 0.05, 1.0), 0.05)
-        assertEquals(0.0, lanchesterClosedFormBattle(10.0, 10.0, 0.1, 0.5, 0.1, 0.5), 0.05)
+        assertEquals(0.0, lanchesterClosedFormBattle(Force(10.0), Force(10.0), 0.05, 0.0, 0.05, 0.0), 0.05)
+        assertEquals(0.0, lanchesterClosedFormBattle(Force(10.0), Force(10.0), 0.05, 1.0, 0.05, 1.0), 0.05)
+        assertEquals(0.0, lanchesterClosedFormBattle(Force(10.0), Force(10.0), 0.1, 0.5, 0.1, 0.5), 0.05)
     }
 
     @Test
     fun lanchesterExponentVariation() {
-        val result_1_1 = lanchesterClosedFormBattle(20.0, 10.0, 0.05, 1.0, 0.05, 1.0)
-        val result_1_0 = lanchesterClosedFormBattle(20.0, 10.0, 0.05, 1.0, 0.05, 0.0)
-        val result_0_1 = lanchesterClosedFormBattle(20.0, 10.0, 0.05, 0.0, 0.05, 1.0)
+        val result_1_1 = lanchesterClosedFormBattle(Force(20.0), Force(10.0), 0.05, 1.0, 0.05, 1.0)
+        val result_1_0 = lanchesterClosedFormBattle(Force(20.0), Force(10.0), 0.05, 1.0, 0.05, 0.0)
+        val result_0_1 = lanchesterClosedFormBattle(Force(20.0), Force(10.0), 0.05, 0.0, 0.05, 1.0)
 
         // result is the surviving attacking force
         assert(result_1_1 < result_1_0)
@@ -37,9 +37,9 @@ class LanchesterTest {
 
     @Test
     fun lanchesterCoefficientVariation() {
-        val result_1_1 = lanchesterClosedFormBattle(15.0, 20.0, 0.10, 0.5, 0.10, 0.5)
-        val result_1_0 = lanchesterClosedFormBattle(15.0, 20.0, 0.10, 0.5, 0.05, 0.5)
-        val result_0_1 = lanchesterClosedFormBattle(15.0, 20.0, 0.05, 0.5, 0.10, 0.5)
+        val result_1_1 = lanchesterClosedFormBattle(Force(15.0), Force(20.0), 0.10, 0.5, 0.10, 0.5)
+        val result_1_0 = lanchesterClosedFormBattle(Force(15.0), Force(20.0), 0.10, 0.5, 0.05, 0.5)
+        val result_0_1 = lanchesterClosedFormBattle(Force(15.0), Force(20.0), 0.05, 0.5, 0.10, 0.5)
 
         // result is the surviving attacking force
         assert(result_1_1 < result_1_0)
@@ -57,8 +57,8 @@ class LanchesterTest {
         assertEquals(world.routes.size, 2)
         val state = LandCombatGame(world)
 
-        CityInflux(PlayerId.Blue, 30.0, 0).apply(state)
-        CityInflux(PlayerId.Blue, 30.0, 1).apply(state)
+        CityInflux(PlayerId.Blue, Force(30.0), 0).apply(state)
+        CityInflux(PlayerId.Blue, Force(30.0), 1).apply(state)
 
         assert(cities[0].owner == PlayerId.Red)
         assert(cities[1].owner == PlayerId.Blue)
@@ -77,8 +77,8 @@ class LanchesterTest {
         assertEquals(world.routes.size, 2)
         val state = LandCombatGame(world)
 
-        CityInflux(PlayerId.Red, 30.0, 0).apply(state)
-        CityInflux(PlayerId.Red, 30.0, 1).apply(state)
+        CityInflux(PlayerId.Red, Force(30.0), 0).apply(state)
+        CityInflux(PlayerId.Red, Force(30.0), 1).apply(state)
 
         assert(cities[0].owner == PlayerId.Blue)
         assert(cities[1].owner == PlayerId.Red)
