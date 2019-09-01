@@ -2,7 +2,9 @@ package test
 
 import groundWar.*
 import math.Vec2d
+import kotlin.math.*
 import org.junit.jupiter.api.*
+import org.junit.jupiter.api.Assertions.*
 import kotlin.random.Random
 import kotlin.test.assertEquals
 
@@ -54,5 +56,24 @@ class FatigueMovementTests {
         gameCopy.next(3)
         assertEquals(gameCopy.world.cities[0].pop, Force(5.0, 0.0, 0))
         assertEquals(gameCopy.world.cities[2].pop, Force(5.0, 0.1, 2))
+    }
+
+    @Test
+    fun moveToCityAndThenOnward() {
+        val gameCopy = game.copy()
+        val move1 = LaunchExpedition(PlayerId.Blue, 0, 2, 0.5, 0)
+        move1.apply(gameCopy)
+        gameCopy.next(3)
+        assertEquals(gameCopy.world.cities[0].pop, Force(5.0, 0.0, 0))
+        assertEquals(gameCopy.world.cities[2].pop, Force(5.0, 0.1, 2))
+        // at this point they have rested for one tick, so should be at fatigue 0.05
+
+        assertEquals(gameCopy.nTicks(), 3)
+        val move2 = LaunchExpedition(PlayerId.Blue, 2, 0, 0.5, 0)
+        move2.apply(gameCopy)
+        gameCopy.next(3)
+        assertEquals(gameCopy.world.cities[0].pop.copy(fatigue = 0.0), Force(7.5, 0.0, 5))
+        assertEquals(gameCopy.world.cities[0].pop.fatigue, (0.15 * 2.5) / 7.5, 0.001)
+        assertEquals(gameCopy.world.cities[2].pop, Force(2.5, 0.05, 3))
     }
 }

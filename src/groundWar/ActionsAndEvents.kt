@@ -43,7 +43,6 @@ data class TransitEnd(val playerId: PlayerId, val fromCity: Int, val toCity: Int
             val transit = getTransit(state)
             if (transit != null) {
                 val arrivingForce = newFatigue(state.world.params.fatigueRate[playerIDToNumber(playerId)],
-                        transit.endTime - transit.startTime,
                         state.nTicks(),
                         transit.force)
                 CityInflux(playerId, arrivingForce, toCity, fromCity).apply(state)
@@ -174,9 +173,14 @@ data class LaunchExpedition(val playerId: PlayerId, val origin: Int, val destina
                 val travelTime = (distance / world.params.speed[player]).toInt()
                 val arrivalTime = startTime + travelTime
                 val forcesSent = forcesSent(state)
-                val startingFatigue = world.cities[origin].pop.fatigue
+                val currentGarrison = world.cities[origin].pop
+                if (currentGarrison.fatigue > 0.0) { // update garrison fatigue first
+                    world.cities[origin].pop = newFatigue(-state.world.params.fatigueRate[playerIDToNumber(playerId)],
+                            state.nTicks(),
+                            currentGarrison)
+                }
                 // when a Transit is created we only need the starting Fatigue - the end fatigue will be calculated on arrival
-                val transit = Transit(Force(forcesSent, startingFatigue, startTime), origin, destination, playerId, startTime, arrivalTime)
+                val transit = Transit(Force(forcesSent, world.cities[origin].pop.fatigue, startTime), origin, destination, playerId, startTime, arrivalTime)
                 // we execute the troop departure immediately (with delay)
                 state.eventQueue.add(Event(startTime, TransitStart(transit)))
                 // and put their arrival in the queue for the game state
