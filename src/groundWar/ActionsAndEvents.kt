@@ -2,7 +2,7 @@ package groundWar
 
 import ggi.Action
 import ggi.ActionAbstractGameState
-import groundWar.fatigue.newFatigue
+import groundWar.fatigue.*
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -40,11 +40,10 @@ data class TransitEnd(val playerId: PlayerId, val fromCity: Int, val toCity: Int
 
     override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
+            val playerRef = playerIDToNumber(playerId)
             val transit = getTransit(state)
             if (transit != null) {
-                val arrivingForce = newFatigue(state.world.params.fatigueRate[playerIDToNumber(playerId)],
-                        state.nTicks(),
-                        transit.force)
+                val arrivingForce = state.fatigueModels[playerRef].move(state.nTicks(), transit.force)
                 CityInflux(playerId, arrivingForce, toCity, fromCity).apply(state)
                 state.world.removeTransit(transit)
             }
@@ -73,6 +72,7 @@ data class CityInflux(val playerId: PlayerId, val pop: Force, val destination: I
         if (state is LandCombatGame) {
             val world = state.world
             val city = world.cities[destination]
+            city.pop = state.fatigueModels[player].rest(state.nTicks(), city.pop)
             if (city.owner == playerId) {
                 city.pop = city.pop + pop
             } else {
@@ -111,25 +111,38 @@ data class CityInflux(val playerId: PlayerId, val pop: Force, val destination: I
 
 data class Battle(val transit1: Transit, val transit2: Transit) : Action {
     override val player = -1
+
+    fun combatForce(side: Int, state: LandCombatGame): Force {
+        val baseTransit = when (side) {
+            1 -> transit1
+            2 -> transit2
+            else -> throw AssertionError("Only 2 sides supported")
+        }
+        val fatigueModel = state.fatigueModels[playerIDToNumber(baseTransit.playerId)]
+        return fatigueModel.move(state.nTicks(), baseTransit.force)
+    }
     override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
             val p = state.world.params
             val playerRef = playerIDToNumber(transit1.playerId)
-            val result = lanchesterClosedFormBattle(transit1.force, transit2.force,
+            // we first need to apply fatigue effects of travelling up to this point before we calculate the results of the battle
+            val result = lanchesterClosedFormBattle(
+                    combatForce(1, state),
+                    combatForce(2, state),
                     p.lanchesterCoeff[playerRef],
                     p.lanchesterExp[playerRef],
                     p.lanchesterCoeff[1 - playerRef],
                     p.lanchesterExp[1 - playerRef]
             )
-            val winningTransit = if (result > 0.0) transit1 else transit2
-            val losingTransit = if (result > 0.0) transit2 else transit1
+            val winningSide = if (result > 0.0) 1 else 2
+            val (winningTransit, losingTransit) = if (result > 0.0) Pair(transit1, transit2) else Pair(transit2, transit1)
 
             state.world.removeTransit(losingTransit)
             state.world.removeTransit(winningTransit)
             if (abs(result).toInt() == 0) {
                 // do nothing
             } else {
-                val successorTransit = winningTransit.copy(force = Force(abs(result))) // TODO: Add fatigue
+                val successorTransit = winningTransit.copy(force = Force(abs(result), combatForce(winningSide, state).fatigue, state.nTicks()))
                 state.world.addTransit(successorTransit)
                 val nextCollidingTransit = state.world.nextCollidingTransit(successorTransit, state.nTicks())
                 if (nextCollidingTransit != null) {
@@ -175,7 +188,7 @@ data class LaunchExpedition(val playerId: PlayerId, val origin: Int, val destina
                 val forcesSent = forcesSent(state)
                 val currentGarrison = world.cities[origin].pop
                 if (currentGarrison.fatigue > 0.0) { // update garrison fatigue first
-                    world.cities[origin].pop = newFatigue(-state.world.params.fatigueRate[playerIDToNumber(playerId)],
+                    world.cities[origin].pop = state.fatigueModels[player].rest(
                             state.nTicks(),
                             currentGarrison)
                 }

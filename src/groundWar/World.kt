@@ -1,5 +1,6 @@
 package groundWar
 
+import groundWar.fatigue.LinearFatigue
 import math.Vec2d
 import kotlin.random.Random
 import org.json.*
@@ -103,11 +104,37 @@ data class Transit(val force: Force, val fromCity: Int, val toCity: Int, val pla
     }
 
     fun collisionEvent(otherTransit: Transit, world: World, currentTime: Int): Event {
-        val currentEnemyPosition = otherTransit.currentPosition(currentTime, world.cities)
-        val ourPosition = this.currentPosition(currentTime, world.cities)
-        val distance = ourPosition.distanceTo(currentEnemyPosition) / 2.0
-        val timeOfCollision = currentTime + (distance / world.params.speed[playerIDToNumber(playerId)]).toInt()
+        val (_, timeOfCollision) = willCollideAt(otherTransit, world, currentTime)
         return Event(timeOfCollision, Battle(this, otherTransit))
+    }
+
+    fun willCollideAt(otherTransit: Transit, world: World, currentTime: Int): Pair<Boolean, Int> {
+        when {
+            fromCity == otherTransit.toCity && toCity == otherTransit.fromCity -> {
+                val combinedSpeed = world.params.speed[playerIDToNumber(playerId)] + world.params.speed[playerIDToNumber(otherTransit.playerId)]
+                val currentEnemyPosition = otherTransit.currentPosition(currentTime, world.cities)
+                val ourPosition = this.currentPosition(currentTime, world.cities)
+                val distance = ourPosition.distanceTo(currentEnemyPosition)
+                val timeOfCollision = currentTime + (distance / combinedSpeed).toInt()
+                return Pair(true, timeOfCollision)
+            }
+            fromCity == otherTransit.fromCity && toCity == otherTransit.toCity -> {
+                val currentEnemyPosition = otherTransit.currentPosition(currentTime, world.cities)
+                val ourPosition = this.currentPosition(currentTime, world.cities)
+                val distance = ourPosition.distanceTo(currentEnemyPosition)
+                val usToGo = ourPosition.distanceTo(world.cities[toCity].location)
+                val themToGo = currentEnemyPosition.distanceTo(world.cities[toCity].location)
+                val ourSpeed = world.params.speed[playerIDToNumber(playerId)]
+                val theirSpeed = world.params.speed[playerIDToNumber(otherTransit.playerId)]
+                val (timeToCollision, timeToArrival) = if (usToGo < themToGo) {
+                    Pair(distance / (theirSpeed - ourSpeed), usToGo / ourSpeed)
+                } else {
+                    Pair(distance / (ourSpeed - theirSpeed), themToGo / ourSpeed)
+                }
+                return Pair(timeToCollision < timeToArrival, currentTime + timeToCollision.toInt())
+            }
+            else -> return Pair(false, 0)
+        }
     }
 }
 
@@ -296,14 +323,15 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
                             && it !== newTransit
                 }) return null
         // the check above looks for any pre-existing force by the same player on the arc. If one exists, then it will fight a battle first
-        val collidingTransit = currentTransits.filter {
-            it.fromCity == newTransit.toCity
-                    && it.toCity == newTransit.fromCity
-                    && it.playerId != newTransit.playerId
-                    && it.endTime > currentTime
-        }.minBy(Transit::endTime)
-        // find the transit on the rout closest to us
-        return collidingTransit
+
+        val collidingTransit = currentTransits.filterNot {
+            it.playerId == newTransit.playerId
+        }.map { Pair(it, it.willCollideAt(newTransit, this, currentTime)) }.filter { it.second.first }.minBy { it.second.second }
+        // find the transit on the route closest to us
+
+        // what about transits going in the same direction...but very slowly....
+        // could we have a function that returns the collision time of any two transits?
+        return collidingTransit?.first
     }
 
     fun toJSON(): JSONObject {

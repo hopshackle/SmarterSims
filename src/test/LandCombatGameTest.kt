@@ -27,7 +27,7 @@ private val routes = listOf(
 private val params = EventGameParams(speed = doubleArrayOf(5.0, 5.0), width = 20, height = 20, seed = 10)
 private val world = World(cities, routes, params = params)
 private val game = LandCombatGame(world)
-private val delayWorld = world.copy(params = params.copy(orderDelay = intArrayOf(10, 10)))
+private val delayWorld = world.copy(params = params.copy(orderDelay = intArrayOf(10, 10))).deepCopy()
 private val delayGame = LandCombatGame(delayWorld)
 
 object TransitTest {
@@ -181,18 +181,19 @@ object BattleTest {
         gameCopy.next(1)
         val nextEvent = gameCopy.eventQueue.peek()
         assert(nextEvent.action is Battle)
+        assertEquals(nextEvent.tick, 2)
         val startingTransits = gameCopy.world.currentTransits.toList()
         assertEquals(startingTransits.size, 2)
         assertEquals(startingTransits[0], Transit(Force(10.0), 0, 1, PlayerId.Blue, 0, 4))
         assert(abs(startingTransits[1].force.size - 6.0) < 0.01)
         assert(abs(startingTransits[1].force.effectiveSize - 6.0) < 0.01)
         assertEquals(startingTransits[1], Transit(Force(startingTransits[1].force.size), 1, 0, PlayerId.Red, 0, 4))
-        nextEvent.action.apply(gameCopy)
+        gameCopy.next(2)
         val endingTransits = gameCopy.world.currentTransits.toList()
         assertEquals(endingTransits.size, 1)
         assert(abs(endingTransits[0].force.size - 6.592) < 0.01)
         assert(abs(endingTransits[0].force.effectiveSize - 6.592) < 0.01)
-        assertEquals(endingTransits[0], Transit(Force(endingTransits[0].force.size), 0, 1, PlayerId.Blue, 0, 4))
+        assertEquals(endingTransits[0], Transit(Force(endingTransits[0].force.size, timeStamp = 2), 0, 1, PlayerId.Blue, 0, 4))
         assert(endingTransits[0] !== startingTransits[0])
     }
 
@@ -219,6 +220,7 @@ object BattleTest {
 
         val nextEvent = gameCopy.eventQueue.peek()
         assert(nextEvent.action is Battle)
+        assertEquals(nextEvent.tick, 2)
         val startingTransits = gameCopy.world.currentTransits.toList()
         assertEquals(startingTransits.size, 3)
         assertEquals(startingTransits[0], Transit(Force(10.0), 0, 1, PlayerId.Blue, 0, 4))
@@ -231,11 +233,50 @@ object BattleTest {
         val endingTransits = gameCopy.world.currentTransits.toList() // after battle
         assertEquals(endingTransits.size, 2)
         assert(abs(endingTransits[1].force.size - 6.592) < 0.01)
-        assertEquals(endingTransits[1], Transit(Force(endingTransits[1].force.size, timeStamp = 0), 0, 1, PlayerId.Blue, 0, 4))
-        // TODO: After Battle we should really apply fatigue
+        assertEquals(endingTransits[1], Transit(Force(endingTransits[1].force.size, timeStamp = 2), 0, 1, PlayerId.Blue, 0, 4))
         assert(abs(endingTransits[0].force.effectiveSize - 4.0) < 0.01)
         assertEquals(endingTransits[0], Transit(Force(endingTransits[0].force.size, timeStamp = 1), 1, 0, PlayerId.Red, 1, 5))
         assertEquals(gameCopy.eventQueue.filter { e -> e.action is Battle }.size, 1)
+    }
+
+    @Test
+    fun battleOccursAtCorrectPointBetweenForcesMovingAtDifferentSpeeds() {
+        val newParams = params.copy(speed = doubleArrayOf(1.0, 5.0))
+        val world = world.copy(params = newParams).deepCopy()
+        // so Blue moves at 20% of Red
+        val gameCopy = LandCombatGame(world)
+        val blueMove = LaunchExpedition(PlayerId.Blue, 0, 1, 1.0, 0)
+        val redMove = LaunchExpedition(PlayerId.Red, 1, 0, 0.5, 0)
+        blueMove.apply(gameCopy)
+        redMove.apply(gameCopy)
+        gameCopy.next(1)
+        assertEquals(gameCopy.eventQueue.filter { it.action is Battle }.size, 1)
+        val battleEvent = gameCopy.eventQueue.first { it.action is Battle }
+        assertEquals(battleEvent.tick, (20.0 / 6.0).toInt()) // commbined speed of the forces is 6.0
+        gameCopy.next(3)
+        assertEquals(gameCopy.eventQueue.filter { it.action is Battle }.size, 0)
+        assertEquals(gameCopy.world.currentTransits.size, 1)
+    }
+
+    @Test
+    fun fastMovingForceCanCatchUpWithSlowMovingEnemy() {
+        val newParams = params.copy(speed = doubleArrayOf(1.0, 5.0))
+        val world = world.copy(params = newParams).deepCopy()
+        // so Blue moves at 20% of Red
+        val gameCopy = LandCombatGame(world)
+        val redMove = LaunchExpedition(PlayerId.Red, 1, 0, 0.5, 0)
+        redMove.apply(gameCopy)
+        val blueMove = LaunchExpedition(PlayerId.Blue, 0, 2, 1.0, 0)
+        blueMove.apply(gameCopy)
+        gameCopy.next(5)
+        assertEquals(world.cities[0].owner, PlayerId.Red)
+        val redMove2 = LaunchExpedition(PlayerId.Red, 0, 2, 0.5, 0)
+        redMove2.apply(gameCopy)
+        gameCopy.next(1)
+        assertEquals(gameCopy.eventQueue.filterIsInstance<Battle>().size, 1)
+        gameCopy.next(3)
+        // by this point the blue force should not have reached its destination, but the red force would have done
+        assertEquals(world.cities[2].owner, PlayerId.Neutral)
     }
 }
 

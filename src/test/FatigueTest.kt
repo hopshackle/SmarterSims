@@ -76,4 +76,76 @@ class FatigueMovementTests {
         assertEquals(gameCopy.world.cities[0].pop.fatigue, (0.15 * 2.5) / 7.5, 0.001)
         assertEquals(gameCopy.world.cities[2].pop, Force(2.5, 0.05, 3))
     }
+
+    @Test
+    fun garrisonForceIsRestedWhenNewForceArrives() {
+        val gameCopy = game.copy()
+        gameCopy.world.cities[0].pop = Force(10.0, .5, 0)
+        gameCopy.next(5) // garrison should rest to fatigue of 0.25
+        CityInflux(PlayerId.Blue, Force(2.0, .2, 5), 0, -1).apply(gameCopy)
+        assertEquals(gameCopy.world.cities[0].pop, Force(12.0, (.25 * 10 + 0.2 * 2.0) / 12.0, 5))
+    }
+
+    @Test
+    fun attackOnFatiguedCity() {
+        val gameCopy = game.copy()
+        gameCopy.world.cities[0].pop = Force(10.0, .5, 0)
+        gameCopy.next(5) // garrison should rest to fatigue of 0.25
+        CityInflux(PlayerId.Red, Force(10.0, .35, 5), 0, -1).apply(gameCopy)
+        val expectedResult = lanchesterClosedFormBattle(
+                Force(10.0, .25, 5),
+                Force(10.0, .35, 5),
+                params.lanchesterCoeff[0], params.lanchesterExp[0], params.lanchesterCoeff[1], params.lanchesterExp[1]
+        )
+        assertEquals(gameCopy.world.cities[0].owner, PlayerId.Blue)
+        assertEquals(gameCopy.world.cities[0].pop, Force(expectedResult, 0.25, 5))
+    }
+
+    @Test
+    fun movingForcesMeetOnArcForBattleWithCorrectFatigueLevels() {
+        val gameCopy = game.copy()
+        val blueMove = LaunchExpedition(PlayerId.Blue, 0, 1, 0.5, 0)
+        blueMove.apply(gameCopy)
+        gameCopy.next(1)
+        // blue should now be in transit
+        val redMove = LaunchExpedition(PlayerId.Red, 1, 0, 0.6, 0)
+        redMove.apply(gameCopy)
+        gameCopy.next(1)
+        // red should now be in transit, and should have scheduled battle
+        assertEquals(gameCopy.world.currentTransits.size, 2)
+        assertEquals(gameCopy.eventQueue.filter { it.action is Battle }.size, 1)
+        val battle = gameCopy.eventQueue.first { it.action is Battle }.action as Battle
+        val timeOfBattle = gameCopy.eventQueue.first { it.action is Battle }.tick
+        assertEquals(timeOfBattle, 2)
+        val expectedBlueForce = battle.combatForce(2, gameCopy)
+        val expectedRedForce = battle.combatForce(1, gameCopy)
+        assertEquals(expectedRedForce, Force(6.0, 0.05, 2))
+        assertEquals(expectedBlueForce, Force(5.0, 0.10, 2))
+
+        gameCopy.next(1)
+        // and now check actual result of battle
+        val expectedResult = -lanchesterClosedFormBattle(expectedBlueForce, expectedRedForce,
+                params.lanchesterCoeff[0], params.lanchesterExp[0], params.lanchesterCoeff[1], params.lanchesterExp[1])
+        // this is the size of the expected surviving Red force
+
+        assertEquals(gameCopy.world.currentTransits.size, 1)
+        assertEquals(gameCopy.world.currentTransits[0].playerId, PlayerId.Red)
+        assertEquals(gameCopy.world.currentTransits[0].force, Force(expectedResult, 0.05, timeOfBattle))
+    }
+
+    @Test
+    fun fatigueLevelHasProportionateEffectOnCombat() {
+        val blueForce = Force(10.0, 0.0, 0)
+        val redForce = Force(15.0, 0.0, 0)
+        val baseResult = lanchesterClosedFormBattle(blueForce, redForce,
+                0.05, 0.25, 0.04 * 0.5, 0.20)
+
+        val fatiguedRedForce = Force(15.0, 0.5, 0)
+
+        val fatiguedResult = lanchesterClosedFormBattle(blueForce, fatiguedRedForce,
+                0.05, 0.25, 0.04, 0.20)
+
+        assertEquals(baseResult, fatiguedResult)
+    }
+
 }

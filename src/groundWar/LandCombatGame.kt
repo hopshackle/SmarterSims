@@ -1,6 +1,8 @@
 package groundWar
 
 import ggi.*
+import groundWar.fatigue.FatigueModel
+import groundWar.fatigue.LinearFatigue
 import kotlin.math.*
 import kotlin.collections.*
 import kotlin.random.Random
@@ -28,6 +30,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
             ?: 2).toDouble() - 1.0).toInt() + 1
 
     val eventQueue = EventQueue()
+    val fatigueModels = world.params.fatigueRate.map { LinearFatigue(it) }
 
     override fun registerAgent(player: Int, agent: SimpleActionPlayerInterface) = eventQueue.registerAgent(player, agent, nTicks())
     override fun getAgent(player: Int) = eventQueue.getAgent(player)
