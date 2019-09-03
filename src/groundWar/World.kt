@@ -129,9 +129,9 @@ data class Transit(val force: Force, val fromCity: Int, val toCity: Int, val pla
                 val (timeToCollision, timeToArrival) = if (usToGo < themToGo) {
                     Pair(distance / (theirSpeed - ourSpeed), usToGo / ourSpeed)
                 } else {
-                    Pair(distance / (ourSpeed - theirSpeed), themToGo / ourSpeed)
+                    Pair(distance / (ourSpeed - theirSpeed), themToGo / theirSpeed)
                 }
-                return Pair(timeToCollision < timeToArrival, currentTime + timeToCollision.toInt())
+                return Pair(timeToCollision > 0.0 && timeToCollision < timeToArrival, currentTime + timeToCollision.toInt())
             }
             else -> return Pair(false, 0)
         }
@@ -316,14 +316,6 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
     }
 
     fun nextCollidingTransit(newTransit: Transit, currentTime: Int): Transit? {
-        if (currentTransits.any {
-                    it.fromCity == newTransit.fromCity
-                            && it.toCity == newTransit.toCity
-                            && it.playerId == newTransit.playerId
-                            && it !== newTransit
-                }) return null
-        // the check above looks for any pre-existing force by the same player on the arc. If one exists, then it will fight a battle first
-
         val collidingTransit = currentTransits.filterNot {
             it.playerId == newTransit.playerId
         }.map { Pair(it, it.willCollideAt(newTransit, this, currentTime)) }.filter { it.second.first }.minBy { it.second.second }

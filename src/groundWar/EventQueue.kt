@@ -90,7 +90,8 @@ data class MakeDecision(val playerRef: Int, val minActivationTime: Int) : Action
         val (nextDecisionTime, earliestDecisionTime) = action.nextDecisionPoint(playerRef, state)
         when {
             nextDecisionTime == -1 -> throw AssertionError("No action from MakeDecision should have -1 as next point")
-            nextDecisionTime <= state.nTicks() -> throw AssertionError("Next Decision point must be in the future")
+            nextDecisionTime <= state.nTicks() ->
+                throw AssertionError("Next Decision point must be in the future")
             else -> state.planEvent(nextDecisionTime, MakeDecision(playerRef, earliestDecisionTime))
         }
     }

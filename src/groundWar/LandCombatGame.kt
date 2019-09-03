@@ -10,8 +10,11 @@ import ggi.SimpleActionPlayerInterface as SimpleActionPlayerInterface
 
 data class Event(val tick: Int, val action: Action) : Comparable<Event> {
 
-    val priority = if (action is MakeDecision) 0 else 1
-
+    val priority = when (action) {
+        is MakeDecision -> 0
+        is TransitEnd -> 2
+        else -> 10
+    }
     operator override fun compareTo(other: Event): Int {
         val tickComparison = tick.compareTo(other.tick)
         if (tickComparison == 0) return priority.compareTo(other.priority)

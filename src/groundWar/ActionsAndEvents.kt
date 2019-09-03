@@ -4,8 +4,14 @@ import ggi.Action
 import ggi.ActionAbstractGameState
 import groundWar.fatigue.*
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.min
 
+fun getCurrentTransit(transit: Transit, state: LandCombatGame): Transit? {
+    return state.world.currentTransits.firstOrNull {
+        it.endTime == transit.endTime && it.playerId == transit.playerId && it.fromCity == transit.fromCity && it.toCity == transit.toCity
+    }
+}
 
 data class TransitStart(val transit: Transit) : Action {
     override val player = playerIDToNumber(transit.playerId)
@@ -56,7 +62,6 @@ data class TransitEnd(val playerId: PlayerId, val fromCity: Int, val toCity: Int
         }
         return true
     }
-
 
     private fun getTransit(state: LandCombatGame): Transit? {
         return state.world.currentTransits.firstOrNull {
@@ -121,8 +126,14 @@ data class Battle(val transit1: Transit, val transit2: Transit) : Action {
         val fatigueModel = state.fatigueModels[playerIDToNumber(baseTransit.playerId)]
         return fatigueModel.move(state.nTicks(), baseTransit.force)
     }
+
     override fun apply(state: ActionAbstractGameState) {
         if (state is LandCombatGame) {
+            val actualTransit1 = getCurrentTransit(transit1, state)
+            val actualTransit2 = getCurrentTransit(transit2, state)
+            if (actualTransit1 == null || actualTransit2 == null)
+                return      // no Battle takes place
+
             val p = state.world.params
             val playerRef = playerIDToNumber(transit1.playerId)
             // we first need to apply fatigue effects of travelling up to this point before we calculate the results of the battle
@@ -135,7 +146,7 @@ data class Battle(val transit1: Transit, val transit2: Transit) : Action {
                     p.lanchesterExp[1 - playerRef]
             )
             val winningSide = if (result > 0.0) 1 else 2
-            val (winningTransit, losingTransit) = if (result > 0.0) Pair(transit1, transit2) else Pair(transit2, transit1)
+            val (winningTransit, losingTransit) = if (result > 0.0) Pair(actualTransit1, actualTransit2) else Pair(actualTransit2, actualTransit1)
 
             state.world.removeTransit(losingTransit)
             state.world.removeTransit(winningTransit)
@@ -203,7 +214,7 @@ data class LaunchExpedition(val playerId: PlayerId, val origin: Int, val destina
     }
 
     override fun nextDecisionPoint(player: Int, state: ActionAbstractGameState): Pair<Int, Int> {
-        val minTime = state.nTicks() + wait
+        val minTime = state.nTicks() + max(wait, 1)
         return Pair(minTime, minTime)
     }
 
