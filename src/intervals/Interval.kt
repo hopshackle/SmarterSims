@@ -25,6 +25,10 @@ fun interval(singleValue: Number): Interval {
     }
 }
 
+fun interval(intervals: Array<Interval>) {
+
+}
+
 fun intervalList(stringRepresentation: String): List<Interval> {
     // format is one of:
     // a
@@ -33,7 +37,6 @@ fun intervalList(stringRepresentation: String): List<Interval> {
     // a : [b, c]
     // [a, b] : c
     // [a, b] : [c, d]
-
     return stringRepresentation.split(":").map { s: String -> interval(s) }
 }
 
@@ -41,19 +44,29 @@ fun interval(stringRepresentation: String): Interval {
     // format is one of:
     // a
     // [a, b]
-
-    val intervalEnds = stringRepresentation.filterNot { c -> c in "[]" }.split(",")
+    // [a, b], [c, d] ...
     val funToApply: (String) -> Number = when {
         stringRepresentation.contains("true") || stringRepresentation.contains("false") -> { s -> if (s == "true") 1 else 0 }
-        stringRepresentation.contains(".") -> {s -> s.toDouble()}
+        stringRepresentation.contains(".") -> { s -> s.toDouble() }
         else -> String::toInt
     }
-    return when (intervalEnds.size) {
-        1 -> interval(funToApply(intervalEnds[0].trim()))
-        2 -> interval(funToApply(intervalEnds[0].trim()), funToApply(intervalEnds[1].trim()))
-        else -> throw AssertionError("Should only have length 1 or 2, not " + intervalEnds.size)
+
+    fun convertToInterval(stringRep: List<String>): Interval {
+        return when (stringRep.size) {
+            1 -> interval(funToApply(stringRep[0].trim()))
+            2 -> interval(funToApply(stringRep[0].trim()), funToApply(stringRep[1].trim()))
+            else -> {
+                val splitByBrackets = stringRepresentation.filterNot(Character::isWhitespace).split("],").map { it.filterNot { c -> c in "[]" } }
+                CompositeInterval(splitByBrackets.filter(String::isNotEmpty).map {
+                    val intervalE = it.split(",")
+                    convertToInterval(intervalE)
+                })
+            }
+        }
     }
 
+    val intervalEnds = stringRepresentation.filterNot { c -> c in "[]" }.split(",")
+    return convertToInterval(intervalEnds)
 }
 
 private val rnd = Random(System.currentTimeMillis())
@@ -69,5 +82,14 @@ data class DoubleInterval(val startPoint: Double, val endPoint: Double) : Interv
     constructor(singlePoint: Double) : this(singlePoint, singlePoint + 1e-6)
 
     override fun sampleFrom(rnd: Random): Double = rnd.nextDouble(startPoint, endPoint)
+    override fun sampleFrom(): Double = sampleFrom(rnd)
+}
+
+data class CompositeInterval(val components: List<Interval>) : Interval {
+    override fun sampleFrom(rnd: Random): Double {
+        val componentToUse = rnd.nextInt(components.size)
+        return components[componentToUse].sampleFrom(rnd).toDouble()
+    }
+
     override fun sampleFrom(): Double = sampleFrom(rnd)
 }
