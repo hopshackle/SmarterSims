@@ -223,10 +223,11 @@ data class LaunchExpedition(val playerId: PlayerId, val origin: Int, val destina
                 state.world.cities[origin].pop.size > 0 &&
                 origin != destination &&
                 state.world.allRoutesFromCity.getOrDefault(origin, emptyList()).any { r -> r.toCity == destination } &&
-                meetsMinStrengthCriterion(state)
+                meetsMinStrengthCriterion(state) &&
+                doesNotExceedControlLimit(state)
     }
 
-    fun meetsMinStrengthCriterion(state: LandCombatGame): Boolean {
+    private fun meetsMinStrengthCriterion(state: LandCombatGame): Boolean {
         val forceStrength = forcesSent(state)
 
         with(state.world) {
@@ -240,6 +241,15 @@ data class LaunchExpedition(val playerId: PlayerId, val origin: Int, val destina
                 return false
         }
         return true
+    }
+
+    private fun doesNotExceedControlLimit(state: LandCombatGame): Boolean {
+        val limit = state.world.params.controlLimit[player]
+        if (limit == 0) return true
+        val currentTransits = state.world.currentTransits.filter { it.playerId == playerId }.size
+        val currentPlannedTransits = state.eventQueue.filter { (it.action is LaunchExpedition && it.action.playerId == playerId)
+                || (it.action is TransitStart && it.action.transit.playerId == playerId) }.size
+        return (currentTransits + currentPlannedTransits < limit)
     }
 
     // only visible to planning player
