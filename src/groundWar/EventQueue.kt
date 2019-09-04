@@ -63,6 +63,7 @@ class EventQueue(val eventQueue: Queue<Event> = PriorityQueue()) : Queue<Event> 
                 currentTime = timeToFinish
             }
         } while (timeToFinish > currentTime && !state.isTerminal())
+        state.sanityChecks()
     }
 
     private fun interruptWait(agent: Int) {

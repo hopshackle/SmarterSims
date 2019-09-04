@@ -1,5 +1,6 @@
 package test
 
+import intervals.CompositeInterval
 import intervals.interval
 import intervals.intervalList
 import org.junit.jupiter.api.Assertions.*
@@ -33,5 +34,11 @@ class IntervalTests {
         assertEquals(intervalList("78.9, 100: 10.0"), listOf(interval(78.9, 100), interval(10.0)))
         assertEquals(intervalList("[78, 100] : [10, 20]"), listOf(interval(78, 100), interval(10, 20)))
         assertEquals(intervalList("[0.1, .2]:[1.0, 2.0  ]"), listOf(interval(0.1, 0.2), interval(1.0, 2.0)))
+    }
+
+    @Test
+    fun compositeIntervalConstruction() {
+        assertEquals(interval(" [2, 5], [5, 8 ] , [9  ]"), CompositeInterval(listOf(interval(2, 5), interval(5, 8), interval(9))))
+        assertEquals(interval(" [2, 5] [5, 8 ] , [9  ]"), CompositeInterval(listOf(interval(2, 5), interval(5, 8), interval(9))))
     }
 }

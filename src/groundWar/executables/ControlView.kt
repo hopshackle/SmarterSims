@@ -109,6 +109,7 @@ class ControlView {
         agentParameters.add(redAgentDetails)
 
         val buttonPanel = JPanel()
+        val agentPlanBox = JCheckBox("Show Agent Plans?", false)
         val startButton = JButton("Start")
         startButton.addActionListener {
             if (paused) {
@@ -138,7 +139,7 @@ class ControlView {
                 )
                 val blueAgent = createAgentParamsFromString(blueAgentDetails.text.split("\n")).createAgent("BLUE")
                 val redAgent = createAgentParamsFromString(redAgentDetails.text.split("\n")).createAgent("RED")
-                runningThread = Thread { runWithParams(simParams, blueAgent, redAgent,
+                runningThread = Thread { runWithParams(simParams, blueAgent, redAgent, showAgentPlans = agentPlanBox.isSelected,
                         mapFile = mapNameField.text) }
                 runningThread.start()
             }
@@ -148,6 +149,7 @@ class ControlView {
             paused = true
         }
 
+        buttonPanel.add(agentPlanBox)
         buttonPanel.add(startButton)
         buttonPanel.add(pauseButton)
         setting.add(buttonPanel)

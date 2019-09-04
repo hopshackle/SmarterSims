@@ -56,7 +56,11 @@ fun interval(stringRepresentation: String): Interval {
             1 -> interval(funToApply(stringRep[0].trim()))
             2 -> interval(funToApply(stringRep[0].trim()), funToApply(stringRep[1].trim()))
             else -> {
-                val splitByBrackets = stringRepresentation.filterNot(Character::isWhitespace).split("],").map { it.filterNot { c -> c in "[]" } }
+                val splitByBrackets = stringRepresentation.filterNot(Character::isWhitespace)
+                        .replace("],", "]")
+                        .split("]")
+                        .map { it.filterNot { c -> c in "[]" } }
+                        .filterNot {it == ","}
                 CompositeInterval(splitByBrackets.filter(String::isNotEmpty).map {
                     val intervalE = it.split(",")
                     convertToInterval(intervalE)

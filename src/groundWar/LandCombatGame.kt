@@ -133,6 +133,15 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     }
 
     override fun nTicks() = eventQueue.currentTime
+
+    override fun sanityChecks() {
+        // check to see if we have any transits that should have finished
+        val transitsThatShouldHaveEnded = world.currentTransits.filter{it.endTime < nTicks()}
+        if (transitsThatShouldHaveEnded.isNotEmpty()) {
+            println(transitsThatShouldHaveEnded.joinToString("\n"))
+            throw AssertionError("Extant transits that should have been terminated")
+        }
+    }
 }
 
 private fun Int.pow(i: Int): Int {
