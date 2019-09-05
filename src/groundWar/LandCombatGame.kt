@@ -1,7 +1,8 @@
 package groundWar
 
 import ggi.*
-import test.params
+import groundWar.fatigue.FatigueModel
+import groundWar.fatigue.LinearFatigue
 import kotlin.math.*
 import kotlin.collections.*
 import kotlin.random.Random
@@ -9,8 +10,11 @@ import ggi.SimpleActionPlayerInterface as SimpleActionPlayerInterface
 
 data class Event(val tick: Int, val action: Action) : Comparable<Event> {
 
-    val priority = if (action is MakeDecision) 0 else 1
-
+    val priority = when (action) {
+        is MakeDecision -> 0
+        is TransitEnd -> 2
+        else -> 10
+    }
     operator override fun compareTo(other: Event): Int {
         val tickComparison = tick.compareTo(other.tick)
         if (tickComparison == 0) return priority.compareTo(other.priority)
@@ -20,7 +24,7 @@ data class Event(val tick: Int, val action: Action) : Comparable<Event> {
 
 class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List<Int>> = emptyMap()) : ActionAbstractGameState {
 
-    val LCG_rnd = Random(params.seed)
+    val LCG_rnd = Random(world.params.seed)
     // the first digits are the city...so we need at least the number of cities
     // then the second is the destination...so we need to maximum degree of a node
     // then the next two are proprtion of force and wait time
@@ -29,6 +33,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
             ?: 2).toDouble() - 1.0).toInt() + 1
 
     val eventQueue = EventQueue()
+    val fatigueModels = world.params.fatigueRate.map { LinearFatigue(it) }
 
     override fun registerAgent(player: Int, agent: SimpleActionPlayerInterface) = eventQueue.registerAgent(player, agent, nTicks())
     override fun getAgent(player: Int) = eventQueue.getAgent(player)
@@ -90,7 +95,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         // if we take a real action, then we must wait for a minimum period before the next one
         val playerId = numberToPlayerID(player)
         if (world.cities.filter { it.owner == playerId }.sumByDouble { it.pop.size } +
-                world.currentTransits.filter { it.playerId == playerId }.sumByDouble(Transit::nPeople) < 0.001)
+                world.currentTransits.filter { it.playerId == playerId }.sumByDouble { it.force.effectiveSize } < 0.001)
             return NoAction(player, 1000)   // no units left
         val rawFromGene = gene.take(cityGenes).reversed().mapIndexed { i, v -> 10.0.pow(i.toDouble()) * v }.sum().toInt()
         val rawToGene = gene.takeLast(gene.size - cityGenes).take(routeGenes).reversed().mapIndexed { i, v -> 10.0.pow(i.toDouble()) * v }.sum().toInt()
@@ -128,6 +133,15 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     }
 
     override fun nTicks() = eventQueue.currentTime
+
+    override fun sanityChecks() {
+        // check to see if we have any transits that should have finished
+        val transitsThatShouldHaveEnded = world.currentTransits.filter{it.endTime < nTicks()}
+        if (transitsThatShouldHaveEnded.isNotEmpty()) {
+            println(transitsThatShouldHaveEnded.joinToString("\n"))
+            throw AssertionError("Extant transits that should have been terminated")
+        }
+    }
 }
 
 private fun Int.pow(i: Int): Int {

@@ -35,8 +35,8 @@ class FogTests {
             val redCity = cities.withIndex().filter { (_, c) -> c.owner == PlayerId.Red }.map { (i, _) -> i }.first()
             val blueToNeutral = routes.filter { r -> r.fromCity == blueCity && cities[r.toCity].owner == PlayerId.Neutral }.first()
             val redToNeutral = routes.filter { r -> r.fromCity == redCity && cities[r.toCity].owner == PlayerId.Neutral }.first()
-            val blue_nb = Transit(1.0, blueToNeutral.toCity, blueCity, PlayerId.Blue, 0, 1000)
-            val red_nr = Transit(1.0, redToNeutral.toCity, redCity, PlayerId.Red, 0, 1000)
+            val blue_nb = Transit(Force(1.0), blueToNeutral.toCity, blueCity, PlayerId.Blue, 0, 1000)
+            val red_nr = Transit(Force(1.0), redToNeutral.toCity, redCity, PlayerId.Red, 0, 1000)
             addTransit(blue_nb); addTransit(red_nr)
 
             assert(checkVisible(blue_nb, PlayerId.Blue))
@@ -60,8 +60,8 @@ class FogTests {
             val redCity = cities.withIndex().filter { (_, c) -> c.owner == PlayerId.Red }.map { (i, _) -> i }.first()
             val blueToNeutral = routes.filter { r -> r.fromCity == blueCity && cities[r.toCity].owner == PlayerId.Neutral }.first()
             val redToNeutral = routes.filter { r -> r.fromCity == redCity && cities[r.toCity].owner == PlayerId.Neutral }.first()
-            val blue_bn = Transit(1.0, blueCity, blueToNeutral.toCity, PlayerId.Blue, 0, 1000)
-            val red_rn = Transit(1.0, redCity, redToNeutral.toCity, PlayerId.Red, 0, 1000)
+            val blue_bn = Transit(Force(1.0), blueCity, blueToNeutral.toCity, PlayerId.Blue, 0, 1000)
+            val red_rn = Transit(Force(1.0), redCity, redToNeutral.toCity, PlayerId.Red, 0, 1000)
             addTransit(blue_bn); addTransit(red_rn);
 
             assert(checkVisible(blue_bn, PlayerId.Blue))
@@ -85,7 +85,7 @@ class FogTests {
             val blueToRed = routes.filter { r -> r.fromCity == blueCity && cities[r.toCity].owner == PlayerId.Neutral }.first()
             cities[blueToRed.toCity].owner = PlayerId.Red
 
-            val blue_br = Transit(1.0, blueCity, blueToRed.toCity, PlayerId.Blue, 0, 1000)
+            val blue_br = Transit(Force(1.0), blueCity, blueToRed.toCity, PlayerId.Blue, 0, 1000)
             addTransit(blue_br)
 
             assert(checkVisible(blue_br, PlayerId.Blue))
@@ -103,10 +103,10 @@ class FogTests {
         with(foggyWorld) {
             val blueCity = cities.withIndex().filter { (_, c) -> c.owner == PlayerId.Blue }.map { (i, _) -> i }.first()
             val blueToNeutral = routes.filter { r -> r.fromCity == blueCity && cities[r.toCity].owner == PlayerId.Neutral }.first()
-            val blue_bn = Transit(1.0, blueCity, blueToNeutral.toCity, PlayerId.Blue, 0, 1000)
-            val red_bn = Transit(1.0, blueCity, blueToNeutral.toCity, PlayerId.Red, 0, 1000)
-            val blue_nb = Transit(1.0, blueToNeutral.toCity, blueCity, PlayerId.Blue, 0, 1000)
-            val red_nb = Transit(1.0, blueToNeutral.toCity, blueCity, PlayerId.Red, 0, 1000)
+            val blue_bn = Transit(Force(1.0), blueCity, blueToNeutral.toCity, PlayerId.Blue, 0, 1000)
+            val red_bn = Transit(Force(1.0), blueCity, blueToNeutral.toCity, PlayerId.Red, 0, 1000)
+            val blue_nb = Transit(Force(1.0), blueToNeutral.toCity, blueCity, PlayerId.Blue, 0, 1000)
+            val red_nb = Transit(Force(1.0), blueToNeutral.toCity, blueCity, PlayerId.Red, 0, 1000)
             addTransit(blue_bn); addTransit(blue_nb); addTransit(red_bn); addTransit(red_nb)
             // these are all visible because Transits can see each other on the same route
             assert(checkVisible(blue_bn, PlayerId.Blue))
@@ -218,19 +218,19 @@ class FogTests {
         //      game.eventQueue.add(Event(10, MakeDecision(1)))  // R
         //      game.eventQueue.add(Event(10, MakeDecision(0))) // B
         assertFalse(game.world.checkVisible(6, PlayerId.Blue))
-        game.eventQueue.add(Event(10, CityInflux(PlayerId.Red, 10.0, 6))) // R
-        game.eventQueue.add(Event(10, CityInflux(PlayerId.Red, 10.0, 1, 3))) // RB
-        game.eventQueue.add(Event(10, CityInflux(PlayerId.Blue, 10.0, 1, 4))) // RB
-        game.eventQueue.add(Event(10, CityInflux(PlayerId.Blue, 10.0, 2, 4))) // B
-        game.eventQueue.add(Event(10, TransitStart(Transit(10.0, 4, 2, PlayerId.Blue, 11, 20)))) // B
-        game.world.addTransit(Transit(4.0, 4, 2, PlayerId.Blue, 10, 20))
+        game.eventQueue.add(Event(10, CityInflux(PlayerId.Red, Force(10.0), 6))) // R
+        game.eventQueue.add(Event(10, CityInflux(PlayerId.Red, Force(10.0), 1, 3))) // RB
+        game.eventQueue.add(Event(10, CityInflux(PlayerId.Blue, Force(10.0), 1, 4))) // RB
+        game.eventQueue.add(Event(10, CityInflux(PlayerId.Blue, Force(10.0), 2, 4))) // B
+        game.eventQueue.add(Event(10, TransitStart(Transit(Force(10.0), 4, 2, PlayerId.Blue, 11, 20)))) // B
+        game.world.addTransit(Transit(Force(4.0), 4, 2, PlayerId.Blue, 10, 20))
         game.eventQueue.add(Event(10, TransitEnd(PlayerId.Blue, 4, 2, 20))) // B
-        game.world.addTransit(Transit(4.0, 4, 1, PlayerId.Blue, 10, 20))
+        game.world.addTransit(Transit(Force(4.0), 4, 1, PlayerId.Blue, 10, 20))
         game.eventQueue.add(Event(10, TransitEnd(PlayerId.Blue, 4, 1, 20))) // B
-        game.world.addTransit(Transit(2.0, 1, 3, PlayerId.Blue, 10, 20))
+        game.world.addTransit(Transit(Force(2.0), 1, 3, PlayerId.Blue, 10, 20))
         game.eventQueue.add(Event(14, TransitEnd(PlayerId.Blue, 1, 3, 20))) // RB
-        val blueForce = Transit(5.0, 1, 3, PlayerId.Blue, 10, 20)
-        val redForce = Transit(2.0, 3, 1, PlayerId.Red, 10, 20)
+        val blueForce = Transit(Force(5.0), 1, 3, PlayerId.Blue, 10, 20)
+        val redForce = Transit(Force(2.0), 3, 1, PlayerId.Red, 10, 20)
         game.world.addTransit(blueForce); game.world.addTransit(redForce)
         game.eventQueue.add(Event(11, Battle(blueForce, redForce))) // RB
         game.eventQueue.add(Event(20, NoAction(1, 5)))  // R
@@ -245,8 +245,8 @@ class FogTests {
         assertEquals(masterVersion.eventQueue.size, 13)
 
         //      assert(redVersion.eventQueue.contains(Event(5, MakeDecision(1))))
-        assert(redVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Red, 10.0, 6))))
-        assert(redVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Red, 10.0, 1, 3))))
+        assert(redVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Red, Force(10.0), 6))))
+        assert(redVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Red, Force(10.0), 1, 3))))
         assert(redVersion.eventQueue.contains(Event(14, TransitEnd(PlayerId.Blue, 1, 3, 20))))
         assert(redVersion.eventQueue.contains(Event(11, Battle(blueForce, redForce)))) // RB
         assert(redVersion.eventQueue.contains(Event(20, NoAction(1, 5))))  // R
@@ -254,10 +254,10 @@ class FogTests {
         assertEquals(redVersion.eventQueue.size, 6)
 
         //    assert(blueVersion.eventQueue.contains(Event(5, MakeDecision(0)))) // B
-        assert(blueVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Red, 10.0, 1, 3)))) // RB
-        assert(blueVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Blue, 10.0, 1, 4)))) // RB
-        assert(blueVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Blue, 10.0, 2, 4)))) // B
-        assert(blueVersion.eventQueue.contains(Event(10, TransitStart(Transit(10.0, 4, 2, PlayerId.Blue, 11, 20))))) // B
+        assert(blueVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Red, Force(10.0), 1, 3)))) // RB
+        assert(blueVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Blue, Force(10.0), 1, 4)))) // RB
+        assert(blueVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Blue, Force(10.0), 2, 4)))) // B
+        assert(blueVersion.eventQueue.contains(Event(10, TransitStart(Transit(Force(10.0), 4, 2, PlayerId.Blue, 11, 20))))) // B
         assert(blueVersion.eventQueue.contains(Event(10, TransitEnd(PlayerId.Blue, 4, 2, 20)))) // B
         assert(blueVersion.eventQueue.contains(Event(10, TransitEnd(PlayerId.Blue, 4, 1, 20)))) // RB
         assert(blueVersion.eventQueue.contains(Event(11, Battle(blueForce, redForce)))) // RB

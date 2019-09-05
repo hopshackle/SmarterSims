@@ -4,7 +4,6 @@ import ggi.*
 import agents.*
 import groundWar.*
 import intervals.interval
-import test.world
 import utilities.*
 import java.io.*
 import java.lang.AssertionError

@@ -79,7 +79,7 @@ class WorldView(var game: LandCombatGame) : JComponent() {
                 g.setColor(playerCols[t.playerId])
                 g.draw(ellipse)
                 g.fill(ellipse)
-                val label = "${t.nPeople.roundToInt()}"
+                val label = "${t.force.size.roundToInt()}"
                 g.setColor(Color.white)
                 DrawUtil().centreString(g, label, xScale * currentLocation.x, yScale * currentLocation.y)
             }

@@ -60,6 +60,7 @@ fun runWithParams(params: EventGameParams,
                   blueAgent: SimpleActionPlayerInterface,
                   redAgent: SimpleActionPlayerInterface,
                   iScoreFunction: (LandCombatGame, Int) -> Double = interimScoreFunction,
+                  showAgentPlans: Boolean = false,
                   mapFile: String = "") {
     val fileAsLines = if (mapFile != "") BufferedReader(FileReader(mapFile)).readLines().joinToString("\n") else ""
     val world = if (fileAsLines == "") World(params = params) else createWorld(fileAsLines, params)
@@ -96,8 +97,10 @@ fun runWithParams(params: EventGameParams,
     }
     val bluePlan = PlanView(blueAgent, game, 0)
     val redPlan = PlanView(redAgent, game, 1)
-    multiView.add(bluePlan)
-    multiView.add(redPlan)
+    if (showAgentPlans) {
+        multiView.add(bluePlan)
+        multiView.add(redPlan)
+    }
     val frame = JEasyFrame(multiView, "Event Based Game")
     frame.defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
 
@@ -108,8 +111,10 @@ fun runWithParams(params: EventGameParams,
             blueView.game = game.copy(0)
         }
         frame.title = String.format("Time: %d        Blue: %.0f        Red: %.0f", game.nTicks(), game.score(0), game.score(1))
-        bluePlan.refresh()
-        redPlan.refresh()
+        if (showAgentPlans) {
+            bluePlan.refresh()
+            redPlan.refresh()
+        }
         multiView.repaint()
         do {
             Thread.sleep(100)

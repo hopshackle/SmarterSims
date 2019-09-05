@@ -18,9 +18,9 @@ fun simpleScoreFunction(ourCityValue: Double, ourForceValue: Double, theirCityVa
             val theirCities = cities.count { c -> c.owner == if (playerId == PlayerId.Blue) PlayerId.Red else PlayerId.Blue }
             // then add the total of all forces
             val ourForces = cities.filter { c -> c.owner == playerId }.sumByDouble{it.pop.size} +
-                    currentTransits.filter { t -> t.playerId == playerId }.sumByDouble(Transit::nPeople)
+                    currentTransits.filter { t -> t.playerId == playerId }.sumByDouble{it.force.effectiveSize}
             val enemyForces = cities.filter { c -> c.owner != playerId }.sumByDouble{it.pop.size} +
-                    currentTransits.filter { t -> t.playerId != playerId }.sumByDouble(Transit::nPeople)
+                    currentTransits.filter { t -> t.playerId != playerId }.sumByDouble{it.force.effectiveSize}
             ourCityValue * ourCities + ourForceValue * ourForces + theirCityValue * theirCities + theirForceValue * enemyForces
         }
     }
@@ -33,9 +33,9 @@ fun specificTargetScoreFunction(targetValue: Double = 100.0,
         with(game.world) {
             val targetsAcquired = game.targets[playerColour]?.count { i -> cities[i].owner == playerColour } ?: 0
             val ourForces = cities.filter { c -> c.owner == playerColour }.sumByDouble{it.pop.size} +
-                    currentTransits.filter { t -> t.playerId == playerColour }.sumByDouble(Transit::nPeople)
+                    currentTransits.filter { t -> t.playerId == playerColour }.sumByDouble{it.force.effectiveSize}
             val enemyForces = cities.filter { c -> c.owner != playerColour }.sumByDouble{it.pop.size} +
-                    currentTransits.filter { t -> t.playerId != playerColour }.sumByDouble(Transit::nPeople)
+                    currentTransits.filter { t -> t.playerId != playerColour }.sumByDouble{it.force.effectiveSize}
             targetsAcquired * targetValue + ourForces * ownForceValue - enemyForces * enemyForceValue
         }
     }

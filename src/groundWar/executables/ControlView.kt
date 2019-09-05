@@ -22,8 +22,8 @@ class ControlView {
     val params = EventGameParams()
     val propertyMap: MutableMap<String, Any?> = EventGameParams::class.memberProperties.map { it.name to it.get(params) }.toMap().toMutableMap()
     val parameterNames = listOf("nAttempts", "minConnections", "maxDistance", "width", "height", "startingForce", "lanchesterCoeff", "lanchesterExp",
-            "percentFort", "fortAttackerDivisor", "fortDefenderExpBonus", "fogOfWar", "fogStrengthAssumption", "speed",
-            "OODALoop", "orderDelay", "minAssaultFactor", "seed")
+            "fatigueRate", "percentFort", "fortAttackerDivisor", "fortDefenderExpBonus", "fogOfWar", "fogStrengthAssumption", "speed",
+            "OODALoop", "orderDelay", "controlLimit", "minAssaultFactor", "seed")
     var runningThread = Thread()
 
     val defaultBlueAgent = """
@@ -109,6 +109,7 @@ class ControlView {
         agentParameters.add(redAgentDetails)
 
         val buttonPanel = JPanel()
+        val agentPlanBox = JCheckBox("Show Agent Plans?", false)
         val startButton = JButton("Start")
         startButton.addActionListener {
             if (paused) {
@@ -123,6 +124,7 @@ class ControlView {
                         startingForce = propertyMap["startingForce"] as IntArray,
                         lanchesterCoeff = propertyMap["lanchesterCoeff"] as DoubleArray,
                         lanchesterExp = propertyMap["lanchesterExp"] as DoubleArray,
+                        fatigueRate = propertyMap["fatigueRate"] as DoubleArray,
                         percentFort = propertyMap["percentFort"] as Double,
                         fortAttackerDivisor = propertyMap["fortAttackerDivisor"] as Double,
                         fortDefenderExpBonus = propertyMap["fortDefenderExpBonus"] as Double,
@@ -131,12 +133,13 @@ class ControlView {
                         speed = propertyMap["speed"] as DoubleArray,
                         OODALoop = propertyMap["OODALoop"] as IntArray,
                         orderDelay = propertyMap["orderDelay"] as IntArray,
+                        controlLimit = propertyMap["controlLimit"] as IntArray,
                         minAssaultFactor = propertyMap["minAssaultFactor"] as DoubleArray,
                         seed = propertyMap["seed"] as Long
                 )
                 val blueAgent = createAgentParamsFromString(blueAgentDetails.text.split("\n")).createAgent("BLUE")
                 val redAgent = createAgentParamsFromString(redAgentDetails.text.split("\n")).createAgent("RED")
-                runningThread = Thread { runWithParams(simParams, blueAgent, redAgent,
+                runningThread = Thread { runWithParams(simParams, blueAgent, redAgent, showAgentPlans = agentPlanBox.isSelected,
                         mapFile = mapNameField.text) }
                 runningThread.start()
             }
@@ -146,6 +149,7 @@ class ControlView {
             paused = true
         }
 
+        buttonPanel.add(agentPlanBox)
         buttonPanel.add(startButton)
         buttonPanel.add(pauseButton)
         setting.add(buttonPanel)

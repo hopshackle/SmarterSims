@@ -68,6 +68,10 @@ interface ActionAbstractGameState : AbstractGameState {
     fun getAgent(player: Int): SimpleActionPlayerInterface
 
     fun planEvent(time: Int, action: Action)
+
+    fun sanityChecks() {
+        // default is nothing
+    }
 }
 
 interface Action {

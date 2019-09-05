@@ -27,8 +27,10 @@ fun createIntervalParamsFromString(details: List<String>): IntervalParams {
             fortDefenderExpBonus = paramMap.getOrDefault("fortDefenderExpBonus", listOf(interval("0.10")))[0],
             lanchesterCoeff = paramMap.getOrDefault("lanchesterCoeff", intervalList("0.2 : 0.2")),
             lanchesterExp = paramMap.getOrDefault("lanchesterExp", intervalList("0.5 : 0.5")),
+            fatigueRate = paramMap.getOrDefault("fatigueRate", intervalList("0.0 : 0.0")),
             OODALoop = paramMap.getOrDefault("OODALoop", intervalList("10 : 10")),
             orderDelay = paramMap.getOrDefault("orderDelay", intervalList("10 : 10")),
+            controlLimit = paramMap.getOrDefault("controlLimit", intervalList("0 : 0")),
             minAssaultFactor = paramMap.getOrDefault("minAssaultFactor", intervalList("1.0 : 1.0")),
             nAttempts = paramMap.getOrDefault("nAttempts", listOf(interval("20")))[0],
             width = paramMap.getOrDefault("width", listOf(interval("1000")))[0],
@@ -51,8 +53,10 @@ data class IntervalParams(
         val fortDefenderExpBonus: Interval,
         val lanchesterCoeff: List<Interval>,
         val lanchesterExp: List<Interval>,
+        val fatigueRate: List<Interval>,
         val OODALoop: List<Interval>,
         val orderDelay: List<Interval>,
+        val controlLimit: List<Interval>,
         val minAssaultFactor: List<Interval>,
         val nAttempts: Interval,
         val width: Interval,
@@ -86,8 +90,10 @@ data class IntervalParams(
                     fortDefenderExpBonus = fortDefenderExpBonus.sampleFrom().toDouble(),
                     lanchesterCoeff = lanchesterCoeff.map { it.sampleFrom().toDouble() }.toDoubleArray(),
                     lanchesterExp = lanchesterExp.map { it.sampleFrom().toDouble() }.toDoubleArray(),
+                    fatigueRate = fatigueRate.map{ it.sampleFrom().toDouble() }.toDoubleArray(),
                     OODALoop = OODALoop.map { it.sampleFrom().toInt() }.toIntArray(),
                     orderDelay = orderDelay.map { it.sampleFrom().toInt() }.toIntArray(),
+                    controlLimit = controlLimit.map  { it.sampleFrom().toInt() }.toIntArray(),
                     minAssaultFactor = minAssaultFactor.map { it.sampleFrom().toDouble() }.toDoubleArray()
             )
 }
@@ -113,9 +119,11 @@ data class EventGameParams(
         val fortDefenderExpBonus: Double = 0.5,
         val lanchesterCoeff: DoubleArray = doubleArrayOf(0.05, 0.05),
         val lanchesterExp: DoubleArray = doubleArrayOf(0.5, 0.5),    // should be between 0.0 and 1.0
+        val fatigueRate: DoubleArray = doubleArrayOf(0.0, 0.0),
         // agent behaviour
         val OODALoop: IntArray = intArrayOf(10, 10),
         val orderDelay: IntArray = intArrayOf(0, 0),
+        val controlLimit: IntArray = intArrayOf(0, 0),
         val minAssaultFactor: DoubleArray = doubleArrayOf(0.1, 0.1)
 )
 

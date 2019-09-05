@@ -3,6 +3,7 @@ package agents.RHEA
 import agents.SimpleActionDoNothing
 import ggi.*
 import groundWar.LandCombatGame
+import groundWar.MakeDecision
 import org.json.JSONObject
 
 class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(),
@@ -74,13 +75,13 @@ fun elapsedLengthOfPlan(genome: IntArray, gameState: AbstractGameState, playerRe
     val startingTime = gameState.nTicks()
     if (genome.size < intPerAction) return 0
     if (gameState is LandCombatGame) {
-        gameState.eventQueue.clear()
+        gameState.eventQueue.filterNot{it.action is MakeDecision}
         var i = 0
         do {
             val gene = genome.sliceArray(i * intPerAction until (i + 1) * intPerAction)
             val action = gameState.translateGene(playerRef, gene)
             val nextDecisionTime = action.nextDecisionPoint(playerRef, gameState)
-            action.apply(gameState)
+            gameState.planEvent(gameState.nTicks(), action)
             gameState.next(nextDecisionTime.first - gameState.nTicks())
             i++
         } while (i < genome.size / intPerAction)

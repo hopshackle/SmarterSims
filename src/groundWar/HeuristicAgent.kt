@@ -62,7 +62,7 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
         with(gameState.world) {
             val threatenedCities = cities.filter { c ->
                 c.owner == playerId && c.pop.size > 0.0 &&
-                        currentTransits.any { t -> t.toCity == cities.indexOf(c) && t.playerId != playerId && t.nPeople > c.pop.size * defenseRatio }
+                        currentTransits.any { t -> t.toCity == cities.indexOf(c) && t.playerId != playerId && t.force.effectiveSize > c.pop.size * defenseRatio }
             }
             val escapeRoutes: List<Pair<Int, Int>> = threatenedCities.flatMap { c ->
                 (allRoutesFromCity[cities.indexOf(c)] ?: emptyList())
