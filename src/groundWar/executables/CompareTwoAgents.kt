@@ -31,19 +31,8 @@ fun main(args: Array<String>) {
         createIntervalParamsFromString(fileAsLines)
     } else null
 
-    fun createScoreFunction(input: String?): (LandCombatGame, Int) -> Double {
-        if (input != null) {
-            val params = input.split("|").filterNot { it.startsWith("SC") }.map { it.toDouble() }
-            return compositeScoreFunction(
-                    simpleScoreFunction(params[0], params[2], params[1], params[3]),
-                    visibilityScore(params[4], params[5])
-            )
-        }
-        return interimScoreFunction
-    }
-
-    val blueScoreFunction = createScoreFunction(args.firstOrNull { it.startsWith("SCB") })
-    val redScoreFunction = createScoreFunction(args.firstOrNull { it.startsWith("SCR") })
+    val blueScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCB") })
+    val redScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCR") })
 
     StatsCollator.clear()
     runGames(maxGames, agentParams1.createAgent("BLUE"), agentParams2.createAgent("RED"), intervalParams,

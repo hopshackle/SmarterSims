@@ -75,7 +75,7 @@ fun elapsedLengthOfPlan(genome: IntArray, gameState: AbstractGameState, playerRe
     val startingTime = gameState.nTicks()
     if (genome.size < intPerAction) return 0
     if (gameState is LandCombatGame) {
-        gameState.eventQueue.filterNot{it.action is MakeDecision}
+        gameState.eventQueue.removeIf { it.action is MakeDecision }
         var i = 0
         do {
             val gene = genome.sliceArray(i * intPerAction until (i + 1) * intPerAction)

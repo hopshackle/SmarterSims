@@ -135,7 +135,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
             RHEASearchSpace -> SimpleActionEvoAgent(
                     underlyingAgent = SimpleEvoAgent(
                             nEvals = 10000,
-                            timeLimit = 50,
+                            timeLimit = 150,
                             useMutationTransducer = false,
                             sequenceLength = RHEASearchSpace.values[0][settings[0]] as Int,
                             horizon = RHEASearchSpace.values[1][settings[1]] as Int,
@@ -148,7 +148,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
                             ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
             )
             RHCASearchSpace -> RHCAAgent(
-                    timeLimit = 50,
+                    timeLimit = 150,
                     sequenceLength = RHCASearchSpace.values[0][settings[0]] as Int,
                     horizon = RHCASearchSpace.values[1][settings[1]] as Int,
                     useShiftBuffer = RHCASearchSpace.values[2][settings[2]] as Boolean,
@@ -162,7 +162,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
             MCTSSearchSpace -> MCTSTranspositionTableAgentMaster(MCTSParameters(
                     C = MCTSSearchSpace.values[3][settings[3]] as Double,
                     maxPlayouts = 10000,
-                    timeLimit = 50,
+                    timeLimit = 150,
                     horizon = MCTSSearchSpace.values[1][settings[1]] as Int,
                     pruneTree = MCTSSearchSpace.values[2][settings[2]] as Boolean,
                     maxDepth = MCTSSearchSpace.values[0][settings[0]] as Int,
@@ -183,14 +183,13 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
     override fun evaluate(settings: IntArray): Double {
         val seedToUse = System.currentTimeMillis()
 
-        var netScore = 0.0
         var finalScore = 0.0
         repeat(2) {
             val heuristicOpponent = HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
             val world = World(params = params.copy(seed = seedToUse))
             val game = LandCombatGame(world)
-            game.scoreFunction[PlayerId.Red] = interimScoreFunction
-            game.scoreFunction[PlayerId.Blue] = interimScoreFunction
+            game.scoreFunction[PlayerId.Red] = finalScoreFunction
+            game.scoreFunction[PlayerId.Blue] = finalScoreFunction
             if (it == 1) {
                 if (searchSpace is UtilitySearchSpace) {
                     game.registerAgent(0, getAgent(intArrayOf())) // note that settings do not define this for UtilitySearch
@@ -212,7 +211,6 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
             }
 
             game.next(1000)
-            netScore += game.score(if (it == 1) 1 else 0)
             finalScore += finalScoreFunction(game, if (it == 1) 1 else 0)
         }
         nEvals++
@@ -246,7 +244,7 @@ object RHEASearchSpace : HopshackleSearchSpace() {
     override val values: Array<Array<*>>
         get() = arrayOf(
                 arrayOf(3, 6, 12, 24, 48),                    // sequenceLength
-                arrayOf(50, 100, 200, 400, 1000),               // horizon
+                arrayOf(50, 100, 200, 400),               // horizon
                 arrayOf(false, true),                                   // useShiftBuffer
                 arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
                 arrayOf(false, true),                           // flipAtLeastOne
@@ -266,14 +264,14 @@ object RHCASearchSpace : HopshackleSearchSpace() {
 
     override val values: Array<Array<*>>
         get() = arrayOf(arrayOf(3, 6, 12, 24),                    // sequenceLength
-                arrayOf(50, 100, 200, 400, 1000),               // horizon
+                arrayOf(50, 100, 200, 400),               // horizon
                 arrayOf(false, true),                                   // useShiftBuffer
                 arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
                 arrayOf(false, true),                           // flipAtLeastOne
                 arrayOf(32, 64, 128),                       //populationSize
                 arrayOf(1, 2, 4),                               // parentSize
                 arrayOf(5, 10, 20, 30),                            // evalsPerGeneration
-                arrayOf(1.0, 0.999, 0.99, 0.95)            // discount rate
+                arrayOf(1.0, 0.999, 0.99)            // discount rate
                 /*       arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
                                HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
                                HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
@@ -285,16 +283,16 @@ object RHCASearchSpace : HopshackleSearchSpace() {
 object MCTSSearchSpace : HopshackleSearchSpace() {
 
     override val names: Array<String>
-        get() = arrayOf("maxDepth", "horizon", "pruneTree", "C", "maxActions", "rolloutPolicy", "selectionPolicy", "discountFactor")
+        get() = arrayOf("maxDepth", "horizon", "pruneTree", "C", "maxActions", "rolloutPolicy", "discountFactor")
     override val values: Array<Array<*>>
         get() = arrayOf(
                 arrayOf(3, 6, 12),                  // maxDepth (==sequenceLength)
-                arrayOf(50, 100, 200, 400, 1000),               // horizon
+                arrayOf(50, 100, 200, 400),               // horizon
                 arrayOf(false, true),                           // pruneTree
                 arrayOf(0.03, 0.3, 3.0, 30.0),           // C
-                arrayOf(20, 40, 80),             // maxActions
+                arrayOf(20, 40, 80, 120),             // maxActions
                 arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom),                          // rolloutPolicy
-                arrayOf(1.0, 0.999, 0.995, 0.99)            // discount rate
+                arrayOf(1.0, 0.999, 0.99)            // discount rate
                 /*       arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
                                HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
                                HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),

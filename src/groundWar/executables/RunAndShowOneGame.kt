@@ -26,6 +26,7 @@ fun main(args: Array<String>) {
             minAssaultFactor = doubleArrayOf(2.0, 2.0),
             lanchesterCoeff = doubleArrayOf(0.05, 0.05),
             lanchesterExp = doubleArrayOf(0.5, 0.5),
+            fatigueRate = doubleArrayOf(0.0, 0.0),
             percentFort = 0.25,
             fortAttackerDivisor = 2.0,
             fortDefenderExpBonus = 0.1
@@ -39,27 +40,24 @@ fun main(args: Array<String>) {
         val fileAsLines = BufferedReader(FileReader(args[1])).lines().toList()
         createAgentParamsFromString(fileAsLines)
     } else AgentParams()
-    val scoreParams = args.firstOrNull { it.startsWith("SC|") }
-    val scoreFunction = if (scoreParams != null) {
-        val sp = scoreParams.split("|").filterNot { it == "SC" }.map { it.toDouble() }
-        compositeScoreFunction(
-                simpleScoreFunction(sp[1], sp[3], sp[2], sp[4]),
-                visibilityScore(sp[5], sp[6])
-        )
-    } else
-        interimScoreFunction
+    val blueScoreParams = args.firstOrNull { it.startsWith("SCB|") }
+    val blueScoreFunction = stringToScoreFunction(blueScoreParams)
+    val redScoreParams = args.firstOrNull { it.startsWith("SCR|") }
+    val redScoreFunction = stringToScoreFunction(redScoreParams)
 
     val blueAgent = blueParams.createAgent("BLUE")
     val redAgent = redParams.createAgent("RED")
     runWithParams(params, blueAgent, redAgent,
-            iScoreFunction = scoreFunction,
+            blueScoreFunction = blueScoreFunction,
+            redScoreFunction = redScoreFunction,
             mapFile = if (args.size > 2) args[2] else "")
 }
 
 fun runWithParams(params: EventGameParams,
                   blueAgent: SimpleActionPlayerInterface,
                   redAgent: SimpleActionPlayerInterface,
-                  iScoreFunction: (LandCombatGame, Int) -> Double = interimScoreFunction,
+                  blueScoreFunction: (LandCombatGame, Int) -> Double = finalScoreFunction,
+                  redScoreFunction: (LandCombatGame, Int) -> Double = finalScoreFunction,
                   showAgentPlans: Boolean = false,
                   mapFile: String = "") {
     val fileAsLines = if (mapFile != "") BufferedReader(FileReader(mapFile)).readLines().joinToString("\n") else ""
@@ -69,11 +67,10 @@ fun runWithParams(params: EventGameParams,
         output.write(world.toJSON().toString(1))
         output.close()
     }
-    val targets = mapOf(PlayerId.Blue to listOf(0, 2, 4, 5), PlayerId.Red to listOf(0, 1, 3, 5))
     val game = LandCombatGame(world, targets = emptyMap())
 
-    game.scoreFunction[PlayerId.Blue] = iScoreFunction
-    game.scoreFunction[PlayerId.Red] = iScoreFunction
+    game.scoreFunction[PlayerId.Blue] = blueScoreFunction
+    game.scoreFunction[PlayerId.Red] = redScoreFunction
     StatsCollator.clear()
 
     game.registerAgent(0, blueAgent)

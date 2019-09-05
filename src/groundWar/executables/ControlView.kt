@@ -1,7 +1,6 @@
 package groundWar.executables
 
-import groundWar.EventGameParams
-import groundWar.createAgentParamsFromString
+import groundWar.*
 import java.awt.*
 import javax.swing.*
 import kotlin.reflect.full.memberProperties
@@ -91,7 +90,7 @@ class ControlView {
         fileChooserPanel.add(mapButton)
         val mapNameField = JTextField("", 10)
         fileChooserPanel.add(mapNameField)
-        mapButton.addActionListener{
+        mapButton.addActionListener {
             val fileChooser = JFileChooser()
             if (fileChooser.showOpenDialog(setting) == JFileChooser.APPROVE_OPTION) {
                 val selectedValue = fileChooser.selectedFile
@@ -100,16 +99,19 @@ class ControlView {
         }
         setting.add(fileChooserPanel)
 
+        val asymmetricVictoryBox = JCheckBox("Blue to target forts?", false)
+        val agentPlanBox = JCheckBox("Show Agent Plans?", false)
+
         val agentParameters = JPanel(GridLayout(0, 1, 1, 1))
+
         agentParameters.add(JLabel("Blue Agent:"))
-        val blueAgentDetails = JTextArea(defaultBlueAgent, 15, 50)
+        val blueAgentDetails = JTextArea(defaultBlueAgent, 25, 50)
         agentParameters.add(blueAgentDetails)
         agentParameters.add(JLabel("Red Agent:"))
-        val redAgentDetails = JTextArea(defaultRedAgent, 15, 50)
+        val redAgentDetails = JTextArea(defaultRedAgent, 25, 50)
         agentParameters.add(redAgentDetails)
 
         val buttonPanel = JPanel()
-        val agentPlanBox = JCheckBox("Show Agent Plans?", false)
         val startButton = JButton("Start")
         startButton.addActionListener {
             if (paused) {
@@ -139,26 +141,41 @@ class ControlView {
                 )
                 val blueAgent = createAgentParamsFromString(blueAgentDetails.text.split("\n")).createAgent("BLUE")
                 val redAgent = createAgentParamsFromString(redAgentDetails.text.split("\n")).createAgent("RED")
-                runningThread = Thread { runWithParams(simParams, blueAgent, redAgent, showAgentPlans = agentPlanBox.isSelected,
-                        mapFile = mapNameField.text) }
+                runningThread = Thread {
+                    runWithParams(
+                            simParams,
+                            blueAgent,
+                            redAgent,
+                            blueScoreFunction = compositeScoreFunction(
+                                    simpleScoreFunction(0.0, 0.5, 0.0, 0.0),
+                                    fortressScore(25.0)
+                            ),
+                            redScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -1.0),
+                            showAgentPlans = agentPlanBox.isSelected,
+                            mapFile = mapNameField.text
+                    )
+                }
                 runningThread.start()
             }
         }
         val pauseButton = JButton("Pause")
-        pauseButton.addActionListener{
+        pauseButton.addActionListener {
             paused = true
         }
 
-        buttonPanel.add(agentPlanBox)
         buttonPanel.add(startButton)
         buttonPanel.add(pauseButton)
+        val optionPanel = JPanel()
+        optionPanel.add(agentPlanBox)
+        optionPanel.add(asymmetricVictoryBox)
+        setting.add(optionPanel)
         setting.add(buttonPanel)
 
         displayPanel.add(setting)
         displayPanel.add(agentParameters)
         frame.add(displayPanel)
         frame.title = "Smarter Simulations"
-        frame.setBounds(100, 100, 600, parameterNames.size * 30 + 100)
+        frame.setBounds(100, 100, 600, parameterNames.size * 30 + 200)
         frame.defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
         frame.isVisible = true
     }
