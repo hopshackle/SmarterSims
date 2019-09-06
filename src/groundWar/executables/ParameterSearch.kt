@@ -158,7 +158,7 @@ fun main(args: Array<String>) {
     StatsCollator.clear()
     runGames(1000,
             bestAgent,
-            HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
+            agentParams.createAgent("opponent"),
             eventParams = params)
     println(StatsCollator.summaryString())
 }
