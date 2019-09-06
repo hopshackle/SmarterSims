@@ -18,38 +18,52 @@ import kotlin.random.Random
 import kotlin.streams.toList
 
 fun main(args: Array<String>) {
-    if (args.size < 4) AssertionError("Must specify at least four parameters: 3-Tuples? RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
-    val totalRuns = args[2].split("|")[0].toInt()
-    val reportEvery = args[2].split("|").getOrNull(1)?.toInt() ?: totalRuns
-    val searchSpace = when (args[1]) {
+    if (args.size < 3) AssertionError("Must specify at least three parameters: RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
+    val totalRuns = args[1].split("|")[0].toInt()
+    val reportEvery = args[1].split("|").getOrNull(1)?.toInt() ?: totalRuns
+    val searchSpace = when (args[0]) {
         "RHEA" -> RHEASearchSpace
         "MCTS", "MCTS2" -> MCTSSearchSpace
         "RHCA" -> RHCASearchSpace
-        else -> throw AssertionError("Unknown searchSpace " + args[1])
+        "Utility" -> {
+            val agentParams = {
+                val fileName = args.firstOrNull { it.startsWith("Agent=") }?.split("=")?.get(1)
+                        ?: throw AssertionError("Must specify a file for agent params (Agent=...) if using Utility Search space")
+                val fileAsLines = BufferedReader(FileReader(fileName)).lines().toList()
+                createAgentParamsFromString(fileAsLines)
+            }.invoke()
+            UtilitySearchSpace(agentParams)
+        }
+        else -> throw AssertionError("Unknown searchSpace " + args[0])
     }
     val nTupleSystem = when {
-        args[3] == "STD" -> NTupleSystem()
-        args[3] == "EXP_MEAN" -> NTupleSystemExp(30, expWeightExplore = false)
-        args[3].startsWith("EXP_FULL") -> {
-            val minWeight = args[3].split(":")[1].toDouble()
+        args[2] == "STD" -> NTupleSystem()
+        args[2] == "EXP_MEAN" -> NTupleSystemExp(30, expWeightExplore = false)
+        args[2].startsWith("EXP_FULL") -> {
+            val minWeight = args[2].split(":")[1].toDouble()
             NTupleSystemExp(30, minWeight)
         }
-        args[3].startsWith("EXP_SQRT:") -> {
-            val minWeight = args[3].split(":")[1].toDouble()
+        args[2].startsWith("EXP_SQRT:") -> {
+            val minWeight = args[2].split(":")[1].toDouble()
             NTupleSystemExp(30, minWeight, exploreWithSqrt = true)
         }
-        args[3].startsWith("EXP_SQRT") -> {
+        args[2].startsWith("EXP_SQRT") -> {
             NTupleSystemExp(30, expWeightExplore = false, exploreWithSqrt = true)
         }
-        else -> throw AssertionError("Unknown NTuple parameter: " + args[3])
+        else -> throw AssertionError("Unknown NTuple parameter: " + args[2])
     }
-    val use3Tuples = args[0] == "true"
+    val use3Tuples = args.contains("useThreeTuples")
     nTupleSystem.use3Tuple = use3Tuples
 
-    val params = if (args.size > 4) {
-        val fileAsLines = BufferedReader(FileReader(args[4])).lines().toList()
-        createIntervalParamsFromString(fileAsLines).sampleParams()
-    } else EventGameParams()
+    val params = {
+        when (val fileName = args.firstOrNull { it.startsWith("GameParams=") }?.split("|")?.get(1)) {
+            null -> EventGameParams()
+            else -> {
+                val fileAsLines = BufferedReader(FileReader(fileName)).lines().toList()
+                createIntervalParamsFromString(fileAsLines).sampleParams()
+            }
+        }
+    }.invoke()
 
     val stateSpaceSize = (0 until searchSpace.nDims()).fold(1, { acc, i -> acc * searchSpace.nValues(i) })
     val twoTupleSize = (0 until searchSpace.nDims() - 1).map { i ->
@@ -66,15 +80,17 @@ fun main(args: Array<String>) {
     ntbea.banditLandscapeModel = nTupleSystem
     ntbea.banditLandscapeModel.searchSpace = searchSpace
     ntbea.resetModelEachRun = false
-    val opponentModel: SimpleActionPlayerInterface? = when {
-        args[1] == "MCTS2" -> null
-        args.size <= 5 -> SimpleActionDoNothing(1000)
-        args[5] == "random" -> SimpleActionRandom
-        else -> HeuristicAgent(args[5].toDouble(), args[6].toDouble(),
-                args.withIndex().filter { it.index > 6 }.map { it.value }.map(HeuristicOptions::valueOf).toList())
+
+    val opponentModelParams = args.firstOrNull { it.startsWith("opp=") }?.split("=")?.get(1)
+
+    val opponentModel: SimpleActionPlayerInterface? = when (opponentModelParams) {
+        null -> SimpleActionDoNothing(1000)
+        else -> {
+            if (args[0] == "MCTS2") throw AssertionError("Opponent model not used in MCTS2")
+            createAgentParamsFromString(listOf(opponentModelParams)).createAgent("RED")
+        }
     }
-    if (args[1] == "MCTS2" && args.size > 5)
-        throw AssertionError("Opponent model not used in MCTS2")
+
     val logger = EvolutionLogger()
     println("Search space consists of $stateSpaceSize states and $twoTupleSize possible 2-Tuples" +
             "${if (use3Tuples) " and $threeTupleSize possible 3-Tuples" else ""}:")
@@ -82,8 +98,22 @@ fun main(args: Array<String>) {
         println(String.format("%20s has %d values %s", searchSpace.name(it), searchSpace.nValues(it),
                 (0 until searchSpace.nValues(it)).map { i -> searchSpace.value(it, i) }.joinToString()))
     }
+
+    val timeBudget = args.firstOrNull { it.startsWith("time=") }?.split("=")?.get(1)?.toInt() ?: 50
+    val groundWarEvaluator = GroundWarEvaluator(
+            searchSpace,
+            params,
+            logger,
+            timeBudget,
+            opponentModel,
+            scoreFunctions = arrayOf(stringToScoreFunction(args.firstOrNull { it.startsWith("SCB|") }),
+                    stringToScoreFunction(args.firstOrNull { it.startsWith("SCR|") })),
+            victoryFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("V|") })
+    )
+
     repeat(totalRuns / reportEvery) {
-        ntbea.runTrial(GroundWarEvaluator(searchSpace, params, logger, opponentModel), reportEvery)
+        ntbea.runTrial(groundWarEvaluator, reportEvery)
+
         // tuples gets cleared out
         println("Current best sampled point (using mean estimate): " + nTupleSystem.bestOfSampled.joinToString() +
                 String.format(", %.3g", nTupleSystem.getMeanEstimate(nTupleSystem.bestOfSampled)))
@@ -112,7 +142,8 @@ fun main(args: Array<String>) {
         }
         println("")
     }
-    val bestAgent = GroundWarEvaluator(searchSpace, params, logger, opponentModel).getAgent(nTupleSystem.bestOfSampled)
+
+    val bestAgent = groundWarEvaluator.getAgent(nTupleSystem.bestOfSampled)
     StatsCollator.clear()
     runGames(1000,
             bestAgent,
@@ -121,7 +152,15 @@ fun main(args: Array<String>) {
     println(StatsCollator.summaryString())
 }
 
-class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGameParams, val logger: EvolutionLogger, val opponentModel: SimpleActionPlayerInterface?) : SolutionEvaluator {
+class GroundWarEvaluator(val searchSpace: SearchSpace,
+                         val params: EventGameParams,
+                         val logger: EvolutionLogger,
+                         val timeBudget: Int = 50,
+                         val opponentModel: SimpleActionPlayerInterface?,
+                         val scoreFunctions: Array<(LandCombatGame, Int) -> Double> = arrayOf(finalScoreFunction, finalScoreFunction),
+                         val victoryFunction: (LandCombatGame, Int) -> Double = finalScoreFunction
+) : SolutionEvaluator {
+
     override fun optimalFound() = false
 
     override fun optimalIfKnown() = null
@@ -135,7 +174,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
             RHEASearchSpace -> SimpleActionEvoAgent(
                     underlyingAgent = SimpleEvoAgent(
                             nEvals = 10000,
-                            timeLimit = 150,
+                            timeLimit = timeBudget,
                             useMutationTransducer = false,
                             sequenceLength = RHEASearchSpace.values[0][settings[0]] as Int,
                             horizon = RHEASearchSpace.values[1][settings[1]] as Int,
@@ -148,7 +187,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
                             ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
             )
             RHCASearchSpace -> RHCAAgent(
-                    timeLimit = 150,
+                    timeLimit = timeBudget,
                     sequenceLength = RHCASearchSpace.values[0][settings[0]] as Int,
                     horizon = RHCASearchSpace.values[1][settings[1]] as Int,
                     useShiftBuffer = RHCASearchSpace.values[2][settings[2]] as Boolean,
@@ -162,7 +201,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
             MCTSSearchSpace -> MCTSTranspositionTableAgentMaster(MCTSParameters(
                     C = MCTSSearchSpace.values[3][settings[3]] as Double,
                     maxPlayouts = 10000,
-                    timeLimit = 150,
+                    timeLimit = timeBudget,
                     horizon = MCTSSearchSpace.values[1][settings[1]] as Int,
                     pruneTree = MCTSSearchSpace.values[2][settings[2]] as Boolean,
                     maxDepth = MCTSSearchSpace.values[0][settings[0]] as Int,
@@ -188,30 +227,34 @@ class GroundWarEvaluator(val searchSpace: SearchSpace, val params: EventGamePara
             val heuristicOpponent = HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
             val world = World(params = params.copy(seed = seedToUse))
             val game = LandCombatGame(world)
-            game.scoreFunction[PlayerId.Red] = finalScoreFunction
-            game.scoreFunction[PlayerId.Blue] = finalScoreFunction
             if (it == 1) {
                 if (searchSpace is UtilitySearchSpace) {
                     game.registerAgent(0, getAgent(intArrayOf())) // note that settings do not define this for UtilitySearch
                     game.registerAgent(1, getAgent(intArrayOf()))
                     game.scoreFunction[PlayerId.Red] = searchSpace.getScoreFunction(settings)
+                    game.scoreFunction[PlayerId.Blue] = scoreFunctions[1]
                 } else {
                     game.registerAgent(0, heuristicOpponent)
                     game.registerAgent(1, getAgent(settings))
+                    game.scoreFunction[PlayerId.Red] = scoreFunctions[0]
+                    game.scoreFunction[PlayerId.Blue] = scoreFunctions[1]
                 }
             } else {
                 if (searchSpace is UtilitySearchSpace) {
                     game.registerAgent(0, getAgent(intArrayOf())) // note that settings do not define this for UtilitySearch
                     game.registerAgent(1, getAgent(intArrayOf()))
                     game.scoreFunction[PlayerId.Blue] = searchSpace.getScoreFunction(settings)
+                    game.scoreFunction[PlayerId.Red] = scoreFunctions[1]
                 } else {
                     game.registerAgent(0, getAgent(settings))
                     game.registerAgent(1, heuristicOpponent)
+                    game.scoreFunction[PlayerId.Red] = scoreFunctions[1]
+                    game.scoreFunction[PlayerId.Blue] = scoreFunctions[0]
                 }
             }
 
             game.next(1000)
-            finalScore += finalScoreFunction(game, if (it == 1) 1 else 0)
+            finalScore += victoryFunction(game, if (it == 1) 1 else 0)
         }
         nEvals++
         //     println("Game score ${settings.joinToString()} is ${game.score(0).toInt()}")
@@ -299,4 +342,27 @@ object MCTSSearchSpace : HopshackleSearchSpace() {
                                HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
                        ) */
         )
+}
+
+
+class UtilitySearchSpace(val agentParams: AgentParams) : HopshackleSearchSpace() {
+    override val names: Array<String>
+        get() = arrayOf("visibilityNode", "visibilityArc", "theirCity", "ownForce", "theirForce")
+    override val values: Array<Array<*>>
+        get() = arrayOf(
+                arrayOf(0.0, 0.1, 0.5, 1.0, 5.0),
+                arrayOf(0.0, 0.1, 0.5, 1.0, 5.0),
+                arrayOf(0.0, -1.0, -5.0, -10.0),
+                arrayOf(0.0, 0.1, 0.5, 1.0, 3.0),
+                arrayOf(0.0, -0.1, -0.5, -1.0, -3.0)
+        )
+
+    fun getScoreFunction(settings: IntArray): (LandCombatGame, Int) -> Double {
+        return compositeScoreFunction(
+                visibilityScore(values[0][settings[0]] as Double, values[1][settings[1]] as Double),
+                simpleScoreFunction(5.0, values[3][settings[3]] as Double,
+                        values[2][settings[2]] as Double, values[4][settings[4]] as Double)
+        )
+
+    }
 }

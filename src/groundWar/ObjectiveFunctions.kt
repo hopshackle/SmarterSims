@@ -10,6 +10,10 @@ fun compositeScoreFunction(vararg functions: (LandCombatGame, Int) -> Double): (
 val interimScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -0.5)
 val finalScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -1.0)
 
+val hasMaterialAdvantage: (LandCombatGame, Int) -> Boolean = { game: LandCombatGame, player: Int ->
+    finalScoreFunction(game, player) > finalScoreFunction(game, 1 - player)
+}
+
 fun stringToScoreFunction(stringRep: String?): (LandCombatGame, Int) -> Double {
     if (stringRep == null) return interimScoreFunction
     var sp = stringRep.split("|").filterNot { it.startsWith("SC") }.map { it.toDouble() }

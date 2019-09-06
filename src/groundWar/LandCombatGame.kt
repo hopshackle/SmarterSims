@@ -22,6 +22,11 @@ data class Event(val tick: Int, val action: Action) : Comparable<Event> {
     }
 }
 
+val defaultScoreFunctions = mutableMapOf(
+        PlayerId.Blue to simpleScoreFunction(1.0, 0.0, -1.0, 0.0),
+        PlayerId.Red to simpleScoreFunction(1.0, 0.0, -1.0, 0.0)
+)
+
 class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List<Int>> = emptyMap()) : ActionAbstractGameState {
 
     val LCG_rnd = Random(world.params.seed)
@@ -41,10 +46,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         eventQueue.add(Event(time, action))
     }
 
-    var scoreFunction: MutableMap<PlayerId, (LandCombatGame, Int) -> Double> = mutableMapOf(
-            PlayerId.Blue to simpleScoreFunction(1.0, 0.0, -1.0, 0.0),
-            PlayerId.Red to simpleScoreFunction(1.0, 0.0, -1.0, 0.0)
-    )
+    var scoreFunction: MutableMap<PlayerId, (LandCombatGame, Int) -> Double> = defaultScoreFunctions
 
     override fun copy(perspective: Int): LandCombatGame {
         val newWorld = if (world.params.fogOfWar) world.deepCopyWithFog(numberToPlayerID(perspective)) else world.deepCopy()
@@ -144,6 +146,6 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     }
 }
 
-private fun Int.pow(i: Int): Int {
+private inline fun Int.pow(i: Int): Int {
     return this.toDouble().pow(i.toDouble()).toInt()
 }

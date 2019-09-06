@@ -75,7 +75,7 @@ fun main(args: Array<String>) {
                 (0 until searchSpace.nValues(it)).map { i -> searchSpace.value(it, i) }.joinToString()))
     }
     repeat(totalRuns / reportEvery) {
-        ntbea.runTrial(GroundWarEvaluator(searchSpace, params, logger, null), reportEvery)
+        ntbea.runTrial(GroundWarEvaluator(searchSpace, params, logger, 50, null), reportEvery)
         // tuples gets cleared out
         println("Current best sampled point (using mean estimate): " + nTupleSystem.bestOfSampled.joinToString() +
                 String.format(", %.3g", nTupleSystem.getMeanEstimate(nTupleSystem.bestOfSampled)))
@@ -106,25 +106,3 @@ fun main(args: Array<String>) {
     }
 }
 
-
-class UtilitySearchSpace(val agentParams: AgentParams) : HopshackleSearchSpace() {
-    override val names: Array<String>
-        get() = arrayOf("visibilityNode", "visibilityArc", "theirCity", "ownForce", "theirForce")
-    override val values: Array<Array<*>>
-        get() = arrayOf(
-                arrayOf(0.0, 0.1, 0.5, 1.0, 5.0),
-                arrayOf(0.0, 0.1, 0.5, 1.0, 5.0),
-                arrayOf(0.0, -1.0, -5.0, -10.0),
-                arrayOf(0.0, 0.1, 0.5, 1.0, 3.0),
-                arrayOf(0.0, -0.1, -0.5, -1.0, -3.0)
-        )
-
-    fun getScoreFunction(settings: IntArray): (LandCombatGame, Int) -> Double {
-        return compositeScoreFunction(
-                visibilityScore(values[0][settings[0]] as Double, values[1][settings[1]] as Double),
-                simpleScoreFunction(5.0, values[3][settings[3]] as Double,
-                        values[2][settings[2]] as Double, values[4][settings[4]] as Double)
-        )
-
-    }
-}
