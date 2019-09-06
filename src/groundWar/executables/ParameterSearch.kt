@@ -14,26 +14,33 @@ import java.io.BufferedReader
 import java.io.FileReader
 import java.lang.AssertionError
 import kotlin.math.min
-import kotlin.random.Random
 import kotlin.streams.toList
 
+fun agentParamsFromCommandLine(args: Array<String>, prefix: String): AgentParams {
+    val fileName = args.firstOrNull { it.startsWith(prefix) }?.split("=")?.get(1)
+    if (fileName == null && args[0] == "Utility") throw AssertionError("Must specify a file for agent params (Agent=...) if using Utility Search space")
+    return if (fileName == null) {
+        println("No data found for $prefix AgentParams: using default Heuristic")
+        AgentParams("Heuristic", algoParams = "attack:3.0,defence:1.2,options:WITHDRAW|ATTACK")
+    } else {
+        val fileAsLines = BufferedReader(FileReader(fileName)).lines().toList()
+        createAgentParamsFromString(fileAsLines)
+    }
+}
+
+
 fun main(args: Array<String>) {
-    if (args.size < 3) AssertionError("Must specify at least three parameters: RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
+    if (args.size < 3) throw AssertionError("Must specify at least three parameters: RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
     val totalRuns = args[1].split("|")[0].toInt()
     val reportEvery = args[1].split("|").getOrNull(1)?.toInt() ?: totalRuns
+
+    val agentParams = agentParamsFromCommandLine(args, "Agent")
+
     val searchSpace = when (args[0]) {
         "RHEA" -> RHEASearchSpace
         "MCTS", "MCTS2" -> MCTSSearchSpace
         "RHCA" -> RHCASearchSpace
-        "Utility" -> {
-            val agentParams = {
-                val fileName = args.firstOrNull { it.startsWith("Agent=") }?.split("=")?.get(1)
-                        ?: throw AssertionError("Must specify a file for agent params (Agent=...) if using Utility Search space")
-                val fileAsLines = BufferedReader(FileReader(fileName)).lines().toList()
-                createAgentParamsFromString(fileAsLines)
-            }.invoke()
-            UtilitySearchSpace(agentParams)
-        }
+        "Utility" -> UtilitySearchSpace(agentParams)
         else -> throw AssertionError("Unknown searchSpace " + args[0])
     }
     val nTupleSystem = when {
@@ -56,8 +63,11 @@ fun main(args: Array<String>) {
     nTupleSystem.use3Tuple = use3Tuples
 
     val params = {
-        when (val fileName = args.firstOrNull { it.startsWith("GameParams=") }?.split("|")?.get(1)) {
-            null -> EventGameParams()
+        when (val fileName = args.firstOrNull { it.startsWith("GameParams=") }?.split("=")?.get(1)) {
+            null -> {
+                println("No GameParams specified - using default values")
+                EventGameParams()
+            }
             else -> {
                 val fileAsLines = BufferedReader(FileReader(fileName)).lines().toList()
                 createIntervalParamsFromString(fileAsLines).sampleParams()
@@ -105,6 +115,7 @@ fun main(args: Array<String>) {
             params,
             logger,
             timeBudget,
+            agentParams,
             opponentModel,
             scoreFunctions = arrayOf(stringToScoreFunction(args.firstOrNull { it.startsWith("SCB|") }),
                     stringToScoreFunction(args.firstOrNull { it.startsWith("SCR|") })),
@@ -156,6 +167,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
                          val params: EventGameParams,
                          val logger: EvolutionLogger,
                          val timeBudget: Int = 50,
+                         val opponentParams: AgentParams,
                          val opponentModel: SimpleActionPlayerInterface?,
                          val scoreFunctions: Array<(LandCombatGame, Int) -> Double> = arrayOf(finalScoreFunction, finalScoreFunction),
                          val victoryFunction: (LandCombatGame, Int) -> Double = finalScoreFunction
@@ -215,7 +227,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
             is UtilitySearchSpace -> {
                 searchSpace.agentParams.createAgent("UtilitySearch")
             }
-            else -> throw AssertionError("Unknown type " + searchSpace)
+            else -> throw AssertionError("Unknown type $searchSpace")
         }
     }
 
@@ -224,7 +236,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
 
         var finalScore = 0.0
         repeat(2) {
-            val heuristicOpponent = HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
+            val opponent = opponentParams.createAgent("target")
             val world = World(params = params.copy(seed = seedToUse))
             val game = LandCombatGame(world)
             if (it == 1) {
@@ -234,7 +246,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
                     game.scoreFunction[PlayerId.Red] = searchSpace.getScoreFunction(settings)
                     game.scoreFunction[PlayerId.Blue] = scoreFunctions[1]
                 } else {
-                    game.registerAgent(0, heuristicOpponent)
+                    game.registerAgent(0, opponent)
                     game.registerAgent(1, getAgent(settings))
                     game.scoreFunction[PlayerId.Red] = scoreFunctions[0]
                     game.scoreFunction[PlayerId.Blue] = scoreFunctions[1]
@@ -247,7 +259,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
                     game.scoreFunction[PlayerId.Red] = scoreFunctions[1]
                 } else {
                     game.registerAgent(0, getAgent(settings))
-                    game.registerAgent(1, heuristicOpponent)
+                    game.registerAgent(1, opponent)
                     game.scoreFunction[PlayerId.Red] = scoreFunctions[1]
                     game.scoreFunction[PlayerId.Blue] = scoreFunctions[0]
                 }

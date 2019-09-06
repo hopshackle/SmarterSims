@@ -153,6 +153,7 @@ data class AgentParams(
             else -> null
         }
         return when (algorithm) {
+            "Random" -> SimpleActionRandom
             "Heuristic" -> {
                 val options = getParam("options", "WITHDRAW|ATTACK").split("|").map(HeuristicOptions::valueOf)
                 HeuristicAgent(getParam("attack", "3.0").toDouble(), getParam("defence", "1.2").toDouble(), options)

@@ -15,7 +15,9 @@ val hasMaterialAdvantage: (LandCombatGame, Int) -> Boolean = { game: LandCombatG
 }
 
 fun stringToScoreFunction(stringRep: String?): (LandCombatGame, Int) -> Double {
-    if (stringRep == null) return finalScoreFunction
+    if (stringRep == null) {
+        return finalScoreFunction
+    }
     var sp = stringRep.split("|").filterNot { it.startsWith("SC") }.map { it.toDouble() }
     sp = sp + (sp.size until 7).map { 0.00 }
     var retValue = simpleScoreFunction(sp[0], sp[2], sp[1], sp[3])

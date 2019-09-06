@@ -75,7 +75,7 @@ fun main(args: Array<String>) {
                 (0 until searchSpace.nValues(it)).map { i -> searchSpace.value(it, i) }.joinToString()))
     }
     repeat(totalRuns / reportEvery) {
-        ntbea.runTrial(GroundWarEvaluator(searchSpace, params, logger, 50, null), reportEvery)
+        ntbea.runTrial(GroundWarEvaluator(searchSpace, params, logger, 50, agentParams, null), reportEvery)
         // tuples gets cleared out
         println("Current best sampled point (using mean estimate): " + nTupleSystem.bestOfSampled.joinToString() +
                 String.format(", %.3g", nTupleSystem.getMeanEstimate(nTupleSystem.bestOfSampled)))

@@ -24,10 +24,18 @@ fun main(args: Array<String>) {
     val inputFile = if (args.size > 1) args[1] else ""
     val outputFile = if (args.size > 2) args[2] else "output.txt"
 
-    if (inputFile == "") throw AssertionError("Must provide input file for intervals as second parameter")
+    if (inputFile == "") throw AssertionError("Must provide input file for intervals as third parameter")
     val fileAsLines = BufferedReader(FileReader(inputFile)).lines().toList()
     val intervalParams = createIntervalParamsFromString(fileAsLines)
 
+    val blueScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCB") })
+    val redScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCR") })
+
+    val blueAgentParams = agentParamsFromCommandLine(args, "blue")
+    val redAgentParams = agentParamsFromCommandLine(args, "red")
+
+    val victoryFunction = arrayOf(stringToScoreFunction(args.firstOrNull { it.startsWith("VB|") }),
+            stringToScoreFunction(args.firstOrNull { it.startsWith("VR|") }))
 
     val numberFormatter: (Any?) -> String = { it ->
         when (it) {
@@ -39,13 +47,14 @@ fun main(args: Array<String>) {
     }
 
     val statisticsToKeep: Map<String, (LandCombatGame) -> Number> = mapOf(
-            "BLUE_WINS" to { g: LandCombatGame -> if (g.score(0) - g.score(1) > 0.0) 1 else 0 },
-            "RED_WINS" to { g: LandCombatGame -> if (g.score(0) - g.score(1) < 0.0) 1 else 0 },
+            "BLUE_WINS" to { g: LandCombatGame -> if (victoryFunction[0](g, 0) > 0.0) 1 else 0 },
+            "RED_WINS" to { g: LandCombatGame -> if (victoryFunction[1](g, 1) > 0.0) 1 else 0 },
             "BLUE_FORCE" to { g: LandCombatGame -> simpleScoreFunction(0.0, 1.0, 0.0, 0.0).invoke(g, 0) },
             "RED_FORCE" to { g: LandCombatGame -> simpleScoreFunction(0.0, 1.0, 0.0, 0.0).invoke(g, 1) },
             "BLUE_CITIES" to { g: LandCombatGame -> simpleScoreFunction(1.0, 0.0, 0.0, 0.0).invoke(g, 0).toInt() },
+            "BLUE_FORTRESSES" to { g: LandCombatGame -> fortressScore(1.0).invoke(g, 0).toInt() },
+            "RED_FORTRESSES" to { g: LandCombatGame -> fortressScore(1.0).invoke(g, 1).toInt() },
             "RED_CITIES" to { g: LandCombatGame -> simpleScoreFunction(1.0, 0.0, 0.0, 0.0).invoke(g, 1).toInt() },
-            "DRAW" to { g: LandCombatGame -> if (g.score(0) == g.score(1)) 1 else 0 },
             "BLUE_SCORE" to { g: LandCombatGame -> g.score(0) },
             "RED_SCORE" to { g: LandCombatGame -> g.score(1) },
             "GAME_LENGTH" to { g: LandCombatGame -> g.nTicks() },
@@ -64,7 +73,7 @@ fun main(args: Array<String>) {
                 }
             }
 
-    if (otherKeys.size > 0) throw AssertionError("We have not specified an interval for some game parameters " + otherKeys.toString())
+    if (otherKeys.isNotEmpty()) throw AssertionError("We have not specified an interval for some game parameters $otherKeys")
 
     val fileWriter = FileWriter(outputFile)
     fileWriter.write(gameParamKeys.joinToString(separator = "\t", postfix = "\t"))
@@ -74,35 +83,15 @@ fun main(args: Array<String>) {
 
         val params = intervalParams.sampleParams()
         val game = LandCombatGame(World(params = params))
-        game.scoreFunction[PlayerId.Blue] = compositeScoreFunction(
-                simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
-                visibilityScore(0.0, 0.0)
-                //   game.scoreFunction = specificTargetScoreFunction(50.0)
-        )
-        game.scoreFunction[PlayerId.Red] = compositeScoreFunction(
-                simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
-                visibilityScore(0.0, 0.0)
-                //   game.scoreFunction = specificTargetScoreFunction(50.0)
-        )
-        val blueOpponentModel =
-                DoNothingAgent()
-        //HeuristicAgent(2.0, 1.1)
-        //        SimpleActionEvoAgent(SimpleEvoAgent(name = "OppEA", nEvals = 10, sequenceLength = 40, useMutationTransducer = false, probMutation = 0.1, horizon = params.planningHorizon))
-        val blueAgent = SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 2000, timeLimit = 100, sequenceLength = 40,
-                useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = true,
-                horizon = 100, opponentModel = blueOpponentModel)
-        )
+        game.scoreFunction[PlayerId.Blue] = blueScoreFunction
+        game.scoreFunction[PlayerId.Red] = redScoreFunction
+
+        val blueAgent = blueAgentParams.createAgent("BLUE")
         game.registerAgent(0, blueAgent)
-        val redAgent =
-                SimpleActionEvoAgent(SimpleEvoAgent(nEvals = 2000, timeLimit = 100, sequenceLength = 40,
-                        useMutationTransducer = false, probMutation = 0.1, useShiftBuffer = true,
-                        horizon = 100))
-        //      MCTSTranspositionTableAgentMaster(MCTSParameters(timeLimit = 100, maxPlayouts = 1000, horizon = params.planningHorizon[1]), LandCombatStateFunction)
-        //       HeuristicAgent(params.minAssaultFactor[1], 1.1)
+        val redAgent = redAgentParams.createAgent("RED")
         game.registerAgent(1, redAgent)
 
         game.next(1000)
-
 
         val propertyMap = EventGameParams::class.memberProperties.map { it.name to it.get(params) }.toMap().toMutableMap()
         fun propertyValue(key: String, position: Int): Number {
