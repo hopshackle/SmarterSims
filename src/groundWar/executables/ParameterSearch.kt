@@ -123,6 +123,7 @@ fun main(args: Array<String>) {
     )
 
     repeat(totalRuns / reportEvery) {
+        groundWarEvaluator.nEvals = 0
         ntbea.runTrial(groundWarEvaluator, reportEvery)
 
         // tuples gets cleared out

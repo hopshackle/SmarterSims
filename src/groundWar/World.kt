@@ -37,6 +37,7 @@ data class Force(val size: Double, val fatigue: Double = 0.0, val timeStamp: Int
     }
 }
 
+
 data class City(val location: Vec2d, val radius: Int = 25, var pop: Force = Force(0.0),
                 var owner: PlayerId = PlayerId.Neutral, val name: String = "", val fort: Boolean = false)
 

@@ -57,6 +57,8 @@ fun convertGenomeToActionList(genome: IntArray?, gameState: AbstractGameState, p
     val intPerAction = gameState.codonsPerAction()
     if (genome == null || genome.isEmpty()) return listOf()
     if (gameState is ActionAbstractGameState) {
+        gameState.registerAgent(0, SimpleActionDoNothing(1000))
+        gameState.registerAgent(1, SimpleActionDoNothing(1000))
         val retValue = (0 until (genome.size / intPerAction)).map { i ->
             val gene = genome.sliceArray(i * intPerAction until (i + 1) * intPerAction)
             val action = gameState.translateGene(playerRef, gene)

@@ -143,6 +143,9 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
             println(transitsThatShouldHaveEnded.joinToString("\n"))
             throw AssertionError("Extant transits that should have been terminated")
         }
+        if (world.currentTransits.any{it.force.size == 0.00}) {
+            throw AssertionError("Extant transits with zero force")
+        }
     }
 }
 
