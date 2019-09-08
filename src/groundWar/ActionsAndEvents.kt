@@ -197,6 +197,7 @@ data class LaunchExpedition(val playerId: PlayerId, val origin: Int, val destina
                 val travelTime = (distance / world.params.speed[player]).toInt()
                 val arrivalTime = startTime + travelTime
                 val forcesSent = forcesSent(state)
+                if (forcesSent <= 0.001) return // not enough to mount an expedition
                 val currentGarrison = world.cities[origin].pop
                 if (currentGarrison.fatigue > 0.0) { // update garrison fatigue first
                     world.cities[origin].pop = state.fatigueModels[player].rest(
