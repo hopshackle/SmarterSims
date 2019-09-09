@@ -16,12 +16,17 @@ import java.lang.AssertionError
 import kotlin.math.min
 import kotlin.streams.toList
 
-fun agentParamsFromCommandLine(args: Array<String>, prefix: String): AgentParams {
+fun agentParamsFromCommandLine(args: Array<String>, prefix: String, default: String = ""): AgentParams {
     val fileName = args.firstOrNull { it.startsWith(prefix) }?.split("=")?.get(1)
     if (fileName == null && args[0] == "Utility") throw AssertionError("Must specify a file for agent params (Agent=...) if using Utility Search space")
     return if (fileName == null) {
-        println("No data found for $prefix AgentParams: using default Heuristic")
-        AgentParams("Heuristic", algoParams = "attack:3.0,defence:1.2,options:WITHDRAW|ATTACK")
+        if (default == "") {
+            println("No data found for $prefix AgentParams: using default Heuristic")
+            AgentParams("Heuristic", algoParams = "attack:3.0,defence:1.2,options:WITHDRAW|ATTACK")
+        } else {
+            println("No data found for $prefix AgentParams: using default")
+            createAgentParamsFromString(default.split("\n"))
+        }
     } else {
         val fileAsLines = BufferedReader(FileReader(fileName)).lines().toList()
         createAgentParamsFromString(fileAsLines)

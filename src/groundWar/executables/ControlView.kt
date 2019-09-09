@@ -16,6 +16,28 @@ fun createAndShowGUI() {
     view.create(JFrame())
 }
 
+const val testVersion = true
+
+val defaultBlueAgent = """
+        algorithm=MCTS
+        timeBudget=50
+        evalBudget=100000
+        sequenceLength=12
+        planningHorizon=100
+        algoParams=C:3.0,maxActions:50,rolloutPolicy:DoNothing,selectionPolicy:SIMPLE,discountFactor:0.99
+        opponentModel=DoNothing
+    """.trimIndent()
+
+val defaultRedAgent = """
+        algorithm=RHEA
+        timeBudget=50
+        evalBudget=100000
+        sequenceLength=4
+        planningHorizon=100
+        algoParams=probMutation:0.7,flipAtLeastOneValue,discountFactor:0.999
+        opponentModel=DoNothing
+    """.trimIndent()
+
 class ControlView {
 
     val params = EventGameParams()
@@ -24,26 +46,6 @@ class ControlView {
             "fatigueRate", "percentFort", "fortAttackerDivisor", "fortDefenderExpBonus", "fogOfWar", "fogStrengthAssumption", "speed",
             "OODALoop", "orderDelay", "controlLimit", "minAssaultFactor", "seed")
     var runningThread = Thread()
-
-    val defaultBlueAgent = """
-        algorithm=MCTS
-        timeBudget=50
-        evalBudget=100000
-        sequenceLength=24
-        planningHorizon=400
-        algoParams=C:0.03,maxActions:20,rolloutPolicy:Random,selectionPolicy:SIMPLE
-        opponentModel=DoNothing
-    """.trimIndent()
-
-    val defaultRedAgent = """
-        algorithm=RHEA
-        timeBudget=50
-        evalBudget=100000
-        sequenceLength=4
-        planningHorizon=400
-        algoParams=probMutation:0.7,flipAtLeastOneValue
-        opponentModel=DoNothing
-    """.trimIndent()
 
     class ParameterSetting(val text: String, val propertyMap: MutableMap<String, Any?>) : JPanel(FlowLayout(FlowLayout.LEFT)) {
         init {
@@ -166,7 +168,7 @@ class ControlView {
         buttonPanel.add(startButton)
         buttonPanel.add(pauseButton)
         val optionPanel = JPanel()
-        optionPanel.add(agentPlanBox)
+        if (testVersion) optionPanel.add(agentPlanBox)
         optionPanel.add(asymmetricVictoryBox)
         setting.add(optionPanel)
         setting.add(buttonPanel)

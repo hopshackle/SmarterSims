@@ -31,8 +31,8 @@ fun main(args: Array<String>) {
     val blueScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCB") })
     val redScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCR") })
 
-    val blueAgentParams = agentParamsFromCommandLine(args, "blue")
-    val redAgentParams = agentParamsFromCommandLine(args, "red")
+    val blueAgentParams = agentParamsFromCommandLine(args, "blue", default = defaultBlueAgent) // defaults from ControlView
+    val redAgentParams = agentParamsFromCommandLine(args, "red", default = defaultRedAgent)
 
     val victoryFunction = arrayOf(stringToScoreFunction(args.firstOrNull { it.startsWith("VB|") }),
             stringToScoreFunction(args.firstOrNull { it.startsWith("VR|") }))
@@ -52,8 +52,8 @@ fun main(args: Array<String>) {
             "BLUE_FORCE" to { g: LandCombatGame -> simpleScoreFunction(0.0, 1.0, 0.0, 0.0).invoke(g, 0) },
             "RED_FORCE" to { g: LandCombatGame -> simpleScoreFunction(0.0, 1.0, 0.0, 0.0).invoke(g, 1) },
             "BLUE_CITIES" to { g: LandCombatGame -> simpleScoreFunction(1.0, 0.0, 0.0, 0.0).invoke(g, 0).toInt() },
-            "BLUE_FORTRESSES" to { g: LandCombatGame -> fortressScore(1.0).invoke(g, 0).toInt() },
-            "RED_FORTRESSES" to { g: LandCombatGame -> fortressScore(1.0).invoke(g, 1).toInt() },
+            "BLUE_FORTS" to { g: LandCombatGame -> fortressScore(1.0).invoke(g, 0).toInt() },
+            "RED_FORTS" to { g: LandCombatGame -> fortressScore(1.0).invoke(g, 1).toInt() },
             "RED_CITIES" to { g: LandCombatGame -> simpleScoreFunction(1.0, 0.0, 0.0, 0.0).invoke(g, 1).toInt() },
             "BLUE_SCORE" to { g: LandCombatGame -> g.score(0) },
             "RED_SCORE" to { g: LandCombatGame -> g.score(1) },
