@@ -22,10 +22,10 @@ class EventQueue(val eventQueue: Queue<Event> = PriorityQueue()) : Queue<Event> 
         }
 
     fun registerAgent(player: Int, agent: SimpleActionPlayerInterface, currentTime: Int) {
+        playerAgentMap[player] = agent
         if (agent is SimpleActionDoNothing) {
             eventQueue.removeIf { e -> e.action is MakeDecision && e.action.playerRef == player }
         } else {
-            playerAgentMap[player] = agent
             if (eventQueue.none { e -> e.action is MakeDecision && e.action.playerRef == player }) {
                 eventQueue.add(Event(currentTime, MakeDecision(player, currentTime)))
             }
