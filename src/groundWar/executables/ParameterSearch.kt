@@ -98,12 +98,10 @@ fun main(args: Array<String>) {
 
     val opponentModelParams = args.firstOrNull { it.startsWith("opp=") }?.split("=")?.get(1)
 
-    val opponentModel: SimpleActionPlayerInterface? = when (opponentModelParams) {
-        null -> SimpleActionDoNothing(1000)
-        else -> {
-            if (args[0] == "MCTS2") throw AssertionError("Opponent model not used in MCTS2")
-            createAgentParamsFromString(listOf(opponentModelParams)).createAgent("RED")
-        }
+    val opponentModel: SimpleActionPlayerInterface? = when {
+        args[0] == "MCTS2" -> null
+        opponentModelParams == null -> SimpleActionDoNothing(1000)
+        else -> createAgentParamsFromString(listOf(opponentModelParams)).createAgent("RED")
     }
 
     val logger = EvolutionLogger()
