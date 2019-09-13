@@ -7,6 +7,8 @@ import utilities.StatsCollator
 import java.util.*
 import kotlin.math.*
 
+var MCTSPlanMaintenance = true
+
 class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
                                         val stateFunction: StateSummarizer,
                                         val opponentModel: SimpleActionPlayerInterface? = SimpleActionDoNothing(params.horizon),
@@ -68,7 +70,8 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
             StatsCollator.addStatistics("${name}_OM_States", opponentTree.size)
         }
         //    println("$iteration iterations executed for player $playerId")
-        currentPlan = getPlan(gameState, tree, stateFunction, playerRef)
+        if (MCTSPlanMaintenance)
+            currentPlan = getPlan(gameState, tree, stateFunction, playerRef)
         return getBestAction(gameState)
     }
 
@@ -296,7 +299,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         trajectory.add(TrajectoryInstance("GAME_OVER", finalTime, finalScore, listOf(), NoAction(0, 1)))
         val incrementalRewardsAtTime = trajectory.map { Pair(it.score, it.time) }.zipWithNext()
                 .map { (a, b) -> Pair(b.first - a.first, b.second - startTime) }
-        val discountedReward = incrementalRewardsAtTime.map{it.first * params.discountRate.pow(it.second)}.sum()
+        val discountedReward = incrementalRewardsAtTime.map { it.first * params.discountRate.pow(it.second) }.sum()
         var previousState = ""
         trajectory.forEach { (state, _, _, possibleActions, action) ->
             val node = tree[state]
