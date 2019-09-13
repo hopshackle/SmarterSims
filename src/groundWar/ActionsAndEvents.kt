@@ -22,11 +22,11 @@ data class TransitStart(val transit: Transit) : Action {
             val city = world.cities[transit.fromCity]
             if (city.owner != transit.playerId)
                 return // do nothing
-            val actualTransit = if (city.pop.size < transit.force.size) {
-                transit.copy(force = transit.force.copy(city.pop.size))
-            } else {
-                transit
+            val actualTransit = when {
+                city.pop.size < transit.force.size -> transit.copy(force = transit.force.copy(city.pop.size))
+                else -> transit
             }
+            if (actualTransit.force.size <= 0.00) return
             city.pop = city.pop.copy(size = city.pop.size - actualTransit.force.size)
             val enemyCollision = world.nextCollidingTransit(actualTransit, state.nTicks())
             world.addTransit(actualTransit)
@@ -248,8 +248,10 @@ data class LaunchExpedition(val playerId: PlayerId, val origin: Int, val destina
         val limit = state.world.params.controlLimit[player]
         if (limit == 0) return true
         val currentTransits = state.world.currentTransits.filter { it.playerId == playerId }.size
-        val currentPlannedTransits = state.eventQueue.filter { (it.action is LaunchExpedition && it.action.playerId == playerId)
-                || (it.action is TransitStart && it.action.transit.playerId == playerId) }.size
+        val currentPlannedTransits = state.eventQueue.filter {
+            (it.action is LaunchExpedition && it.action.playerId == playerId)
+                    || (it.action is TransitStart && it.action.transit.playerId == playerId)
+        }.size
         return (currentTransits + currentPlannedTransits < limit)
     }
 

@@ -207,6 +207,19 @@ class TransitTest {
         val t2 = Transit(Force(5.0), 0, 2, PlayerId.Blue, 1, 8)
         assertFalse(t1.willCollideAt(t2, world, 1).first)
     }
+
+    @Test
+    fun transitStartDoesNothingIfWouldBeZeroForce() {
+        val gameCopy = game.copy()
+        gameCopy.planEvent(0, TransitStart(Transit(Force(6.0), 0, 2, PlayerId.Blue, 0, 50)))
+        gameCopy.planEvent(1, TransitStart(Transit(Force(6.0), 0, 2, PlayerId.Blue, 10, 60)))
+        gameCopy.planEvent(2, TransitStart(Transit(Force(6.0), 0, 2, PlayerId.Blue, 20, 70)))
+
+        gameCopy.next(25)
+        assertEquals(gameCopy.world.currentTransits.size, 2)
+        assertEquals(gameCopy.world.currentTransits[0].force.size, 6.0, 0.0001)
+        assertEquals(gameCopy.world.currentTransits[1].force.size, 4.0, 0.0001)
+    }
 }
 
 object BattleTest {

@@ -85,9 +85,9 @@ class ObjectiveFunctionTest {
 
     @Test
     fun createSimpleFunctionFromString() {
-        val scoreFunction1 = stringToScoreFunction(null)
-        assertEquals(scoreFunction1.invoke(game, 0), 5.0)
-        assertEquals(scoreFunction1.invoke(game, 1), 5.0)
+        val scoreFunction1 = stringToScoreFunction(null) // defaults to material differnece
+        assertEquals(scoreFunction1.invoke(game, 0), 0.0)
+        assertEquals(scoreFunction1.invoke(game, 1), 0.0)
         val scoreFunction2 = stringToScoreFunction("SC|5|-2|1|-2")
         assertEquals(scoreFunction2.invoke(game, 0), -7.0)
         assertEquals(scoreFunction2.invoke(game, 1), -7.0)
