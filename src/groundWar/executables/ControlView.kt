@@ -143,15 +143,19 @@ class ControlView {
                 )
                 val blueAgent = createAgentParamsFromString(blueAgentDetails.text.split("\n")).createAgent("BLUE")
                 val redAgent = createAgentParamsFromString(redAgentDetails.text.split("\n")).createAgent("RED")
+                val blueFunction = when {
+                    asymmetricVictoryBox.isSelected -> compositeScoreFunction(
+                            simpleScoreFunction(0.0, 0.5, 0.0, 0.0),
+                            fortressScore(25.0)
+                    )
+                    else -> simpleScoreFunction(5.0, 1.0, -5.0, -1.0)
+                }
                 runningThread = Thread {
                     runWithParams(
                             simParams,
                             blueAgent,
                             redAgent,
-                            blueScoreFunction = compositeScoreFunction(
-                                    simpleScoreFunction(0.0, 0.5, 0.0, 0.0),
-                                    fortressScore(25.0)
-                            ),
+                            blueScoreFunction = blueFunction,
                             redScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -1.0),
                             showAgentPlans = agentPlanBox.isSelected,
                             mapFile = mapNameField.text
