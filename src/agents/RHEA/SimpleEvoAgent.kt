@@ -3,6 +3,8 @@ package agents.RHEA
 import agents.DoNothingAgent
 import agents.SimpleActionDoNothing
 import ggi.*
+import groundWar.LandCombatGame
+import utilities.EntityLog
 import utilities.StatsCollator
 import kotlin.math.pow
 import kotlin.random.Random
@@ -137,6 +139,17 @@ data class SimpleEvoAgent(
 
     // these are all the parameters that control the agend
     internal var buffer: IntArray? = null // randomPoint(sequenceLength)
+    private lateinit var debugLog: EntityLog
+
+    var debug = false
+        set(value) {
+            if (value) {
+                debugLog = EntityLog("SimpleEvoAgent_$name")
+            } else {
+                debugLog.close()
+            }
+            field = value
+        }
 
     // SimplePlayerInterface opponentModel = new RandomAgent();
     override fun reset(): SimplePlayerInterface {
@@ -158,19 +171,31 @@ data class SimpleEvoAgent(
         }
         val startScore: Double = evalSeq(gameState.copy(), solution, playerId)
         var curScore = startScore
-        //       println(String.format("Player %d starting score to beat is %.1f", playerId, startScore))
         var iterations = 0
+        if (debug) {
+            debugLog.log("Starting State at time ${gameState.nTicks()}:")
+            debugLog.log((gameState as LandCombatGame).world.cities.joinToString("\n") { c -> "\t${c.name}\t${c.owner}\t${c.pop}" })
+            debugLog.log(gameState.world.currentTransits.joinToString("\n") { it.toString() })
+            debugLog.log("\n")
+            debugLog.log(String.format("Player %d starting score to beat is %.1f with %s (%s)", playerId, startScore, solution.joinToString(""),
+                    (gameState as LandCombatGame).translateGene(playerId, solution)))
+        }
+
         do {
             // evaluate the current one
             val mut = mutate(solution, probMutation, gameState.nActions(), useMutationTransducer, repeatProb, flipAtLeastOneValue)
             val mutScore = evalSeq(gameState.copy(), mut, playerId)
+            if (debug) debugLog.log(String.format("\t%3d: Gets score of %.1f with %s (%s)", iterations, mutScore, mut.joinToString(""),
+                    (gameState as LandCombatGame).translateGene(playerId, mut)))
             if (mutScore >= curScore) {
                 curScore = mutScore
                 solution = mut
-                //        println(String.format("Player %d finds better score of %.1f with %s", playerId, mutScore, solution.joinToString("")))
+                if (debug) debugLog.log(String.format("Player %d finds better score of %.1f with %s (%s)", playerId, mutScore, solution.joinToString(""),
+                        (gameState as LandCombatGame).translateGene(playerId, solution)))
             }
             iterations++
         } while (iterations < nEvals && System.currentTimeMillis() - startTime < timeLimit)
+        if (debug) debugLog.flush()
         StatsCollator.addStatistics("${name}_ToGene", solution[1])
         StatsCollator.addStatistics("${name}_ProportionsGene", solution[2])
         StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
