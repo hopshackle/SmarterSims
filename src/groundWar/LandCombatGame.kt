@@ -3,6 +3,7 @@ package groundWar
 import ggi.*
 import groundWar.fatigue.FatigueModel
 import groundWar.fatigue.LinearFatigue
+import groundWar.fogOfWar.HistoricVisibility
 import kotlin.math.*
 import kotlin.collections.*
 import kotlin.random.Random
@@ -15,6 +16,7 @@ data class Event(val tick: Int, val action: Action) : Comparable<Event> {
         is TransitEnd -> 2
         else -> 10
     }
+
     operator override fun compareTo(other: Event): Int {
         val tickComparison = tick.compareTo(other.tick)
         if (tickComparison == 0) return priority.compareTo(other.priority)
@@ -39,6 +41,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
 
     val eventQueue = EventQueue()
     val fatigueModels = world.params.fatigueRate.map { LinearFatigue(it) }
+    val visibilityModels = mutableMapOf(PlayerId.Blue to HistoricVisibility(emptyMap()), PlayerId.Red to HistoricVisibility(emptyMap()))
 
     override fun registerAgent(player: Int, agent: SimpleActionPlayerInterface) = eventQueue.registerAgent(player, agent, nTicks())
     override fun getAgent(player: Int) = eventQueue.getAgent(player)
@@ -53,6 +56,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         val retValue = copyHelper(newWorld)
         // We also need to strip out any events in the queue that are not visible to the perspective player!
         retValue.eventQueue.addAll(eventQueue) { e -> e.action.visibleTo(perspective, this) }
+        retValue.visibilityModels[numberToPlayerID(1 - perspective)] = HistoricVisibility(emptyMap())
         addMakeDecisions(perspective, retValue)
         return retValue
     }
@@ -66,6 +70,9 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
 
     private fun copyHelper(world: World): LandCombatGame {
         val state = LandCombatGame(world, targets)
+        visibilityModels.forEach {
+            state.visibilityModels[it.key] = it.value
+        }
         state.scoreFunction = scoreFunction
         state.eventQueue.currentTime = nTicks()
         return state
@@ -136,15 +143,35 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
 
     override fun nTicks() = eventQueue.currentTime
 
+    fun updateVisibility(node: Int, playerId: PlayerId) {
+        if (world.cities[node].owner != playerId)
+            visibilityModels[playerId] = visibilityModels[playerId]!!.updateNode(node, nTicks(), world.cities[node].pop.size)
+    }
+
+    fun updateVisibilityOfNeighbours(node: Int, playerId: PlayerId) {
+        (world.allRoutesFromCity[node]!!.map(Route::toCity).toList() + node).forEach {
+            updateVisibility(it, playerId)
+        }
+    }
+
     override fun sanityChecks() {
         // check to see if we have any transits that should have finished
-        val transitsThatShouldHaveEnded = world.currentTransits.filter{it.endTime < nTicks()}
+        val transitsThatShouldHaveEnded = world.currentTransits.filter { it.endTime < nTicks() }
         if (transitsThatShouldHaveEnded.isNotEmpty()) {
             println(transitsThatShouldHaveEnded.joinToString("\n"))
             throw AssertionError("Extant transits that should have been terminated")
         }
-        if (world.currentTransits.any{it.force.size == 0.00}) {
+        if (world.currentTransits.any { it.force.size == 0.00 }) {
             throw AssertionError("Extant transits with zero force")
+        }
+        cleanUpVisibility()
+    }
+
+    private fun cleanUpVisibility() {
+        listOf(PlayerId.Blue, PlayerId.Red).forEach {
+            visibilityModels[it] = HistoricVisibility(visibilityModels[it]!!.filterNot { (city, _) ->
+                world.checkVisible(city, it)
+            })
         }
     }
 }

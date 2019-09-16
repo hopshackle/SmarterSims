@@ -90,11 +90,16 @@ data class CityInflux(val playerId: PlayerId, val pop: Force, val destination: I
                 )
                 if (result > 0.0) {
                     // attackers win
+                    val opponent = city.owner
                     city.owner = playerId
                     city.pop = pop.copy(size = result)
+                    if (opponent != PlayerId.Neutral)
+                        state.updateVisibilityOfNeighbours(destination, opponent)
                 } else {
                     // defenders win
                     city.pop = city.pop.copy(size = -result)
+                    state.updateVisibility(destination, playerId)
+                    if (origin != -1) state.updateVisibility(origin, playerId)
                 }
             }
         }
@@ -150,8 +155,11 @@ data class Battle(val transit1: Transit, val transit2: Transit) : Action {
 
             state.world.removeTransit(losingTransit)
             state.world.removeTransit(winningTransit)
+            state.updateVisibility(losingTransit.fromCity, losingTransit.playerId)
+            state.updateVisibility(losingTransit.toCity, losingTransit.playerId)
             if (abs(result).toInt() == 0) {
-                // do nothing
+                state.updateVisibility(winningTransit.fromCity, winningTransit.playerId)
+                state.updateVisibility(winningTransit.toCity, winningTransit.playerId)
             } else {
                 val successorTransit = winningTransit.copy(force = Force(abs(result), combatForce(winningSide, state).fatigue, state.nTicks()))
                 state.world.addTransit(successorTransit)

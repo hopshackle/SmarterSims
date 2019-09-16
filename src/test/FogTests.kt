@@ -1,27 +1,68 @@
 package test
 
-import agents.RHEA.SimpleActionEvoAgent
-import agents.RHEA.SimpleEvoAgent
+
 import ggi.NoAction
-import ggi.SimpleActionPlayerInterface
 import groundWar.*
-import groundWar.EventGameParams
+import groundWar.fogOfWar.HistoricVisibility
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
 import kotlin.test.*
+
+val cityCreationParams = EventGameParams(seed = 3, minConnections = 2, autoConnect = 300, maxDistance = 1000, fogOfWar = true)
+var foggyWorld: World = World(params = cityCreationParams)
 
 class FogTests {
 
-    val cityCreationParams = EventGameParams(seed = 3, minConnections = 2, autoConnect = 300, maxDistance = 1000, fogOfWar = true)
-    val foggyWorld = World(params = cityCreationParams)
-    //
+    @BeforeEach
+    fun init() {
+        foggyWorld = World(params = cityCreationParams)
+    }
 
+    /*
+    pop=Force(size=0.0, fatigue=0.0, timeStamp=0), owner=Neutral, name=0, fort=false)
+    pop=Force(size=0.0, fatigue=0.0, timeStamp=0), owner=Neutral, name=1, fort=false)
+    pop=Force(size=0.0, fatigue=0.0, timeStamp=0), owner=Neutral, name=2, fort=false)
+    pop=Force(size=100.0, fatigue=0.0, timeStamp=0), owner=Red, name=3, fort=true)
+    pop=Force(size=100.0, fatigue=0.0, timeStamp=0), owner=Blue, name=4, fort=false)
+    pop=Force(size=0.0, fatigue=0.0, timeStamp=0), owner=Neutral, name=5, fort=false)
+    pop=Force(size=0.0, fatigue=0.0, timeStamp=0), owner=Neutral, name=6, fort=false)
+    pop=Force(size=0.0, fatigue=0.0, timeStamp=0), owner=Neutral, name=7, fort=false)
+    pop=Force(size=0.0, fatigue=0.0, timeStamp=0), owner=Neutral, name=8, fort=false)
+
+    Route(fromCity=0, toCity=2, length=275.8455578081508, terrainDifficulty=1.0)
+    Route(fromCity=0, toCity=3, length=249.31384485842722, terrainDifficulty=1.0)
+    Route(fromCity=1, toCity=2, length=198.474286842283, terrainDifficulty=1.0)
+    Route(fromCity=1, toCity=5, length=287.77471511074697, terrainDifficulty=1.0)
+    Route(fromCity=1, toCity=4, length=466.1843577700114, terrainDifficulty=1.0)
+    Route(fromCity=1, toCity=3, length=322.6316485937634, terrainDifficulty=1.0)
+    Route(fromCity=2, toCity=0, length=275.8455578081508, terrainDifficulty=1.0)
+    Route(fromCity=2, toCity=1, length=198.474286842283, terrainDifficulty=1.0)
+    Route(fromCity=2, toCity=5, length=98.39470451810098, terrainDifficulty=1.0)
+    Route(fromCity=2, toCity=6, length=278.0568436251884, terrainDifficulty=1.0)
+    Route(fromCity=3, toCity=0, length=249.31384485842722, terrainDifficulty=1.0)
+    Route(fromCity=3, toCity=1, length=322.6316485937634, terrainDifficulty=1.0)
+    Route(fromCity=4, toCity=7, length=93.30010141668328, terrainDifficulty=1.0)
+    Route(fromCity=4, toCity=8, length=146.03612945597877, terrainDifficulty=1.0)
+    Route(fromCity=4, toCity=1, length=466.1843577700114, terrainDifficulty=1.0)
+    Route(fromCity=5, toCity=1, length=287.77471511074697, terrainDifficulty=1.0)
+    Route(fromCity=5, toCity=2, length=98.39470451810098, terrainDifficulty=1.0)
+    Route(fromCity=5, toCity=6, length=196.70561630752658, terrainDifficulty=1.0)
+    Route(fromCity=6, toCity=2, length=278.0568436251884, terrainDifficulty=1.0)
+    Route(fromCity=6, toCity=5, length=196.70561630752658, terrainDifficulty=1.0)
+    Route(fromCity=7, toCity=4, length=93.30010141668328, terrainDifficulty=1.0)
+    Route(fromCity=7, toCity=8, length=138.4294339013805, terrainDifficulty=1.0)
+    Route(fromCity=8, toCity=4, length=146.03612945597877, terrainDifficulty=1.0)
+    Route(fromCity=8, toCity=7, length=138.4294339013805, terrainDifficulty=1.0)
+*/
     @Test
     fun allCitiesAreVisible() {
         val blueCity: Int = foggyWorld.cities.withIndex().filter { (_, c) -> c.owner == PlayerId.Blue }.map { (i, _) -> i }.first()
         val neighbours = foggyWorld.allRoutesFromCity.getOrDefault(blueCity, emptyList())
                 .map(Route::toCity)
                 .toSet()
-        val nonNeighbours = (0 until foggyWorld.cities.size).toSet() - neighbours - blueCity
+        val nonNeighbours = foggyWorld.cities.indices.toSet() - neighbours - blueCity
         assertFalse(nonNeighbours.isEmpty())
         assert(foggyWorld.checkVisible(blueCity, PlayerId.Blue))
         assert(nonNeighbours.none { i -> foggyWorld.checkVisible(i, PlayerId.Blue) })
@@ -265,5 +306,110 @@ class FogTests {
         assert(blueVersion.eventQueue.contains(Event(13, LaunchExpedition(PlayerId.Blue, 8, 1, 1.0, 10)))) // B
         assert(blueVersion.eventQueue.contains(Event(14, TransitEnd(PlayerId.Blue, 1, 3, 20))))
         assertEquals(blueVersion.eventQueue.size, 10)
+    }
+}
+
+class HistoricVisibilityTests {
+
+    @BeforeEach
+    fun init() {
+        foggyWorld = World(params = cityCreationParams)
+    }
+
+    @Test
+    fun historicVisibilityUpdatesAfterCityConquered() {
+        val game = LandCombatGame(foggyWorld)
+        val gameCopy = game.copy()
+        gameCopy.next(2)
+        assertTrue(gameCopy.visibilityModels[PlayerId.Red]?.isEmpty() ?: false)
+        assertTrue(gameCopy.visibilityModels[PlayerId.Blue]?.isEmpty() ?: false)
+
+        CityInflux(PlayerId.Red, Force(5.0), 7, -1).apply(gameCopy)
+        (0..8).forEach {
+            assertEquals(gameCopy.visibilityModels[PlayerId.Red]?.lastVisible(it), 0)
+            assertEquals(gameCopy.visibilityModels[PlayerId.Blue]?.lastVisible(it), 0)
+        }
+
+        gameCopy.next(3)
+        CityInflux(PlayerId.Blue, Force(20.0), 7, -1).apply(gameCopy)
+        val popAfterBattle = gameCopy.world.cities[7].pop.size
+        (0..8).forEach {
+            assertEquals(gameCopy.visibilityModels[PlayerId.Blue]?.lastVisible(it), 0)
+            assertEquals(gameCopy.visibilityModels[PlayerId.Red]?.lastVisible(it), if (it in listOf(4, 7, 8)) 5 else 0)
+
+            assertEquals(gameCopy.visibilityModels[PlayerId.Blue]?.lastKnownForce(it) ?: 0.00, 0.00, 0.001)
+            assertEquals(gameCopy.visibilityModels[PlayerId.Red]?.lastKnownForce(it) ?: 0.00, when (it) {
+                4 -> 100.0
+                7 -> popAfterBattle
+                else -> 0.00
+            }, 0.001)
+        }
+    }
+
+    @Test
+    fun historicVisibilityUpdatesAfterBattleOnArc() {
+        val game = LandCombatGame(foggyWorld)
+        val gameCopy = game.copy()
+        gameCopy.next(2)
+
+        CityInflux(PlayerId.Red, Force(5.0), 7, -1).apply(gameCopy)
+        CityInflux(PlayerId.Blue, Force(15.0), 8, -1).apply(gameCopy)
+
+        gameCopy.planEvent(3, LaunchExpedition(PlayerId.Red, 7, 8, 1.0, 0))
+        gameCopy.planEvent(3, LaunchExpedition(PlayerId.Blue, 4, 7, 0.1, 0))
+        // 4 -> 7 will arrive before 7 -> 8 (13 ticks to get from 7 to 8; 9 to get from 4 to 7)
+        gameCopy.planEvent(13, LaunchExpedition(PlayerId.Blue, 8, 7, 0.5, 0))
+        // battle should take place on tick 14
+
+        gameCopy.next(15)
+        assertEquals(gameCopy.eventQueue.history.first { it.action is Battle }.tick, 14)
+        assertEquals(gameCopy.world.cities[7].owner, PlayerId.Blue)
+        assertEquals(gameCopy.world.cities[8].owner, PlayerId.Blue)
+
+        assertEquals(gameCopy.visibilityModels[PlayerId.Red]?.lastVisible(7), 14)
+        assertEquals(gameCopy.visibilityModels[PlayerId.Red]?.lastVisible(8), 14)
+        assertEquals(gameCopy.visibilityModels[PlayerId.Red]?.lastKnownForce(7) ?: 0.00, 10.0, 0.001)
+        assertEquals(gameCopy.visibilityModels[PlayerId.Red]?.lastKnownForce(8) ?: 0.00, 7.5, 0.001)
+    }
+
+    @Test
+    fun historicVisibilityMaintainedCorrectlyAfterStateCopy() {
+        val game = LandCombatGame(foggyWorld)
+        val gameCopy = game.copy()
+        gameCopy.next(2)
+
+        gameCopy.updateVisibility(6, PlayerId.Red)
+        gameCopy.updateVisibility(3, PlayerId.Blue)
+
+        val gameCopyCopy = gameCopy.copy()
+        assertEquals(gameCopyCopy.visibilityModels[PlayerId.Blue], HistoricVisibility(mapOf(3 to Pair(2, 100.0))))
+        assertEquals(gameCopyCopy.visibilityModels[PlayerId.Red], HistoricVisibility(mapOf(6 to Pair(2, 0.0))))
+        val gameCopyBlue = gameCopy.copy(0)
+        assertEquals(gameCopyBlue.visibilityModels[PlayerId.Blue], HistoricVisibility(mapOf(3 to Pair(2, 100.0))))
+        assertTrue(gameCopyBlue.visibilityModels[PlayerId.Red]?.isEmpty() ?: false)
+        val gameCopyRed = gameCopy.copy(1)
+        assertTrue(gameCopyRed.visibilityModels[PlayerId.Blue]?.isEmpty() ?: false)
+        assertEquals(gameCopyRed.visibilityModels[PlayerId.Red], HistoricVisibility(mapOf(6 to Pair(2, 0.0))))
+
+        // TODO: Blanking out opponents visibility is not entirely accurate, as we will often know when they last saw us!
+        // TODO: So depending on how far we nest our opponent model we may wish to keep this
+    }
+
+    @Test
+    fun historicVisibilityCleanedUpDuringSanityChecks() {
+        val game = LandCombatGame(foggyWorld)
+        val gameCopy = game.copy()
+        gameCopy.next(2)
+
+        gameCopy.updateVisibility(1, PlayerId.Red)
+        gameCopy.updateVisibility(6, PlayerId.Red)
+        gameCopy.updateVisibility(3, PlayerId.Red)
+        gameCopy.updateVisibility(1, PlayerId.Blue)
+        gameCopy.updateVisibility(6, PlayerId.Blue)
+        gameCopy.updateVisibility(3, PlayerId.Blue)
+
+        gameCopy.next(1)
+        assertEquals(gameCopy.visibilityModels[PlayerId.Blue], HistoricVisibility(mapOf(6 to Pair(2, 0.0), 3 to Pair(2, 100.0))))
+        assertEquals(gameCopy.visibilityModels[PlayerId.Red], HistoricVisibility(mapOf(6 to Pair(2, 0.0))))
     }
 }
