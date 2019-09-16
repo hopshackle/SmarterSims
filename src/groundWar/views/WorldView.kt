@@ -13,11 +13,10 @@ import javax.imageio.ImageIO
 import java.awt.Color
 
 
-class WorldView(var game: LandCombatGame) : JComponent() {
+class WorldView(var game: LandCombatGame, val dim: Dimension = Dimension(400, 250)) : JComponent() {
 
     val oliveGreen = Color(84, 79, 61)
 
-    val dim = Dimension(400, 250)
     val outline = Color.lightGray
     val playerCols = hashMapOf<PlayerId, Color>(
             PlayerId.Neutral to Color.getHSBColor(0.3f, 0.8f, 0.8f),

@@ -9,6 +9,7 @@ import utilities.*
 import java.awt.*
 import java.io.*
 import javax.swing.*
+import kotlin.math.*
 import kotlin.streams.toList
 
 var paused: Boolean = false
@@ -83,10 +84,11 @@ fun runWithParams(params: EventGameParams,
         }
     }
 
+    val mapDimension = Dimension(min(max(world.params.width, 400), 1000), min(max(world.params.height, 250), 1000))
     val multiView = ListComponent()
-    val omniView = WorldView(game)
-    val redView = WorldView(game)
-    val blueView = WorldView(game)
+    val omniView = WorldView(game, mapDimension)
+    val redView = WorldView(game, mapDimension)
+    val blueView = WorldView(game, mapDimension)
     multiView.add(omniView)
     if (params.fogOfWar) {
         multiView.add(redView)

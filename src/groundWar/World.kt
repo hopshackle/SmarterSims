@@ -383,7 +383,9 @@ fun createWorldFromJSON(data: String, params: EventGameParams): World {
     val routes = json.getJSONArray("routes").flatMap {
         val r = it as JSONObject
         val from: Int = cities.indexOfFirst { it.name == r.getString("from") }
+        if (from == -1) throw AssertionError("Unknown city name ${r.getString("from")}")
         val to: Int = cities.indexOfFirst { it.name == r.getString("to") }
+        if (to == -1) throw AssertionError("Unknown city name ${r.getString("to")}")
         val length = cities[from].location.distanceTo(cities[to].location)
         listOf(Route(from, to, length, 1.0),
                 Route(to, from, length, 1.0))
