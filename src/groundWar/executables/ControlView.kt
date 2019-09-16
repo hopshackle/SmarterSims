@@ -16,7 +16,7 @@ fun createAndShowGUI() {
     view.create(JFrame())
 }
 
-const val testVersion = true
+const val testVersion = false
 
 val defaultBlueAgent = """
         algorithm=MCTS

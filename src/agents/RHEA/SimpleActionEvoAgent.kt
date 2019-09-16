@@ -30,7 +30,6 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
             // this is just to give the opponent model some thinking time
             underlyingAgent.opponentModel = opponentModel.getForwardModelInterface()
 
-            if (playerRef == 0) underlyingAgent.debug = true
             val genome = underlyingAgent.getActions(gameState, playerRef)
             if (genome.size < intPerAction)
                 return NoAction(playerRef, 1000)

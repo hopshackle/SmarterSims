@@ -116,8 +116,6 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         val actualWait = world.params.OODALoop[player]
 
         val proposedAction = LaunchExpedition(playerId, origin, destination, proportion, actualWait)
-        if (playerId == PlayerId.Blue && origin == 2)
-            println("rawToGene = $rawToGene, destination = $destination, proportion = $proportion, valid = ${proposedAction.isValid(this)}")
         if (!proposedAction.isValid(this))
             return InterruptibleWait(player, max(encodedWait, 10))
         return proposedAction
