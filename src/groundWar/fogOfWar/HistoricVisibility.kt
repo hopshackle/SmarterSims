@@ -9,11 +9,11 @@ as this is defined by visibility to either of the terminal nodes!
 data class HistoricVisibility(val nodes: Map<Int, Pair<Int, Double>>) : Map<Int, Pair<Int, Double>> by nodes {
 
     fun lastVisible(node: Int): Int {
-        return nodes.getOrDefault(node, Pair(0, 0.0)).first
+        return nodes.getOrDefault(node, Pair(-1, 0.0)).first
     }
 
     fun lastKnownForce(node: Int): Double {
-        return nodes.getOrDefault(node, Pair(0, 0.0)).second
+        return nodes.getOrDefault(node, Pair(-1, 0.0)).second
     }
 
     fun updateNode(node: Int, time: Int, size: Double): HistoricVisibility {

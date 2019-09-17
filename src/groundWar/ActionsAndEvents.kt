@@ -3,6 +3,7 @@ package groundWar
 import ggi.Action
 import ggi.ActionAbstractGameState
 import groundWar.fatigue.*
+import groundWar.fogOfWar.HistoricVisibility
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -37,7 +38,8 @@ data class TransitStart(val transit: Transit) : Action {
     }
 
     override fun visibleTo(player: Int, state: ActionAbstractGameState): Boolean {
-        return if (state is LandCombatGame) state.world.checkVisible(transit, numberToPlayerID(player)) else true
+        return if (state is LandCombatGame) state.world.checkVisible(transit, numberToPlayerID(player),
+                (state.visibilityModels.get(numberToPlayerID(player)) ?: noVisibility)) else true
     }
 }
 
@@ -58,7 +60,16 @@ data class TransitEnd(val playerId: PlayerId, val fromCity: Int, val toCity: Int
 
     override fun visibleTo(player: Int, state: ActionAbstractGameState): Boolean {
         if (state is LandCombatGame) {
-            return state.world.checkVisible(Transit(Force(0.0), fromCity, toCity, playerId, 0, endTime), numberToPlayerID(player))
+            val perspectiveId = numberToPlayerID(player)
+            return when {
+                !state.world.params.fogOfWar -> true    // no fog of war, so all visible
+                playerId == perspectiveId -> true // one of ours
+                state.world.currentTransits.any { it.fromCity == fromCity && it.toCity == toCity && it.playerId == playerId && it.endTime == endTime } -> true
+                // we have a visible transit that matches this
+                else -> state.world.checkVisible(Transit(Force(0.0), fromCity, toCity, playerId, state.nTicks(), endTime), perspectiveId,
+                        (state.visibilityModels.get(perspectiveId) ?: noVisibility))
+                // this last condition may be relevant if the TransitStart has not yet been activated (due to order delays for example)
+            }
         }
         return true
     }
@@ -93,7 +104,7 @@ data class CityInflux(val playerId: PlayerId, val pop: Force, val destination: I
                     val opponent = city.owner
                     city.owner = playerId
                     city.pop = pop.copy(size = result)
-                    if (opponent != PlayerId.Neutral)
+                    if (opponent !in listOf(PlayerId.Neutral, PlayerId.Fog))
                         state.updateVisibilityOfNeighbours(destination, opponent)
                 } else {
                     // defenders win
@@ -112,7 +123,8 @@ data class CityInflux(val playerId: PlayerId, val pop: Force, val destination: I
         if (state is LandCombatGame)
             with(state.world) {
                 if (origin == -1) return this@CityInflux.playerId == playerId || checkVisible(destination, playerId)
-                return checkVisible(Transit(Force(0.0), origin, destination, this@CityInflux.playerId, 0, 0), playerId)
+                return checkVisible(Transit(Force(0.0), origin, destination, this@CityInflux.playerId, 0, 0), playerId,
+                        (state.visibilityModels.get(playerId)) ?: HistoricVisibility(emptyMap()))
                 // If we could see a Transit by another player on that route, then we can see the CityInflux
             }
         return true
@@ -172,10 +184,12 @@ data class Battle(val transit1: Transit, val transit2: Transit) : Action {
     }
 
     override fun visibleTo(player: Int, state: ActionAbstractGameState): Boolean {
-        if (state is LandCombatGame) {
-            val playerId = numberToPlayerID(player)
-            return state.world.checkVisible(transit1, playerId) && state.world.checkVisible(transit2, playerId)
-        }
+        /*   val playerId = numberToPlayerID(player)
+           val visibility = state.visibilityModels.get(playerId) ?: HistoricVisibility(emptyMap())
+           return state.world.checkVisible(transit1, playerId, visibility)
+                   && state.world.checkVisible(transit2, playerId, visibility)
+                   */
+        // since a battle must involve two players...and since we only have two active players, it will always be visible!
         return true
     }
 }

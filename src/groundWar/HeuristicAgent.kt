@@ -13,17 +13,21 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
 
     override fun getAgentType(): String = "HeuristicAgent"
 
+    override fun toString(): String {
+        return policy.joinToString("|") + String.format("|Attack: %.1f|Defense: %.1f", attackRatio, defenseRatio)
+    }
+
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
         if (gameState is LandCombatGame) {
             policy.forEach { option ->
                 when (option) {
                     HeuristicOptions.ATTACK -> {
                         val attack = attackOption(gameState, playerRef)
-                        if (!(attack is NoAction)) return attack
+                        if (attack !is NoAction) return attack
                     }
                     HeuristicOptions.WITHDRAW -> {
                         val withdraw = withdrawOption(gameState, playerRef)
-                        if (!(withdraw is NoAction)) return withdraw
+                        if (withdraw !is NoAction) return withdraw
                     }
                 }
             }

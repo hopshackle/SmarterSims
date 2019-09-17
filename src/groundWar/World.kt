@@ -1,6 +1,7 @@
 package groundWar
 
 import groundWar.fatigue.LinearFatigue
+import groundWar.fogOfWar.HistoricVisibility
 import math.Vec2d
 import kotlin.random.Random
 import org.json.*
@@ -260,13 +261,18 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
         return true
     }
 
-    fun deepCopyWithFog(perspective: PlayerId): World {
+    fun deepCopyWithFog(perspective: PlayerId, visibility: HistoricVisibility = noVisibility): World {
         val state = copy()
         state.cities = ArrayList(cities.withIndex().map { (i, c) ->
-            if (checkVisible(i, perspective)) City(c.location, c.radius, c.pop, c.owner, c.name, c.fort)
-            else City(c.location, c.radius, Force(params.fogStrengthAssumption[playerIDToNumber(perspective)]), PlayerId.Fog, c.name, c.fort)
+            when {
+                checkVisible(i, perspective) -> City(c.location, c.radius, c.pop, c.owner, c.name, c.fort)
+                visibility.lastVisible(i) > -1 -> City(c.location, c.radius, Force(visibility.lastKnownForce(i)), c.owner, c.name, c.fort)
+                else -> City(c.location, c.radius, Force(params.fogStrengthAssumption[playerIDToNumber(perspective)]), PlayerId.Fog, c.name, c.fort)
+            }
+            // TODO: With only 2 players, ownership of a city cannot change without both seeing this. So it is safe to assume c.owner is unchanged
+            // TODO: regardless of how old the visibility data is (to be changed with more than 2 players)
         })
-        state.currentTransits = ArrayList(currentTransits.filter { t -> checkVisible(t, perspective) }) // each Transit is immutable, but not the list of active ones
+        state.currentTransits = ArrayList(currentTransits.filter { t -> checkVisible(t, perspective, visibility) }) // each Transit is immutable, but not the list of active ones
         state.routes = routes       // immutable, so safe
         state.allRoutesFromCity = allRoutesFromCity // immutable, so safe
         return state
@@ -293,11 +299,12 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
         return (cities.withIndex().any { (i, c) -> c.owner == perspective && (route.toCity == i || route.fromCity == i) })
     }
 
-    fun checkVisible(transit: Transit, perspective: PlayerId): Boolean {
+    fun checkVisible(transit: Transit, perspective: PlayerId, visibility: HistoricVisibility): Boolean {
         if (!params.fogOfWar) return true
         return transit.playerId == perspective ||
                 cities[transit.toCity].owner == perspective ||
                 cities[transit.fromCity].owner == perspective ||
+                visibility.lastVisible(transit.toCity) > transit.startTime && visibility.lastVisible(transit.fromCity) > transit.startTime ||
                 currentTransits.any { t ->
                     t.playerId == perspective && (
                             (t.toCity == transit.toCity && t.fromCity == transit.fromCity)

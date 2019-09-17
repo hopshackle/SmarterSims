@@ -4,10 +4,13 @@ import ggi.*
 import groundWar.fatigue.FatigueModel
 import groundWar.fatigue.LinearFatigue
 import groundWar.fogOfWar.HistoricVisibility
+import test.noVisibility
 import kotlin.math.*
 import kotlin.collections.*
 import kotlin.random.Random
 import ggi.SimpleActionPlayerInterface as SimpleActionPlayerInterface
+
+internal val noVisibility = HistoricVisibility(emptyMap())
 
 data class Event(val tick: Int, val action: Action) : Comparable<Event> {
 
@@ -17,7 +20,7 @@ data class Event(val tick: Int, val action: Action) : Comparable<Event> {
         else -> 10
     }
 
-    operator override fun compareTo(other: Event): Int {
+    override operator fun compareTo(other: Event): Int {
         val tickComparison = tick.compareTo(other.tick)
         if (tickComparison == 0) return priority.compareTo(other.priority)
         return tickComparison
@@ -52,11 +55,14 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     var scoreFunction: MutableMap<PlayerId, (LandCombatGame, Int) -> Double> = defaultScoreFunctions
 
     override fun copy(perspective: Int): LandCombatGame {
-        val newWorld = if (world.params.fogOfWar) world.deepCopyWithFog(numberToPlayerID(perspective)) else world.deepCopy()
+        val newWorld = if (world.params.fogOfWar) {
+            val playerId = numberToPlayerID(perspective)
+            world.deepCopyWithFog(playerId, visibilityModels[playerId] ?: noVisibility)
+        } else world.deepCopy()
         val retValue = copyHelper(newWorld)
         // We also need to strip out any events in the queue that are not visible to the perspective player!
-        retValue.eventQueue.addAll(eventQueue) { e -> e.action.visibleTo(perspective, this) }
-        retValue.visibilityModels[numberToPlayerID(1 - perspective)] = HistoricVisibility(emptyMap())
+        retValue.eventQueue.addAll(eventQueue) { e -> e.action.visibleTo(perspective, retValue) }
+        retValue.visibilityModels[numberToPlayerID(1 - perspective)] = noVisibility
         addMakeDecisions(perspective, retValue)
         return retValue
     }
@@ -144,8 +150,13 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     override fun nTicks() = eventQueue.currentTime
 
     fun updateVisibility(node: Int, playerId: PlayerId) {
-        if (world.cities[node].owner != playerId)
-            visibilityModels[playerId] = visibilityModels[playerId]!!.updateNode(node, nTicks(), world.cities[node].pop.size)
+        if (world.cities[node].owner != playerId) {
+            val vModel = visibilityModels[playerId]
+            if (vModel != null)
+                visibilityModels[playerId] = vModel.updateNode(node, nTicks(), world.cities[node].pop.size)
+            else
+                throw AssertionError("null visibility model")
+        }
     }
 
     fun updateVisibilityOfNeighbours(node: Int, playerId: PlayerId) {
@@ -168,14 +179,17 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     }
 
     private fun cleanUpVisibility() {
+        // we remove any data on cities we now control. Their visibility is not a sufficient condition
+        // as that does not mean we have information on all routes into the city
         listOf(PlayerId.Blue, PlayerId.Red).forEach {
-            visibilityModels[it] = HistoricVisibility(visibilityModels[it]!!.filterNot { (city, _) ->
-                world.checkVisible(city, it)
+            visibilityModels[it] = HistoricVisibility(visibilityModels[it]!!.filterNot { (city, data) ->
+                world.cities[city].owner == it ||
+                        data.first < nTicks() - world.params.fogMemory[playerIDToNumber(it)]
             })
         }
     }
 }
 
-private inline fun Int.pow(i: Int): Int {
+private fun Int.pow(i: Int): Int {
     return this.toDouble().pow(i.toDouble()).toInt()
 }

@@ -10,8 +10,11 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import kotlin.test.*
 
-val cityCreationParams = EventGameParams(seed = 3, minConnections = 2, autoConnect = 300, maxDistance = 1000, fogOfWar = true)
+val cityCreationParams = EventGameParams(seed = 3, minConnections = 2, autoConnect = 300, maxDistance = 1000,
+        fogOfWar = true, fogMemory = intArrayOf(100, 200), minAssaultFactor = doubleArrayOf(0.0, 0.0),
+        fogStrengthAssumption = doubleArrayOf(1.0, 2.0))
 var foggyWorld: World = World(params = cityCreationParams)
+internal val noVisibility = HistoricVisibility(emptyMap())
 
 class FogTests {
 
@@ -80,10 +83,10 @@ class FogTests {
             val red_nr = Transit(Force(1.0), redToNeutral.toCity, redCity, PlayerId.Red, 0, 1000)
             addTransit(blue_nb); addTransit(red_nr)
 
-            assert(checkVisible(blue_nb, PlayerId.Blue))
-            assert(!checkVisible(red_nr, PlayerId.Blue))
-            assert(!checkVisible(blue_nb, PlayerId.Red))
-            assert(checkVisible(red_nr, PlayerId.Red))
+            assert(checkVisible(blue_nb, PlayerId.Blue, noVisibility))
+            assert(!checkVisible(red_nr, PlayerId.Blue, noVisibility))
+            assert(!checkVisible(blue_nb, PlayerId.Red, noVisibility))
+            assert(checkVisible(red_nr, PlayerId.Red, noVisibility))
 
             val fogCopyRed = foggyWorld.deepCopyWithFog(PlayerId.Red)
             val fogCopyBlue = foggyWorld.deepCopyWithFog(PlayerId.Blue)
@@ -105,10 +108,10 @@ class FogTests {
             val red_rn = Transit(Force(1.0), redCity, redToNeutral.toCity, PlayerId.Red, 0, 1000)
             addTransit(blue_bn); addTransit(red_rn);
 
-            assert(checkVisible(blue_bn, PlayerId.Blue))
-            assert(!checkVisible(red_rn, PlayerId.Blue))
-            assert(!checkVisible(blue_bn, PlayerId.Red))
-            assert(checkVisible(red_rn, PlayerId.Red))
+            assert(checkVisible(blue_bn, PlayerId.Blue, noVisibility))
+            assert(!checkVisible(red_rn, PlayerId.Blue, noVisibility))
+            assert(!checkVisible(blue_bn, PlayerId.Red, noVisibility))
+            assert(checkVisible(red_rn, PlayerId.Red, noVisibility))
 
             val fogCopyRed = foggyWorld.deepCopyWithFog(PlayerId.Red)
             val fogCopyBlue = foggyWorld.deepCopyWithFog(PlayerId.Blue)
@@ -129,8 +132,8 @@ class FogTests {
             val blue_br = Transit(Force(1.0), blueCity, blueToRed.toCity, PlayerId.Blue, 0, 1000)
             addTransit(blue_br)
 
-            assert(checkVisible(blue_br, PlayerId.Blue))
-            assert(checkVisible(blue_br, PlayerId.Red))
+            assert(checkVisible(blue_br, PlayerId.Blue, noVisibility))
+            assert(checkVisible(blue_br, PlayerId.Red, noVisibility))
 
             val fogCopyRed = foggyWorld.deepCopyWithFog(PlayerId.Red)
             val fogCopyBlue = foggyWorld.deepCopyWithFog(PlayerId.Blue)
@@ -150,14 +153,14 @@ class FogTests {
             val red_nb = Transit(Force(1.0), blueToNeutral.toCity, blueCity, PlayerId.Red, 0, 1000)
             addTransit(blue_bn); addTransit(blue_nb); addTransit(red_bn); addTransit(red_nb)
             // these are all visible because Transits can see each other on the same route
-            assert(checkVisible(blue_bn, PlayerId.Blue))
-            assert(checkVisible(blue_nb, PlayerId.Blue))
-            assert(checkVisible(red_bn, PlayerId.Blue))
-            assert(checkVisible(red_nb, PlayerId.Blue))
-            assert(checkVisible(blue_bn, PlayerId.Red))
-            assert(checkVisible(blue_nb, PlayerId.Red))
-            assert(checkVisible(red_bn, PlayerId.Red))
-            assert(checkVisible(red_nb, PlayerId.Red))
+            assert(checkVisible(blue_bn, PlayerId.Blue, noVisibility))
+            assert(checkVisible(blue_nb, PlayerId.Blue, noVisibility))
+            assert(checkVisible(red_bn, PlayerId.Blue, noVisibility))
+            assert(checkVisible(red_nb, PlayerId.Blue, noVisibility))
+            assert(checkVisible(blue_bn, PlayerId.Red, noVisibility))
+            assert(checkVisible(blue_nb, PlayerId.Red, noVisibility))
+            assert(checkVisible(red_bn, PlayerId.Red, noVisibility))
+            assert(checkVisible(red_nb, PlayerId.Red, noVisibility))
 
             val fogCopyRed = foggyWorld.deepCopyWithFog(PlayerId.Red)
             val fogCopyBlue = foggyWorld.deepCopyWithFog(PlayerId.Blue)
@@ -172,7 +175,7 @@ class FogTests {
             c.owner = PlayerId.Blue
         }
         val fogCopyRed = foggyWorld.deepCopyWithFog(PlayerId.Red)
-        assertTrue(fogCopyRed.cities.all { it.owner == PlayerId.Fog && it.pop.size == 1.0 })
+        assertTrue(fogCopyRed.cities.all { it.owner == PlayerId.Fog && it.pop.size == cityCreationParams.fogStrengthAssumption[1] })
     }
 
     @Test
@@ -183,11 +186,11 @@ class FogTests {
         val game = LandCombatGame(foggyWorld)
         val gameCopy = game.copy(1)
         assertTrue(gameCopy.world.cities.all {
-            it.owner == PlayerId.Fog && it.pop.size == 1.0
+            it.owner == PlayerId.Fog && it.pop.size == cityCreationParams.fogStrengthAssumption[1]
         })
         val gameCopy2 = gameCopy.copy()
         assertTrue(gameCopy2.world.cities.all {
-            it.owner == PlayerId.Fog && it.pop.size == 1.0
+            it.owner == PlayerId.Fog && it.pop.size == cityCreationParams.fogStrengthAssumption[1]
         })
     }
 
@@ -265,11 +268,11 @@ class FogTests {
         game.eventQueue.add(Event(10, CityInflux(PlayerId.Blue, Force(10.0), 2, 4))) // B
         game.eventQueue.add(Event(10, TransitStart(Transit(Force(10.0), 4, 2, PlayerId.Blue, 11, 20)))) // B
         game.world.addTransit(Transit(Force(4.0), 4, 2, PlayerId.Blue, 10, 20))
-        game.eventQueue.add(Event(10, TransitEnd(PlayerId.Blue, 4, 2, 20))) // B
+        game.eventQueue.add(Event(20, TransitEnd(PlayerId.Blue, 4, 2, 20))) // B
         game.world.addTransit(Transit(Force(4.0), 4, 1, PlayerId.Blue, 10, 20))
-        game.eventQueue.add(Event(10, TransitEnd(PlayerId.Blue, 4, 1, 20))) // B
+        game.eventQueue.add(Event(20, TransitEnd(PlayerId.Blue, 4, 1, 20))) // B
         game.world.addTransit(Transit(Force(2.0), 1, 3, PlayerId.Blue, 10, 20))
-        game.eventQueue.add(Event(14, TransitEnd(PlayerId.Blue, 1, 3, 20))) // RB
+        game.eventQueue.add(Event(20, TransitEnd(PlayerId.Blue, 1, 3, 20))) // RB
         val blueForce = Transit(Force(5.0), 1, 3, PlayerId.Blue, 10, 20)
         val redForce = Transit(Force(2.0), 3, 1, PlayerId.Red, 10, 20)
         game.world.addTransit(blueForce); game.world.addTransit(redForce)
@@ -288,7 +291,7 @@ class FogTests {
         //      assert(redVersion.eventQueue.contains(Event(5, MakeDecision(1))))
         assert(redVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Red, Force(10.0), 6))))
         assert(redVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Red, Force(10.0), 1, 3))))
-        assert(redVersion.eventQueue.contains(Event(14, TransitEnd(PlayerId.Blue, 1, 3, 20))))
+        assert(redVersion.eventQueue.contains(Event(20, TransitEnd(PlayerId.Blue, 1, 3, 20))))
         assert(redVersion.eventQueue.contains(Event(11, Battle(blueForce, redForce)))) // RB
         assert(redVersion.eventQueue.contains(Event(20, NoAction(1, 5))))  // R
         assert(redVersion.eventQueue.contains(Event(13, LaunchExpedition(PlayerId.Red, 3, 1, 1.0, 10)))) // R
@@ -299,12 +302,12 @@ class FogTests {
         assert(blueVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Blue, Force(10.0), 1, 4)))) // RB
         assert(blueVersion.eventQueue.contains(Event(10, CityInflux(PlayerId.Blue, Force(10.0), 2, 4)))) // B
         assert(blueVersion.eventQueue.contains(Event(10, TransitStart(Transit(Force(10.0), 4, 2, PlayerId.Blue, 11, 20))))) // B
-        assert(blueVersion.eventQueue.contains(Event(10, TransitEnd(PlayerId.Blue, 4, 2, 20)))) // B
-        assert(blueVersion.eventQueue.contains(Event(10, TransitEnd(PlayerId.Blue, 4, 1, 20)))) // RB
+        assert(blueVersion.eventQueue.contains(Event(20, TransitEnd(PlayerId.Blue, 4, 2, 20)))) // B
+        assert(blueVersion.eventQueue.contains(Event(20, TransitEnd(PlayerId.Blue, 4, 1, 20)))) // RB
         assert(blueVersion.eventQueue.contains(Event(11, Battle(blueForce, redForce)))) // RB
         assert(blueVersion.eventQueue.contains(Event(20, NoAction(0, 5)))) // B
         assert(blueVersion.eventQueue.contains(Event(13, LaunchExpedition(PlayerId.Blue, 8, 1, 1.0, 10)))) // B
-        assert(blueVersion.eventQueue.contains(Event(14, TransitEnd(PlayerId.Blue, 1, 3, 20))))
+        assert(blueVersion.eventQueue.contains(Event(20, TransitEnd(PlayerId.Blue, 1, 3, 20))))
         assertEquals(blueVersion.eventQueue.size, 10)
     }
 }
@@ -326,16 +329,16 @@ class HistoricVisibilityTests {
 
         CityInflux(PlayerId.Red, Force(5.0), 7, -1).apply(gameCopy)
         (0..8).forEach {
-            assertEquals(gameCopy.visibilityModels[PlayerId.Red]?.lastVisible(it), 0)
-            assertEquals(gameCopy.visibilityModels[PlayerId.Blue]?.lastVisible(it), 0)
+            assertEquals(gameCopy.visibilityModels[PlayerId.Red]?.lastVisible(it), -1)
+            assertEquals(gameCopy.visibilityModels[PlayerId.Blue]?.lastVisible(it), -1)
         }
 
         gameCopy.next(3)
         CityInflux(PlayerId.Blue, Force(20.0), 7, -1).apply(gameCopy)
         val popAfterBattle = gameCopy.world.cities[7].pop.size
         (0..8).forEach {
-            assertEquals(gameCopy.visibilityModels[PlayerId.Blue]?.lastVisible(it), 0)
-            assertEquals(gameCopy.visibilityModels[PlayerId.Red]?.lastVisible(it), if (it in listOf(4, 7, 8)) 5 else 0)
+            assertEquals(gameCopy.visibilityModels[PlayerId.Blue]?.lastVisible(it), -1)
+            assertEquals(gameCopy.visibilityModels[PlayerId.Red]?.lastVisible(it), if (it in listOf(4, 7, 8)) 5 else -1)
 
             assertEquals(gameCopy.visibilityModels[PlayerId.Blue]?.lastKnownForce(it) ?: 0.00, 0.00, 0.001)
             assertEquals(gameCopy.visibilityModels[PlayerId.Red]?.lastKnownForce(it) ?: 0.00, when (it) {
@@ -409,7 +412,180 @@ class HistoricVisibilityTests {
         gameCopy.updateVisibility(3, PlayerId.Blue)
 
         gameCopy.next(1)
-        assertEquals(gameCopy.visibilityModels[PlayerId.Blue], HistoricVisibility(mapOf(6 to Pair(2, 0.0), 3 to Pair(2, 100.0))))
-        assertEquals(gameCopy.visibilityModels[PlayerId.Red], HistoricVisibility(mapOf(6 to Pair(2, 0.0))))
+        assertEquals(gameCopy.visibilityModels[PlayerId.Blue], HistoricVisibility(mapOf(1 to Pair(2, 0.0), 6 to Pair(2, 0.0), 3 to Pair(2, 100.0))))
+        assertEquals(gameCopy.visibilityModels[PlayerId.Red], HistoricVisibility(mapOf(1 to Pair(2, 0.0), 6 to Pair(2, 0.0))))
     }
+
+    @Test
+    fun cityPopulationRemainsVisible() {
+        val game = LandCombatGame(foggyWorld)
+        val gameCopy = game.copy()
+        gameCopy.updateVisibility(6, PlayerId.Red)
+        gameCopy.updateVisibility(4, PlayerId.Red)
+
+        val blueCopy = gameCopy.copy(0)
+        val redCopy = gameCopy.copy(1)
+
+        assertTrue(cityCreationParams.fogStrengthAssumption.all { it > 0.00 })
+        assertEquals(blueCopy.world.cities[6].pop.size, cityCreationParams.fogStrengthAssumption[0])
+        assertEquals(blueCopy.world.cities[3].pop.size, cityCreationParams.fogStrengthAssumption[0])
+        assertEquals(blueCopy.world.cities[1].pop.size, 0.00)
+        assertEquals(redCopy.world.cities[6].pop.size, 0.00)
+        assertEquals(redCopy.world.cities[3].pop.size, 100.0)
+        assertEquals(redCopy.world.cities[4].pop.size, 100.0)
+        assertEquals(redCopy.world.cities[1].pop.size, 0.00)
+    }
+
+    @Test
+    fun transitRemainsVisibleAfterCopyIfSeen() {
+        val game = LandCombatGame(foggyWorld)
+        val gameCopy = game.copy()
+        // now add transits on 4->1, 4-> 7, 4-> 8
+        gameCopy.planEvent(0, LaunchExpedition(PlayerId.Blue, 4, 1, 0.1, 0))
+        gameCopy.planEvent(0, LaunchExpedition(PlayerId.Blue, 4, 7, 0.1, 0))
+        gameCopy.planEvent(0, LaunchExpedition(PlayerId.Blue, 4, 8, 0.1, 0))
+        gameCopy.next(2)
+
+        gameCopy.updateVisibility(6, PlayerId.Red)
+        gameCopy.updateVisibility(4, PlayerId.Red)
+        gameCopy.updateVisibility(1, PlayerId.Red)
+        gameCopy.updateVisibility(7, PlayerId.Red)
+
+        gameCopy.next(1)
+        val redCopy = gameCopy.copy(1)
+        val blueCopy = gameCopy.copy(0)
+
+        assertEquals(blueCopy.world.currentTransits.size, 3)
+        assertEquals(redCopy.world.currentTransits.size, 2) // can't see the 4->8 one
+        assertEquals(redCopy.world.currentTransits.filter { it.toCity == 1 && it.playerId == PlayerId.Blue && it.force.size == 10.0 }.size, 1)
+        assertEquals(redCopy.world.currentTransits.filter { it.toCity == 7 && it.playerId == PlayerId.Blue && it.force.size == 10.0 }.size, 1)
+
+        assertEquals(blueCopy.eventQueue.filter { it.action is TransitEnd }.size, 3)
+        assertEquals(redCopy.eventQueue.filter { it.action is TransitEnd }.size, 2)
+    }
+
+    @Test
+    fun transitsNotVisibleIfLaunchedAfterVisibilityApplies() {
+        val game = LandCombatGame(foggyWorld)
+        val gameCopy = game.copy()
+        // now add transits on 4->1, 4-> 7, 4-> 8
+        gameCopy.planEvent(0, LaunchExpedition(PlayerId.Blue, 4, 1, 0.1, 0))
+        gameCopy.planEvent(5, LaunchExpedition(PlayerId.Blue, 4, 7, 0.1, 0))
+        gameCopy.planEvent(10, LaunchExpedition(PlayerId.Blue, 4, 8, 0.1, 0))
+
+        gameCopy.next(2)
+        gameCopy.updateVisibility(6, PlayerId.Red)
+        gameCopy.updateVisibility(4, PlayerId.Red)
+        gameCopy.updateVisibility(1, PlayerId.Red)
+        gameCopy.updateVisibility(7, PlayerId.Red)
+
+        gameCopy.next(10)
+        val redCopy = gameCopy.copy(1)
+        val blueCopy = gameCopy.copy(0)
+
+        assertEquals(blueCopy.world.currentTransits.size, 3)
+        assertEquals(redCopy.world.currentTransits.size, 1) // can only see the 4 -> 1 one
+        assertEquals(redCopy.world.currentTransits.filter { it.toCity == 1 && it.playerId == PlayerId.Blue && it.force.size == 10.0 }.size, 1)
+
+        assertEquals(blueCopy.eventQueue.filter { it.action is TransitEnd }.size, 3)
+        assertEquals(redCopy.eventQueue.filter { it.action is TransitEnd }.size, 1)
+    }
+
+    @Test
+    fun battlesAreVisibleIfBothAffectedTransitsAreVisible() {
+        // mind you - with two players Battles will always be visible!
+        val game = LandCombatGame(foggyWorld)
+        val gameCopy = game.copy()
+        // now add transits on 4->1, 4-> 7, 4-> 8
+        gameCopy.planEvent(0, LaunchExpedition(PlayerId.Blue, 4, 1, 0.2, 0)) // takes 46 ticks to arrive
+        gameCopy.planEvent(50, LaunchExpedition(PlayerId.Blue, 1, 3, 0.5, 0))
+        gameCopy.planEvent(50, LaunchExpedition(PlayerId.Red, 3, 1, 0.5, 0)) // will annihilate the Blue player
+        gameCopy.planEvent(55, CityInflux(PlayerId.Red, Force (20.0), 1, -1))
+        gameCopy.next(57)
+        assertEquals(gameCopy.eventQueue.filter { it.action is Battle }.size, 1 )
+        val redCopy = gameCopy.copy(1)
+        val blueCopy = gameCopy.copy(0)
+        assertEquals(redCopy.eventQueue.filter { it.action is Battle }.size, 1 )
+        assertEquals(blueCopy.eventQueue.filter { it.action is Battle }.size, 1 )
+    }
+
+    @Test
+    fun semiIntegrationTestOfHeuristicVisibility() {
+        val game = LandCombatGame(foggyWorld)
+        val gameCopy = game.copy()
+
+        gameCopy.planEvent(0, LaunchExpedition(PlayerId.Red, 3, 1, 0.2, 0)) // takes 31 ticks to arrive
+        gameCopy.planEvent(32, LaunchExpedition(PlayerId.Red, 1, 2, 0.2, 0)) // takes 19 ticks
+        gameCopy.planEvent(32, LaunchExpedition(PlayerId.Red, 3, 0, 0.2, 0)) // takes 24 ticks
+        gameCopy.planEvent(0, LaunchExpedition(PlayerId.Blue, 4, 1, 0.9, 0)) // takes 46
+        gameCopy.planEvent(47, LaunchExpedition(PlayerId.Blue, 1, 2, 0.5, 0)) // takes 19
+        gameCopy.planEvent(57, LaunchExpedition(PlayerId.Blue, 1, 2, 0.5, 0))
+        gameCopy.planEvent(67, LaunchExpedition(PlayerId.Blue, 1, 2, 0.5, 0))
+        gameCopy.planEvent(50, LaunchExpedition(PlayerId.Blue, 4, 7, 0.5, 0)) // takes 9
+
+        gameCopy.next(70)
+        assertEquals(gameCopy.world.currentTransits.size, 2)
+        assertEquals(gameCopy.eventQueue.filter { it.action is TransitEnd }.size, 2)
+        assertEquals(gameCopy.world.cities[0].owner, PlayerId.Red)
+        assertEquals(gameCopy.world.cities[0].pop.size, 16.0, 0.001)
+        assertEquals(gameCopy.world.cities[4].owner, PlayerId.Blue)
+        assertEquals(gameCopy.world.cities[4].pop.size, 5.0, 0.001)
+
+        val redCopy = gameCopy.copy(1)
+        val blueCopy = gameCopy.copy(0)
+        assertEquals(redCopy.world.currentTransits.size, 1)
+        assertEquals(redCopy.eventQueue.filter { it.action is TransitEnd }.size, 1)
+        assertEquals(redCopy.world.cities[0].owner, PlayerId.Red)
+        assertEquals(redCopy.world.cities[0].pop.size, 16.0, 0.001)
+        assertEquals(redCopy.world.cities[4].owner, PlayerId.Blue)
+        assertEquals(redCopy.world.cities[4].pop.size, 10.0, 0.001)
+
+        assertEquals(blueCopy.world.currentTransits.size, 2)
+        assertEquals(blueCopy.eventQueue.filter { it.action is TransitEnd }.size, 2)
+        assertEquals(blueCopy.world.cities[0].owner, PlayerId.Red)
+        assertEquals(blueCopy.world.cities[0].pop.size, 16.0, 0.001)
+        assertEquals(blueCopy.world.cities[4].owner, PlayerId.Blue)
+        assertEquals(blueCopy.world.cities[4].pop.size, 5.0, 0.001)
+    }
+
+    @Test
+    fun visibilityInformationIsForgottenAfterThreshold() {
+        val game = LandCombatGame(foggyWorld)
+        val gameCopy = game.copy()
+
+        gameCopy.next(2)
+        gameCopy.updateVisibility(6, PlayerId.Red)
+        gameCopy.updateVisibility(4, PlayerId.Red)
+        gameCopy.updateVisibility(1, PlayerId.Red)
+        gameCopy.updateVisibility(7, PlayerId.Red)
+        gameCopy.updateVisibility(6, PlayerId.Blue)
+        gameCopy.updateVisibility(4, PlayerId.Blue)
+        gameCopy.updateVisibility(1, PlayerId.Blue)
+        gameCopy.updateVisibility(7, PlayerId.Blue)
+
+        gameCopy.next(101)
+        val redCopy = gameCopy.copy(1)
+        val blueCopy = gameCopy.copy(0)
+        assertEquals(redCopy.world.cities[1].pop.size, 0.00, 0.001)
+        assertEquals(redCopy.world.cities[4].pop.size, 100.00, 0.001)
+        assertEquals(redCopy.world.cities[6].pop.size, 0.0, 0.001)
+        assertEquals(redCopy.world.cities[7].pop.size, 0.0, 0.001)
+        assertEquals(blueCopy.world.cities[1].pop.size, 0.0, 0.001)
+        assertEquals(blueCopy.world.cities[4].pop.size, 100.0, 0.001)
+        assertEquals(blueCopy.world.cities[6].pop.size, cityCreationParams.fogStrengthAssumption[0], 0.001)
+        assertEquals(blueCopy.world.cities[7].pop.size, 0.00, 0.001)
+
+        gameCopy.next(100)
+        val redCopy2 = gameCopy.copy(1)
+        val blueCopy2 = gameCopy.copy(0)
+        assertEquals(redCopy2.world.cities[1].pop.size, 0.00, 0.001)
+        assertEquals(redCopy2.world.cities[4].pop.size, cityCreationParams.fogStrengthAssumption[1], 0.001)
+        assertEquals(redCopy2.world.cities[6].pop.size, cityCreationParams.fogStrengthAssumption[1], 0.001)
+        assertEquals(redCopy2.world.cities[7].pop.size, cityCreationParams.fogStrengthAssumption[1], 0.001)
+        assertEquals(blueCopy2.world.cities[1].pop.size, 0.0, 0.001)
+        assertEquals(blueCopy2.world.cities[4].pop.size, 100.0, 0.001)
+        assertEquals(blueCopy2.world.cities[6].pop.size, cityCreationParams.fogStrengthAssumption[0], 0.001)
+        assertEquals(blueCopy2.world.cities[7].pop.size, 0.00, 0.001)
+    }
+
 }

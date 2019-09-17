@@ -22,6 +22,7 @@ fun createIntervalParamsFromString(details: List<String>): IntervalParams {
     return IntervalParams(
             startingForce = paramMap.getOrDefault("startingForce", intervalList("100 : 100")),
             fogStrengthAssumption = paramMap.getOrDefault("fogStrengthAssumption", intervalList("0 : 0")),
+            fogMemory =  paramMap.getOrDefault("fogMemory", intervalList("100 : 100")),
             speed = paramMap.getOrDefault("speed", intervalList("10.0 : 10.0")),
             fortAttackerDivisor = paramMap.getOrDefault("fortAttackerDivisor", listOf(interval("2.0")))[0],
             fortDefenderExpBonus = paramMap.getOrDefault("fortDefenderExpBonus", listOf(interval("0.10")))[0],
@@ -48,6 +49,7 @@ fun createIntervalParamsFromString(details: List<String>): IntervalParams {
 data class IntervalParams(
         val startingForce: List<Interval>,
         val fogStrengthAssumption: List<Interval>,
+        val fogMemory: List<Interval>,
         val speed: List<Interval>,
         val fortAttackerDivisor: Interval,
         val fortDefenderExpBonus: Interval,
@@ -85,15 +87,16 @@ data class IntervalParams(
                     percentFort = percentFort.sampleFrom().toDouble(),
                     startingForce = startingForce.map { it.sampleFrom().toInt() }.toIntArray(),
                     fogStrengthAssumption = fogStrengthAssumption.map { it.sampleFrom().toDouble() }.toDoubleArray(),
+                    fogMemory = fogMemory.map { it.sampleFrom().toInt() }.toIntArray(),
                     speed = speed.map { it.sampleFrom().toDouble() }.toDoubleArray(),
                     fortAttackerDivisor = fortAttackerDivisor.sampleFrom().toDouble(),
                     fortDefenderExpBonus = fortDefenderExpBonus.sampleFrom().toDouble(),
                     lanchesterCoeff = lanchesterCoeff.map { it.sampleFrom().toDouble() }.toDoubleArray(),
                     lanchesterExp = lanchesterExp.map { it.sampleFrom().toDouble() }.toDoubleArray(),
-                    fatigueRate = fatigueRate.map{ it.sampleFrom().toDouble() }.toDoubleArray(),
+                    fatigueRate = fatigueRate.map { it.sampleFrom().toDouble() }.toDoubleArray(),
                     OODALoop = OODALoop.map { it.sampleFrom().toInt() }.toIntArray(),
                     orderDelay = orderDelay.map { it.sampleFrom().toInt() }.toIntArray(),
-                    controlLimit = controlLimit.map  { it.sampleFrom().toInt() }.toIntArray(),
+                    controlLimit = controlLimit.map { it.sampleFrom().toInt() }.toIntArray(),
                     minAssaultFactor = minAssaultFactor.map { it.sampleFrom().toDouble() }.toDoubleArray()
             )
 }
@@ -112,6 +115,7 @@ data class EventGameParams(
         val maxDistance: Int = 1000,
         val percentFort: Double = 0.25,
         val fogOfWar: Boolean = false,
+        val fogMemory: IntArray = intArrayOf(100, 100),
         val fogStrengthAssumption: DoubleArray = doubleArrayOf(1.0, 1.0),
         // force and combat attributes
         val speed: DoubleArray = doubleArrayOf(10.0, 10.0),

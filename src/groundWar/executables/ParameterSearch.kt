@@ -199,8 +199,8 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
                             flipAtLeastOneValue = RHEASearchSpace.values[4][settings[4]] as Boolean,
                             discountFactor = RHEASearchSpace.values[5][settings[5]] as Double
                     ),
-                    opponentModel = opponentModel
-                            ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
+                    opponentModel = RHEASearchSpace.values[6][settings[6]] as SimpleActionPlayerInterface
+                    //   opponentModel ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
             )
             RHCASearchSpace -> RHCAAgent(
                     timeLimit = timeBudget,
@@ -226,7 +226,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
             ),
                     stateFunction = LandCombatStateFunction,
                     rolloutPolicy = SimpleActionDoNothing(1000),//MCTSSearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface,
-                    opponentModel = opponentModel
+                    opponentModel = MCTSSearchSpace.values[7][settings[7]] as SimpleActionPlayerInterface // opponentModel
             )
             is UtilitySearchSpace -> {
                 searchSpace.agentParams.createAgent("UtilitySearch")
@@ -298,7 +298,7 @@ abstract class HopshackleSearchSpace : SearchSpace {
 
 object RHEASearchSpace : HopshackleSearchSpace() {
     override val names: Array<String>
-        get() = arrayOf("sequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne", "discountFactor")
+        get() = arrayOf("sequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne", "discountFactor", "opponentModel")
 
     override val values: Array<Array<*>>
         get() = arrayOf(
@@ -307,12 +307,12 @@ object RHEASearchSpace : HopshackleSearchSpace() {
                 arrayOf(false, true),                                   // useShiftBuffer
                 arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
                 arrayOf(false, true),                           // flipAtLeastOne
-                arrayOf(1.0, 0.999, 0.99, 0.95)            // discount rate
-                /*       arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
-                               HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
-                               HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
-                               HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
-                       ) */
+                arrayOf(1.0, 0.999, 0.99, 0.95),           // discount rate
+                arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
+                        HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
+                        HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
+                        HeuristicAgent(2.0, 1.0, listOf(HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))
+                )
         )
 }
 
@@ -342,7 +342,7 @@ object RHCASearchSpace : HopshackleSearchSpace() {
 object MCTSSearchSpace : HopshackleSearchSpace() {
 
     override val names: Array<String>
-        get() = arrayOf("maxDepth", "horizon", "pruneTree", "C", "maxActions", "discountFactor")
+        get() = arrayOf("maxDepth", "horizon", "pruneTree", "C", "maxActions", "discountFactor", "opponentModel")
     override val values: Array<Array<*>>
         get() = arrayOf(
                 arrayOf(3, 6, 12),                  // maxDepth (==sequenceLength)
@@ -351,12 +351,12 @@ object MCTSSearchSpace : HopshackleSearchSpace() {
                 arrayOf(0.03, 0.3, 3.0, 30.0),           // C
                 arrayOf(20, 40, 80, 120),             // maxActions
                 //        arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom),                          // rolloutPolicy
-                arrayOf(1.0, 0.999, 0.99)            // discount rate
-                /*       arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
-                               HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
-                               HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
-                               HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
-                       ) */
+                arrayOf(1.0, 0.999, 0.99),            // discount rate
+                arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
+                        HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
+                        HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
+                        HeuristicAgent(2.0, 1.0, listOf(HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))
+                )
         )
 }
 
