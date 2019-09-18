@@ -98,10 +98,11 @@ fun main(args: Array<String>) {
         }.sum()
     }.sum()
 
-    val ntbea: EvoAlg = NTupleBanditEA(100.0, min(50.0, stateSpaceSize * 0.01).toInt())
+    val ntbea = NTupleBanditEA(100.0, min(50.0, stateSpaceSize * 0.01).toInt())
 
-    nTupleSystem.searchSpace = searchSpace
-    ntbea.model = nTupleSystem
+    ntbea.banditLandscapeModel = nTupleSystem
+    ntbea.banditLandscapeModel.searchSpace = searchSpace
+    ntbea.resetModelEachRun = false
 
     val logger = EvolutionLogger()
     println("Search space consists of $stateSpaceSize states and $twoTupleSize possible 2-Tuples" +
@@ -183,10 +184,6 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
 
     var nEvals = 0
 
-    fun getAgent(Settings: DoubleArray) : SimpleActionPlayerInterface {
-
-    }
-
     fun getAgent(settings: IntArray): SimpleActionPlayerInterface {
         return when (searchSpace) {
             RHEASearchSpace -> SimpleActionEvoAgent(
@@ -227,7 +224,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
                     discountRate = MCTSSearchSpace.values[6][settings[6]] as Double
             ),
                     stateFunction = LandCombatStateFunction,
-                    rolloutPolicy = SimpleActionDoNothing(1000),//MCTSSearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface,
+                    rolloutPolicy = MCTSSearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface,
                     opponentModel = MCTSSearchSpace.values[7][settings[7]] as SimpleActionPlayerInterface // opponentModel
             )
             is UtilitySearchSpace -> {
@@ -344,15 +341,15 @@ object RHCASearchSpace : HopshackleSearchSpace() {
 object MCTSSearchSpace : HopshackleSearchSpace() {
 
     override val names: Array<String>
-        get() = arrayOf("maxDepth", "horizon", "pruneTree", "C", "maxActions", "discountFactor", "opponentModel")
+        get() = arrayOf("maxDepth", "horizon", "pruneTree", "C", "maxActions", "rolloutPolicy", "discountFactor", "opponentModel")
     override val values: Array<Array<*>>
         get() = arrayOf(
                 arrayOf(3, 6, 12),                  // maxDepth (==sequenceLength)
                 arrayOf(50, 100, 200, 400),               // horizon
                 arrayOf(false, true),                           // pruneTree
                 arrayOf(0.03, 0.3, 3.0, 30.0),           // C
-                arrayOf(20, 40, 80, 120),             // maxActions
-                //        arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom),                          // rolloutPolicy
+                arrayOf(20, 40, 80),             // maxActions
+                arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom),                          // rolloutPolicy
                 arrayOf(1.0, 0.999, 0.99),            // discount rate
                 arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
                         HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
@@ -361,7 +358,6 @@ object MCTSSearchSpace : HopshackleSearchSpace() {
                 )
         )
 }
-
 
 class UtilitySearchSpace(val agentParams: AgentParams) : HopshackleSearchSpace() {
     override val names: Array<String>
@@ -381,6 +377,5 @@ class UtilitySearchSpace(val agentParams: AgentParams) : HopshackleSearchSpace()
                 simpleScoreFunction(5.0, values[3][settings[3]] as Double,
                         values[2][settings[2]] as Double, values[4][settings[4]] as Double)
         )
-
     }
 }
