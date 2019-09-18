@@ -33,7 +33,6 @@ fun agentParamsFromCommandLine(args: Array<String>, prefix: String, default: Str
     }
 }
 
-
 fun main(args: Array<String>) {
     if (args.size < 3) throw AssertionError("Must specify at least three parameters: RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
     val totalRuns = args[1].split("|")[0].toInt()
@@ -48,9 +47,31 @@ fun main(args: Array<String>) {
         "Utility" -> UtilitySearchSpace(agentParams)
         else -> throw AssertionError("Unknown searchSpace " + args[0])
     }
+
+    val params = {
+        when (val fileName = args.firstOrNull { it.startsWith("GameParams=") }?.split("=")?.get(1)) {
+            null -> {
+                println("No GameParams specified - using default values")
+                EventGameParams()
+            }
+            else -> {
+                val fileAsLines = BufferedReader(FileReader(fileName)).lines().toList()
+                createIntervalParamsFromString(fileAsLines).sampleParams()
+            }
+        }
+    }.invoke()
+
+    val timeBudget = args.firstOrNull { it.startsWith("time=") }?.split("=")?.get(1)?.toInt() ?: 50
+    val opponentModelParams = args.firstOrNull { it.startsWith("opp=") }?.split("=")?.get(1)
+    val opponentModel: SimpleActionPlayerInterface? = when {
+        args[0] == "MCTS2" -> null
+        opponentModelParams == null -> SimpleActionDoNothing(1000)
+        else -> createAgentParamsFromString(listOf(opponentModelParams)).createAgent("RED")
+    }
+    val useGaussianProcess = args[2].startsWith("GP")
     val nTupleSystem = when {
         args[2] == "STD" -> NTupleSystem()
-        args[2] == "EXP_MEAN" -> NTupleSystemExp(30, expWeightExplore = false)
+        args[2] in listOf("EXP_MEAN", "GP") -> NTupleSystemExp(30, expWeightExplore = false)
         args[2].startsWith("EXP_FULL") -> {
             val minWeight = args[2].split(":")[1].toDouble()
             NTupleSystemExp(30, minWeight)
@@ -67,19 +88,6 @@ fun main(args: Array<String>) {
     val use3Tuples = args.contains("useThreeTuples")
     nTupleSystem.use3Tuple = use3Tuples
 
-    val params = {
-        when (val fileName = args.firstOrNull { it.startsWith("GameParams=") }?.split("=")?.get(1)) {
-            null -> {
-                println("No GameParams specified - using default values")
-                EventGameParams()
-            }
-            else -> {
-                val fileAsLines = BufferedReader(FileReader(fileName)).lines().toList()
-                createIntervalParamsFromString(fileAsLines).sampleParams()
-            }
-        }
-    }.invoke()
-
     val stateSpaceSize = (0 until searchSpace.nDims()).fold(1, { acc, i -> acc * searchSpace.nValues(i) })
     val twoTupleSize = (0 until searchSpace.nDims() - 1).map { i ->
         searchSpace.nValues(i) * (i + 1 until searchSpace.nDims()).map(searchSpace::nValues).sum()
@@ -90,19 +98,10 @@ fun main(args: Array<String>) {
         }.sum()
     }.sum()
 
-    val ntbea = NTupleBanditEA(100.0, min(50.0, stateSpaceSize * 0.01).toInt())
+    val ntbea: EvoAlg = NTupleBanditEA(100.0, min(50.0, stateSpaceSize * 0.01).toInt())
 
-    ntbea.banditLandscapeModel = nTupleSystem
-    ntbea.banditLandscapeModel.searchSpace = searchSpace
-    ntbea.resetModelEachRun = false
-
-    val opponentModelParams = args.firstOrNull { it.startsWith("opp=") }?.split("=")?.get(1)
-
-    val opponentModel: SimpleActionPlayerInterface? = when {
-        args[0] == "MCTS2" -> null
-        opponentModelParams == null -> SimpleActionDoNothing(1000)
-        else -> createAgentParamsFromString(listOf(opponentModelParams)).createAgent("RED")
-    }
+    nTupleSystem.searchSpace = searchSpace
+    ntbea.model = nTupleSystem
 
     val logger = EvolutionLogger()
     println("Search space consists of $stateSpaceSize states and $twoTupleSize possible 2-Tuples" +
@@ -112,7 +111,6 @@ fun main(args: Array<String>) {
                 (0 until searchSpace.nValues(it)).map { i -> searchSpace.value(it, i) }.joinToString()))
     }
 
-    val timeBudget = args.firstOrNull { it.startsWith("time=") }?.split("=")?.get(1)?.toInt() ?: 50
     val groundWarEvaluator = GroundWarEvaluator(
             searchSpace,
             params,
@@ -184,6 +182,10 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
     override fun logger() = logger
 
     var nEvals = 0
+
+    fun getAgent(Settings: DoubleArray) : SimpleActionPlayerInterface {
+
+    }
 
     fun getAgent(settings: IntArray): SimpleActionPlayerInterface {
         return when (searchSpace) {
