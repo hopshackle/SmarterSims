@@ -9,6 +9,7 @@ import evodef.*
 import ggi.*
 import groundWar.*
 import ntbea.*
+import utilities.GaussianProcessFramework
 import utilities.GaussianProcessSearch
 import utilities.StatsCollator
 import java.io.BufferedReader
@@ -70,7 +71,7 @@ fun main(args: Array<String>) {
         else -> createAgentParamsFromString(listOf(opponentModelParams)).createAgent("RED")
     }
     val landscapeModel: LandscapeModel = when {
-        args[2] == "GP" -> GaussianProcessSearch("GP", 1, searchSpace)
+        args[2] == "GP" -> GaussianProcessSearch("GP", searchSpace)
         args[2] == "STD" -> NTupleSystem(searchSpace)
         args[2] in listOf("EXP_MEAN") -> NTupleSystemExp(searchSpace, 30, expWeightExplore = false)
         args[2].startsWith("EXP_FULL") -> {
@@ -101,7 +102,7 @@ fun main(args: Array<String>) {
 
     val searchFramework: EvoAlg = when (landscapeModel) {
         is NTupleSystem -> NTupleBanditEA(100.0, min(50.0, stateSpaceSize * 0.01).toInt())
-        is GaussianProcessSearch -> TODO()
+        is GaussianProcessSearch -> GaussianProcessFramework()
         else -> throw AssertionError("Unknown EvoAlg $landscapeModel")
     }
     searchFramework.model = landscapeModel
@@ -135,28 +136,31 @@ fun main(args: Array<String>) {
                 String.format(", %.3g", landscapeModel.getMeanEstimate(landscapeModel.bestOfSampled)))
         // println("Current best predicted point (using mean estimate): " + nTupleSystem.bestSolution.joinToString() +
         //         String.format(", %.3g", nTupleSystem.getMeanEstimate(nTupleSystem.bestSolution)))
-        val tuplesExploredBySize = (1..searchSpace.nDims()).map { size ->
-            landscapeModel.tuples.filter { it.tuple.size == size }
-                    .map { it.ntMap.size }.sum()
-        }
-        println("Tuples explored by size: ${tuplesExploredBySize.joinToString()}")
-        println("Summary of 1-tuple statistics after ${landscapeModel.numberOfSamples()} samples:")
-        landscapeModel.tuples.withIndex().take(searchSpace.nDims()).forEach { (i, t) ->
-            t.ntMap.toSortedMap().forEach { (k, v) ->
-                println(String.format("\t%20s\t%s\t%d trials\t mean %.3g +/- %.2g", searchSpace.name(i), k, v.n(), v.mean(), v.stdErr()))
+        if (landscapeModel is NTupleSystem) {
+            val tuplesExploredBySize = (1..searchSpace.nDims()).map { size ->
+                landscapeModel.tuples.filter { it.tuple.size == size }
+                        .map { it.ntMap.size }.sum()
             }
+
+            println("Tuples explored by size: ${tuplesExploredBySize.joinToString()}")
+            println("Summary of 1-tuple statistics after ${landscapeModel.numberOfSamples()} samples:")
+            landscapeModel.tuples.withIndex().take(searchSpace.nDims()).forEach { (i, t) ->
+                t.ntMap.toSortedMap().forEach { (k, v) ->
+                    println(String.format("\t%20s\t%s\t%d trials\t mean %.3g +/- %.2g", searchSpace.name(i), k, v.n(), v.mean(), v.stdErr()))
+                }
+            }
+            println("\nSummary of 10 most tried full-tuple statistics:")
+            landscapeModel.tuples.find { it.tuple.size == searchSpace.nDims() }
+                    ?.ntMap?.map { (k, v) -> k to v }?.sortedByDescending { (_, v) -> v.n() }?.take(10)?.forEach { (k, v) ->
+                println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), landscapeModel.getMeanEstimate(k.v)))
+            }
+            println("\nSummary of 5 highest valued full-tuple statistics:")
+            landscapeModel.tuples.find { it.tuple.size == searchSpace.nDims() }
+                    ?.ntMap?.map { (k, v) -> k to v }?.sortedByDescending { (_, v) -> v.mean() }?.take(3)?.forEach { (k, v) ->
+                println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), landscapeModel.getMeanEstimate(k.v)))
+            }
+            println("")
         }
-        println("\nSummary of 10 most tried full-tuple statistics:")
-        landscapeModel.tuples.find { it.tuple.size == searchSpace.nDims() }
-                ?.ntMap?.map { (k, v) -> k to v }?.sortedByDescending { (_, v) -> v.n() }?.take(10)?.forEach { (k, v) ->
-            println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), landscapeModel.getMeanEstimate(k.v)))
-        }
-        println("\nSummary of 5 highest valued full-tuple statistics:")
-        landscapeModel.tuples.find { it.tuple.size == searchSpace.nDims() }
-                ?.ntMap?.map { (k, v) -> k to v }?.sortedByDescending { (_, v) -> v.mean() }?.take(3)?.forEach { (k, v) ->
-            println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), landscapeModel.getMeanEstimate(k.v)))
-        }
-        println("")
     }
 
     val bestAgent = groundWarEvaluator.getAgent(landscapeModel.bestOfSampled)

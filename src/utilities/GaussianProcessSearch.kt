@@ -4,10 +4,8 @@ import jgpml.*
 import Jama.*
 import evodef.*
 import jgpml.covariancefunctions.*
-import org.apache.commons.math3.analysis.function.Gaussian
 import java.io.*
 import java.util.ArrayList
-import java.util.Arrays
 import java.util.*
 import kotlin.math.*
 import kotlin.streams.toList
@@ -21,7 +19,9 @@ val SimProperties = Properties()
 
 class GaussianProcessFramework() : EvoAlg {
 
-    var localModel: LandscapeModel = GaussianProcessSearch("default", 1, RHEASearchSpace)
+    var nSamples = 1
+
+    var localModel: LandscapeModel = GaussianProcessSearch("default", RHEASearchSpace)
 
     override fun setModel(newModel: LandscapeModel) {
         localModel = newModel
@@ -33,8 +33,22 @@ class GaussianProcessFramework() : EvoAlg {
 
     override fun setInitialSeed(seed: IntArray?) {}
 
-    override fun runTrial(evaluator: SolutionEvaluator?, nEvals: Int): IntArray {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    override fun runTrial(evaluator: SolutionEvaluator, nEvals: Int): DoubleArray {
+        // and now the core logic.
+        // we first get a point to try from the LandscapeModel
+        // we call evaluator and run nSamples runs to get a final estimate at that point in space
+        // we record this in the model, and iterate for nEvals
+        val currentModel = localModel
+        if (currentModel !is GaussianProcessSearch)
+            throw AssertionError("Currently we only support a GaussianProcessSearch landscapeModel")
+
+        repeat(nEvals) {
+            val nextPoint = currentModel.getParameterSearchValues()
+            val finalScore = (0 until nSamples).map{evaluator.evaluate(nextPoint)}.average()
+            localModel.addPoint(nextPoint, finalScore)
+        }
+
+        return localModel.bestOfSampled
     }
 
 
@@ -48,7 +62,7 @@ class GaussianProcessFramework() : EvoAlg {
 
 }
 
-class GaussianProcessSearch(val name: String, val nSamples: Int = 1, override var searchSpace: SearchSpace) : LandscapeModel {
+class GaussianProcessSearch(val name: String, override var searchSpace: SearchSpace) : LandscapeModel {
     override fun reset(): LandscapeModel = this
     override fun setEpsilon(epsilon: Double): LandscapeModel = this
 
@@ -221,7 +235,7 @@ class GaussianProcessSearch(val name: String, val nSamples: Int = 1, override va
     fun getParameterSearchValues(): DoubleArray {
         // TODO: Currently just apply GP to continuous variables. Categorical ones to be added later.
         startTime = System.currentTimeMillis()
-        iteration = 0
+        iteration++
         return if (iteration <= startSeeds)
             randomParameterValues(false)
         else
