@@ -178,7 +178,7 @@ data class SimpleEvoAgent(
             debugLog.log(gameState.world.currentTransits.joinToString("\n") { it.toString() })
             debugLog.log("\n")
             debugLog.log(String.format("Player %d starting score to beat is %.1f with %s (%s)", playerId, startScore, solution.joinToString(""),
-                    (gameState as LandCombatGame).translateGene(playerId, solution)))
+                    gameState.translateGene(playerId, solution)))
         }
 
         do {

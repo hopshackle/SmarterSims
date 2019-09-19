@@ -9,7 +9,6 @@ class EntityLog(logFileName: String) {
     protected lateinit var logWriter: FileWriter
 
     fun log(message: String) {
-        var message = message
         if (!logFileOpen) {
             try {
                 logWriter = FileWriter(logFile, true)

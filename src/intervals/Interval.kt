@@ -25,10 +25,6 @@ fun interval(singleValue: Number): Interval {
     }
 }
 
-fun interval(intervals: Array<Interval>) {
-
-}
-
 fun intervalList(stringRepresentation: String): List<Interval> {
     // format is one of:
     // a

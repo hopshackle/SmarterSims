@@ -9,6 +9,7 @@ import evodef.*
 import ggi.*
 import groundWar.*
 import ntbea.*
+import utilities.GaussianProcessSearch
 import utilities.StatsCollator
 import java.io.BufferedReader
 import java.io.FileReader
@@ -68,25 +69,25 @@ fun main(args: Array<String>) {
         opponentModelParams == null -> SimpleActionDoNothing(1000)
         else -> createAgentParamsFromString(listOf(opponentModelParams)).createAgent("RED")
     }
-    val useGaussianProcess = args[2].startsWith("GP")
-    val nTupleSystem = when {
-        args[2] == "STD" -> NTupleSystem()
-        args[2] in listOf("EXP_MEAN", "GP") -> NTupleSystemExp(30, expWeightExplore = false)
+    val landscapeModel: LandscapeModel = when {
+        args[2] == "GP" -> GaussianProcessSearch("GP", 1, searchSpace)
+        args[2] == "STD" -> NTupleSystem(searchSpace)
+        args[2] in listOf("EXP_MEAN") -> NTupleSystemExp(searchSpace, 30, expWeightExplore = false)
         args[2].startsWith("EXP_FULL") -> {
             val minWeight = args[2].split(":")[1].toDouble()
-            NTupleSystemExp(30, minWeight)
+            NTupleSystemExp(searchSpace, 30, minWeight)
         }
         args[2].startsWith("EXP_SQRT:") -> {
             val minWeight = args[2].split(":")[1].toDouble()
-            NTupleSystemExp(30, minWeight, exploreWithSqrt = true)
+            NTupleSystemExp(searchSpace, 30, minWeight, exploreWithSqrt = true)
         }
         args[2].startsWith("EXP_SQRT") -> {
-            NTupleSystemExp(30, expWeightExplore = false, exploreWithSqrt = true)
+            NTupleSystemExp(searchSpace, 30, expWeightExplore = false, exploreWithSqrt = true)
         }
         else -> throw AssertionError("Unknown NTuple parameter: " + args[2])
     }
     val use3Tuples = args.contains("useThreeTuples")
-    nTupleSystem.use3Tuple = use3Tuples
+    if (landscapeModel is NTupleSystem) landscapeModel.use3Tuple = use3Tuples
 
     val stateSpaceSize = (0 until searchSpace.nDims()).fold(1, { acc, i -> acc * searchSpace.nValues(i) })
     val twoTupleSize = (0 until searchSpace.nDims() - 1).map { i ->
@@ -98,11 +99,12 @@ fun main(args: Array<String>) {
         }.sum()
     }.sum()
 
-    val ntbea = NTupleBanditEA(100.0, min(50.0, stateSpaceSize * 0.01).toInt())
-
-    ntbea.banditLandscapeModel = nTupleSystem
-    ntbea.banditLandscapeModel.searchSpace = searchSpace
-    ntbea.resetModelEachRun = false
+    val searchFramework: EvoAlg = when (landscapeModel) {
+        is NTupleSystem -> NTupleBanditEA(100.0, min(50.0, stateSpaceSize * 0.01).toInt())
+        is GaussianProcessSearch -> TODO()
+        else -> throw AssertionError("Unknown EvoAlg $landscapeModel")
+    }
+    searchFramework.model = landscapeModel
 
     val logger = EvolutionLogger()
     println("Search space consists of $stateSpaceSize states and $twoTupleSize possible 2-Tuples" +
@@ -126,38 +128,38 @@ fun main(args: Array<String>) {
 
     repeat(totalRuns / reportEvery) {
         groundWarEvaluator.nEvals = 0
-        ntbea.runTrial(groundWarEvaluator, reportEvery)
+        searchFramework.runTrial(groundWarEvaluator, reportEvery)
 
         // tuples gets cleared out
-        println("Current best sampled point (using mean estimate): " + nTupleSystem.bestOfSampled.joinToString() +
-                String.format(", %.3g", nTupleSystem.getMeanEstimate(nTupleSystem.bestOfSampled)))
+        println("Current best sampled point (using mean estimate): " + landscapeModel.bestOfSampled.joinToString() +
+                String.format(", %.3g", landscapeModel.getMeanEstimate(landscapeModel.bestOfSampled)))
         // println("Current best predicted point (using mean estimate): " + nTupleSystem.bestSolution.joinToString() +
         //         String.format(", %.3g", nTupleSystem.getMeanEstimate(nTupleSystem.bestSolution)))
         val tuplesExploredBySize = (1..searchSpace.nDims()).map { size ->
-            nTupleSystem.tuples.filter { it.tuple.size == size }
+            landscapeModel.tuples.filter { it.tuple.size == size }
                     .map { it.ntMap.size }.sum()
         }
         println("Tuples explored by size: ${tuplesExploredBySize.joinToString()}")
-        println("Summary of 1-tuple statistics after ${nTupleSystem.numberOfSamples()} samples:")
-        nTupleSystem.tuples.withIndex().take(searchSpace.nDims()).forEach { (i, t) ->
+        println("Summary of 1-tuple statistics after ${landscapeModel.numberOfSamples()} samples:")
+        landscapeModel.tuples.withIndex().take(searchSpace.nDims()).forEach { (i, t) ->
             t.ntMap.toSortedMap().forEach { (k, v) ->
                 println(String.format("\t%20s\t%s\t%d trials\t mean %.3g +/- %.2g", searchSpace.name(i), k, v.n(), v.mean(), v.stdErr()))
             }
         }
         println("\nSummary of 10 most tried full-tuple statistics:")
-        nTupleSystem.tuples.find { it.tuple.size == searchSpace.nDims() }
+        landscapeModel.tuples.find { it.tuple.size == searchSpace.nDims() }
                 ?.ntMap?.map { (k, v) -> k to v }?.sortedByDescending { (_, v) -> v.n() }?.take(10)?.forEach { (k, v) ->
-            println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), nTupleSystem.getMeanEstimate(k.v)))
+            println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), landscapeModel.getMeanEstimate(k.v)))
         }
         println("\nSummary of 5 highest valued full-tuple statistics:")
-        nTupleSystem.tuples.find { it.tuple.size == searchSpace.nDims() }
+        landscapeModel.tuples.find { it.tuple.size == searchSpace.nDims() }
                 ?.ntMap?.map { (k, v) -> k to v }?.sortedByDescending { (_, v) -> v.mean() }?.take(3)?.forEach { (k, v) ->
-            println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), nTupleSystem.getMeanEstimate(k.v)))
+            println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), landscapeModel.getMeanEstimate(k.v)))
         }
         println("")
     }
 
-    val bestAgent = groundWarEvaluator.getAgent(nTupleSystem.bestOfSampled)
+    val bestAgent = groundWarEvaluator.getAgent(landscapeModel.bestOfSampled)
     StatsCollator.clear()
     runGames(1000,
             bestAgent,
@@ -184,48 +186,49 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
 
     var nEvals = 0
 
-    fun getAgent(settings: IntArray): SimpleActionPlayerInterface {
+    fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
+        val intSettings = settings.map { v -> (v + 0.5).toInt() }.toIntArray()
         return when (searchSpace) {
             RHEASearchSpace -> SimpleActionEvoAgent(
                     underlyingAgent = SimpleEvoAgent(
                             nEvals = 10000,
                             timeLimit = timeBudget,
                             useMutationTransducer = false,
-                            sequenceLength = RHEASearchSpace.values[0][settings[0]] as Int,
-                            horizon = RHEASearchSpace.values[1][settings[1]] as Int,
-                            useShiftBuffer = RHEASearchSpace.values[2][settings[2]] as Boolean,
-                            probMutation = RHEASearchSpace.values[3][settings[3]] as Double,
-                            flipAtLeastOneValue = RHEASearchSpace.values[4][settings[4]] as Boolean,
-                            discountFactor = RHEASearchSpace.values[5][settings[5]] as Double
+                            sequenceLength = RHEASearchSpace.values[0][intSettings[0]] as Int,
+                            horizon = RHEASearchSpace.values[1][intSettings[1]] as Int,
+                            useShiftBuffer = RHEASearchSpace.values[2][intSettings[2]] as Boolean,
+                            probMutation = RHEASearchSpace.values[3][intSettings[3]] as Double,
+                            flipAtLeastOneValue = RHEASearchSpace.values[4][intSettings[4]] as Boolean,
+                            discountFactor = RHEASearchSpace.values[5][intSettings[5]] as Double
                     ),
-                    opponentModel = RHEASearchSpace.values[6][settings[6]] as SimpleActionPlayerInterface
+                    opponentModel = RHEASearchSpace.values[6][intSettings[6]] as SimpleActionPlayerInterface
                     //   opponentModel ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
             )
             RHCASearchSpace -> RHCAAgent(
                     timeLimit = timeBudget,
-                    sequenceLength = RHCASearchSpace.values[0][settings[0]] as Int,
-                    horizon = RHCASearchSpace.values[1][settings[1]] as Int,
-                    useShiftBuffer = RHCASearchSpace.values[2][settings[2]] as Boolean,
-                    probMutation = RHCASearchSpace.values[3][settings[3]] as Double,
-                    flipAtLeastOneValue = RHCASearchSpace.values[4][settings[4]] as Boolean,
-                    populationSize = RHCASearchSpace.values[5][settings[5]] as Int,
-                    parentSize = RHCASearchSpace.values[6][settings[6]] as Int,
-                    evalsPerGeneration = RHCASearchSpace.values[7][settings[7]] as Int,
-                    discountFactor = RHCASearchSpace.values[8][settings[8]] as Double
+                    sequenceLength = RHCASearchSpace.values[0][intSettings[0]] as Int,
+                    horizon = RHCASearchSpace.values[1][intSettings[1]] as Int,
+                    useShiftBuffer = RHCASearchSpace.values[2][intSettings[2]] as Boolean,
+                    probMutation = RHCASearchSpace.values[3][intSettings[3]] as Double,
+                    flipAtLeastOneValue = RHCASearchSpace.values[4][intSettings[4]] as Boolean,
+                    populationSize = RHCASearchSpace.values[5][intSettings[5]] as Int,
+                    parentSize = RHCASearchSpace.values[6][intSettings[6]] as Int,
+                    evalsPerGeneration = RHCASearchSpace.values[7][intSettings[7]] as Int,
+                    discountFactor = RHCASearchSpace.values[8][intSettings[8]] as Double
             )
             MCTSSearchSpace -> MCTSTranspositionTableAgentMaster(MCTSParameters(
-                    C = MCTSSearchSpace.values[3][settings[3]] as Double,
+                    C = MCTSSearchSpace.values[3][intSettings[3]] as Double,
                     maxPlayouts = 10000,
                     timeLimit = timeBudget,
-                    horizon = MCTSSearchSpace.values[1][settings[1]] as Int,
-                    pruneTree = MCTSSearchSpace.values[2][settings[2]] as Boolean,
-                    maxDepth = MCTSSearchSpace.values[0][settings[0]] as Int,
-                    maxActions = MCTSSearchSpace.values[4][settings[4]] as Int,
-                    discountRate = MCTSSearchSpace.values[6][settings[6]] as Double
+                    horizon = MCTSSearchSpace.values[1][intSettings[1]] as Int,
+                    pruneTree = MCTSSearchSpace.values[2][intSettings[2]] as Boolean,
+                    maxDepth = MCTSSearchSpace.values[0][intSettings[0]] as Int,
+                    maxActions = MCTSSearchSpace.values[4][intSettings[4]] as Int,
+                    discountRate = MCTSSearchSpace.values[6][intSettings[6]] as Double
             ),
                     stateFunction = LandCombatStateFunction,
-                    rolloutPolicy = MCTSSearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface,
-                    opponentModel = MCTSSearchSpace.values[7][settings[7]] as SimpleActionPlayerInterface // opponentModel
+                    rolloutPolicy = MCTSSearchSpace.values[5][intSettings[5]] as SimpleActionPlayerInterface,
+                    opponentModel = MCTSSearchSpace.values[7][intSettings[7]] as SimpleActionPlayerInterface // opponentModel
             )
             is UtilitySearchSpace -> {
                 searchSpace.agentParams.createAgent("UtilitySearch")
@@ -234,7 +237,7 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
         }
     }
 
-    override fun evaluate(settings: IntArray): Double {
+    override fun evaluate(settings: DoubleArray): Double {
         val seedToUse = System.currentTimeMillis()
 
         var finalScore = 0.0
@@ -244,8 +247,8 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
             val game = LandCombatGame(world)
             if (it == 1) {
                 if (searchSpace is UtilitySearchSpace) {
-                    game.registerAgent(0, getAgent(intArrayOf())) // note that settings do not define this for UtilitySearch
-                    game.registerAgent(1, getAgent(intArrayOf()))
+                    game.registerAgent(0, getAgent(doubleArrayOf())) // note that settings do not define this for UtilitySearch
+                    game.registerAgent(1, getAgent(doubleArrayOf()))
                     game.scoreFunction[PlayerId.Red] = searchSpace.getScoreFunction(settings)
                     game.scoreFunction[PlayerId.Blue] = scoreFunctions[1]
                 } else {
@@ -256,8 +259,8 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
                 }
             } else {
                 if (searchSpace is UtilitySearchSpace) {
-                    game.registerAgent(0, getAgent(intArrayOf())) // note that settings do not define this for UtilitySearch
-                    game.registerAgent(1, getAgent(intArrayOf()))
+                    game.registerAgent(0, getAgent(doubleArrayOf())) // note that settings do not define this for UtilitySearch
+                    game.registerAgent(1, getAgent(doubleArrayOf()))
                     game.scoreFunction[PlayerId.Blue] = searchSpace.getScoreFunction(settings)
                     game.scoreFunction[PlayerId.Red] = scoreFunctions[1]
                 } else {
@@ -289,10 +292,10 @@ abstract class HopshackleSearchSpace : SearchSpace {
     abstract val names: Array<String>
     abstract val values: Array<Array<*>>
 
-    override fun nValues(index: Int) = values[index].size
+    override fun nValues(i: Int) = values[i].size
     override fun nDims() = values.size
-    override fun name(index: Int) = names[index]
-    override fun value(dimension: Int, index: Int) = values[dimension][index]
+    override fun name(i: Int) = names[i]
+    override fun value(d: Int, i: Int) = values[d][i] ?: 0.00
 }
 
 object RHEASearchSpace : HopshackleSearchSpace() {
@@ -371,11 +374,12 @@ class UtilitySearchSpace(val agentParams: AgentParams) : HopshackleSearchSpace()
                 arrayOf(0.0, -0.1, -0.5, -1.0, -3.0)
         )
 
-    fun getScoreFunction(settings: IntArray): (LandCombatGame, Int) -> Double {
+    fun getScoreFunction(settings: DoubleArray): (LandCombatGame, Int) -> Double {
+        val intSettings = settings.map { v -> (v + 0.5).toInt() }.toIntArray()
         return compositeScoreFunction(
-                visibilityScore(values[0][settings[0]] as Double, values[1][settings[1]] as Double),
-                simpleScoreFunction(5.0, values[3][settings[3]] as Double,
-                        values[2][settings[2]] as Double, values[4][settings[4]] as Double)
+                visibilityScore(values[0][intSettings[0]] as Double, values[1][intSettings[1]] as Double),
+                simpleScoreFunction(5.0, values[3][intSettings[3]] as Double,
+                        values[2][intSettings[2]] as Double, values[4][intSettings[4]] as Double)
         )
     }
 }

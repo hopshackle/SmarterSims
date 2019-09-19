@@ -4,19 +4,85 @@ import jgpml.*
 import Jama.*
 import evodef.*
 import jgpml.covariancefunctions.*
+import org.apache.commons.math3.analysis.function.Gaussian
 import java.io.*
 import java.util.ArrayList
 import java.util.Arrays
 import java.util.*
 import kotlin.math.*
 import kotlin.streams.toList
+import evodef.SearchSpace
+import groundWar.executables.RHEASearchSpace
 
 /**
  * Created by james on 31/07/2017.
  */
 val SimProperties = Properties()
 
-class GaussianProcessSearch(val name: String, val searchSpace: SearchSpace, val nSamples: Int = 1) {
+class GaussianProcessFramework() : EvoAlg {
+
+    var localModel: LandscapeModel = GaussianProcessSearch("default", 1, RHEASearchSpace)
+
+    override fun setModel(newModel: LandscapeModel) {
+        localModel = newModel
+    }
+
+    override fun getModel(): LandscapeModel {
+        return localModel
+    }
+
+    override fun setInitialSeed(seed: IntArray?) {}
+
+    override fun runTrial(evaluator: SolutionEvaluator?, nEvals: Int): IntArray {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+
+    override fun getLogger(): EvolutionLogger {
+        return EvolutionLogger()
+    }
+
+    override fun setSamplingRate(samplingRate: Int) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+}
+
+class GaussianProcessSearch(val name: String, val nSamples: Int = 1, override var searchSpace: SearchSpace) : LandscapeModel {
+    override fun reset(): LandscapeModel = this
+    override fun setEpsilon(epsilon: Double): LandscapeModel = this
+
+    override fun getBestOfSampledPlusNeighbours(nNeighbours: Int): DoubleArray {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    private val solutionsTried = ArrayList<DoubleArray>()
+    override val bestOfSampled: DoubleArray
+        get() = solutionsTried.map { Pair(it, getMeanEstimate(it)) }.maxBy { it.second }?.first ?: doubleArrayOf()
+
+    private var _bestSolution: DoubleArray = doubleArrayOf()
+    override val bestSolution: DoubleArray
+        get() = _bestSolution
+
+    override fun getMeanEstimate(x: DoubleArray): Double {
+        val predictions = predict(x)
+        return predictions[0].get(0, 0)
+    }
+
+    override fun getExplorationEstimate(x: DoubleArray): Double {
+        val predictions = predict(x)
+        return sqrt(predictions[1].get(0, 0) - baseNoise)
+    }
+
+    val baseNoise: Double
+        get() = exp(mainGP!!.logtheta.get(mainGP!!.logtheta.rowDimension - 1, 0)).pow(2.0)
+
+    private fun predict(x: DoubleArray): Array<Matrix> {
+        val xstar = Array(1) { DoubleArray(parameterConstraints.size) }
+        for (j in x.indices)
+            xstar[0][j] = x[j] - Xmean!![j]
+        return mainGP!!.predict(Matrix(xstar))
+    }
 
     var iteration = 0
         private set
@@ -49,7 +115,6 @@ class GaussianProcessSearch(val name: String, val searchSpace: SearchSpace, val 
                 for (j in sample.indices)
                     xstar[i][j] = sample[j] - Xmean!![j]
             }
-            val baseNoise = exp(mainGP!!.logtheta.get(mainGP!!.logtheta.rowDimension - 1, 0)).pow(2.0)
             println(String.format("Base noise is %.3g (sd: %.3g)", baseNoise, sqrt(baseNoise)))
             println("All params: " + mainGP!!.logtheta.transpose().array[0].joinToString("|") { String.format("%2g", it) })
             val predictions = mainGP!!.predict(Matrix(xstar))
@@ -81,6 +146,7 @@ class GaussianProcessSearch(val name: String, val searchSpace: SearchSpace, val 
                     }
                 }
             }
+            _bestSolution = optimalSetting
             for (i in 0 until N) {
                 val value = predictions[0].get(i, 0)
                 var latentNoise = predictions[1].get(i, 0) - baseNoise
@@ -141,8 +207,8 @@ class GaussianProcessSearch(val name: String, val searchSpace: SearchSpace, val 
             val key = searchSpace.name(k)
             val options = searchSpace.nValues(k)
             if (searchSpace.value(k, 0) is Number) {
-                val minValue = (0 until options).map { searchSpace.value(k, it) as Double }.min() ?: 0.00
-                val maxValue = (0 until options).map { searchSpace.value(k, it) as Double }.max() ?: 0.00
+                val minValue = (0 until options).map { (searchSpace.value(k, it) as Number).toDouble() }.min() ?: 0.00
+                val maxValue = (0 until options).map { (searchSpace.value(k, it) as Number).toDouble() }.max() ?: 0.00
                 parameterConstraints.add(ParameterDetail(key, minValue, maxValue))
             } else {
                 parameterConstraints.add(ParameterDetail(key, (0 until options).map {
@@ -249,7 +315,7 @@ class GaussianProcessSearch(val name: String, val searchSpace: SearchSpace, val 
         val allKernels = arrayOfNulls<CovarianceFunction>(kernelTypes.size + 1)
         for (i in kernelTypes.indices) {
             val type = kernelTypes[i]
-            var nextKernel: CovarianceFunction? = null
+            var nextKernel: CovarianceFunction?
             when (type) {
                 "SE" -> nextKernel = CovSEard(parameterConstraints.size)
                 "LIN" -> nextKernel = CovLINard(parameterConstraints.size)
@@ -271,11 +337,12 @@ class GaussianProcessSearch(val name: String, val searchSpace: SearchSpace, val 
         if (useExpectedImprovement) timeGP!!.train(Matrix(X), Matrix(T), Matrix(theta), 20)
     }
 
-    fun updateWithResult(finalScore: Double) {
+    override fun addPoint(p: DoubleArray, value: Double) {
         if (parameterConstraints.isEmpty()) return
+        solutionsTried.add(p)
         val timeTaken = (System.currentTimeMillis() - startTime) / 1000.0
 
-        val rowData = nextPointToTry.map { it } + finalScore + timeTaken
+        val rowData: List<Double> = p.map { it } + value + timeTaken
         val outputFile = FileWriter("ParameterSearchResult.txt", true)
         outputFile.write(rowData.joinToString(",") { String.format("%5g", it) })
     }
