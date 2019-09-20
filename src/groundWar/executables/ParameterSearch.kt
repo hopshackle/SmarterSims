@@ -382,7 +382,7 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 timeLimit = settingsMap.getOrDefault("timeBudget", defaultParams.timeBudget) as Int,
                 horizon = settingsMap.getOrDefault("horizon", defaultParams.planningHorizon) as Int,
                 pruneTree = settingsMap.getOrDefault("pruneTree", defaultParams.params.contains("pruneTree")) as Boolean,
-                maxDepth = settingsMap.getOrDefault("maxDepth", defaultParams.getParam("maxDepth", "10").toInt()) as Int,
+                maxDepth = settingsMap.getOrDefault("sequenceLength", defaultParams.getParam("sequenceLength", "10").toInt()) as Int,
                 maxActions = settingsMap.getOrDefault("maxActions", defaultParams.getParam("maxActions", "10").toInt()) as Int,
                 discountRate = settingsMap.getOrDefault("discountFactor", defaultParams.getParam("discountFactor", "1.0").toDouble()) as Double
         ),
