@@ -190,57 +190,6 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
 
     var nEvals = 0
 
-    fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
-        val intSettings = settings.map { v -> (v + 0.5).toInt() }.toIntArray()
-        return when (searchSpace) {
-            RHEASearchSpace -> SimpleActionEvoAgent(
-                    underlyingAgent = SimpleEvoAgent(
-                            nEvals = 10000,
-                            timeLimit = timeBudget,
-                            useMutationTransducer = false,
-                            sequenceLength = RHEASearchSpace.values[0][intSettings[0]] as Int,
-                            horizon = RHEASearchSpace.values[1][intSettings[1]] as Int,
-                            useShiftBuffer = RHEASearchSpace.values[2][intSettings[2]] as Boolean,
-                            probMutation = RHEASearchSpace.values[3][intSettings[3]] as Double,
-                            flipAtLeastOneValue = RHEASearchSpace.values[4][intSettings[4]] as Boolean,
-                            discountFactor = RHEASearchSpace.values[5][intSettings[5]] as Double
-                    ),
-                    opponentModel = RHEASearchSpace.values[6][intSettings[6]] as SimpleActionPlayerInterface
-                    //   opponentModel ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
-            )
-            RHCASearchSpace -> RHCAAgent(
-                    timeLimit = timeBudget,
-                    sequenceLength = RHCASearchSpace.values[0][intSettings[0]] as Int,
-                    horizon = RHCASearchSpace.values[1][intSettings[1]] as Int,
-                    useShiftBuffer = RHCASearchSpace.values[2][intSettings[2]] as Boolean,
-                    probMutation = RHCASearchSpace.values[3][intSettings[3]] as Double,
-                    flipAtLeastOneValue = RHCASearchSpace.values[4][intSettings[4]] as Boolean,
-                    populationSize = RHCASearchSpace.values[5][intSettings[5]] as Int,
-                    parentSize = RHCASearchSpace.values[6][intSettings[6]] as Int,
-                    evalsPerGeneration = RHCASearchSpace.values[7][intSettings[7]] as Int,
-                    discountFactor = RHCASearchSpace.values[8][intSettings[8]] as Double
-            )
-            MCTSSearchSpace -> MCTSTranspositionTableAgentMaster(MCTSParameters(
-                    C = MCTSSearchSpace.values[3][intSettings[3]] as Double,
-                    maxPlayouts = 10000,
-                    timeLimit = timeBudget,
-                    horizon = MCTSSearchSpace.values[1][intSettings[1]] as Int,
-                    pruneTree = MCTSSearchSpace.values[2][intSettings[2]] as Boolean,
-                    maxDepth = MCTSSearchSpace.values[0][intSettings[0]] as Int,
-                    maxActions = MCTSSearchSpace.values[4][intSettings[4]] as Int,
-                    discountRate = MCTSSearchSpace.values[6][intSettings[6]] as Double
-            ),
-                    stateFunction = LandCombatStateFunction,
-                    rolloutPolicy = MCTSSearchSpace.values[5][intSettings[5]] as SimpleActionPlayerInterface,
-                    opponentModel = MCTSSearchSpace.values[7][intSettings[7]] as SimpleActionPlayerInterface // opponentModel
-            )
-            is UtilitySearchSpace -> {
-                searchSpace.agentParams.createAgent("UtilitySearch")
-            }
-            else -> throw AssertionError("Unknown type $searchSpace")
-        }
-    }
-
     override fun evaluate(settings: DoubleArray): Double {
         val seedToUse = System.currentTimeMillis()
 
@@ -296,6 +245,7 @@ abstract class HopshackleSearchSpace : SearchSpace {
     abstract val names: Array<String>
     abstract val values: Array<Array<*>>
 
+    abstract fun getAgent(settings: Map<String, Any>): SimpleActionPlayerInterface
     override fun nValues(i: Int) = values[i].size
     override fun nDims() = values.size
     override fun name(i: Int) = names[i]
@@ -320,6 +270,25 @@ object RHEASearchSpace : HopshackleSearchSpace() {
                         HeuristicAgent(2.0, 1.0, listOf(HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))
                 )
         )
+
+    override fun getAgent(settings: Map<String, Any>): SimpleActionPlayerInterface {
+        return SimpleActionEvoAgent(
+                    underlyingAgent = SimpleEvoAgent(
+                            nEvals = 10000,
+                            timeLimit = settings.getOrDefault("timeBudget", 50) as Int,
+                            useMutationTransducer = false,
+                            sequenceLength = settings.getOrDefault("sequenceLength", 5) as Int,
+                            horizon = settings.getOrDefault("horizon", 100) as Int,
+                            useShiftBuffer = settings.getOrDefault("useShiftBuffer", false) as Boolean,
+                            probMutation = settings.getOrDefault("probMutation", 0.01) as Double,
+                            flipAtLeastOneValue = settings.getOrDefault("flipAtLeastOneValue", false) as Boolean,
+                            discountFactor = settings.getOrDefault("discountFactor", 0.01) as Double
+                    ),
+                    opponentModel = settings.getOrDefault("opponentModel", SimpleActionDoNothing(1000)) as SimpleActionPlayerInterface
+                    //   opponentModel ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
+            )
+    }
+
 }
 
 object RHCASearchSpace : HopshackleSearchSpace() {
@@ -364,6 +333,39 @@ object MCTSSearchSpace : HopshackleSearchSpace() {
                         HeuristicAgent(2.0, 1.0, listOf(HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))
                 )
         )
+
+    RHCASearchSpace -> RHCAAgent(
+    timeLimit = timeBudget,
+    sequenceLength = RHCASearchSpace.values[0][intSettings[0]] as Int,
+    horizon = RHCASearchSpace.values[1][intSettings[1]] as Int,
+    useShiftBuffer = RHCASearchSpace.values[2][intSettings[2]] as Boolean,
+    probMutation = RHCASearchSpace.values[3][intSettings[3]] as Double,
+    flipAtLeastOneValue = RHCASearchSpace.values[4][intSettings[4]] as Boolean,
+    populationSize = RHCASearchSpace.values[5][intSettings[5]] as Int,
+    parentSize = RHCASearchSpace.values[6][intSettings[6]] as Int,
+    evalsPerGeneration = RHCASearchSpace.values[7][intSettings[7]] as Int,
+    discountFactor = RHCASearchSpace.values[8][intSettings[8]] as Double
+    )
+    MCTSSearchSpace -> MCTSTranspositionTableAgentMaster(MCTSParameters(
+    C = MCTSSearchSpace.values[3][intSettings[3]] as Double,
+    maxPlayouts = 10000,
+    timeLimit = timeBudget,
+    horizon = MCTSSearchSpace.values[1][intSettings[1]] as Int,
+    pruneTree = MCTSSearchSpace.values[2][intSettings[2]] as Boolean,
+    maxDepth = MCTSSearchSpace.values[0][intSettings[0]] as Int,
+    maxActions = MCTSSearchSpace.values[4][intSettings[4]] as Int,
+    discountRate = MCTSSearchSpace.values[6][intSettings[6]] as Double
+    ),
+    stateFunction = LandCombatStateFunction,
+    rolloutPolicy = MCTSSearchSpace.values[5][intSettings[5]] as SimpleActionPlayerInterface,
+    opponentModel = MCTSSearchSpace.values[7][intSettings[7]] as SimpleActionPlayerInterface // opponentModel
+    )
+    is UtilitySearchSpace -> {
+        searchSpace.agentParams.createAgent("UtilitySearch")
+    }
+    else -> throw AssertionError("Unknown type $searchSpace")
+
+
 }
 
 class UtilitySearchSpace(val agentParams: AgentParams) : HopshackleSearchSpace() {
