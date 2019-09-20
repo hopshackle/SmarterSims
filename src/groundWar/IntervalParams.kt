@@ -140,12 +140,13 @@ data class AgentParams(
         val algoParams: String = "useShiftBuffer, probMutation:0.25",
         val opponentModel: String = ""
 ) {
-    fun createAgent(colour: String): SimpleActionPlayerInterface {
-        val params = algoParams.split(",")
-        fun getParam(name: String, default: String): String {
-            return params.firstOrNull { it.contains(name) }?.let { it.split(":")[1] } ?: default
-        }
 
+    val params = algoParams.split(",")
+    fun getParam(name: String, default: String): String {
+        return params.firstOrNull { it.contains(name) }?.let { it.split(":")[1] } ?: default
+    }
+
+    fun createAgent(colour: String): SimpleActionPlayerInterface {
         val oppParams = opponentModel.split(":")
         val opponentModel = when (oppParams[0]) {
             "Heuristic" -> {

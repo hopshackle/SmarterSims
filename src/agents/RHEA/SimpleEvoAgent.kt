@@ -196,6 +196,8 @@ data class SimpleEvoAgent(
             iterations++
         } while (iterations < nEvals && System.currentTimeMillis() - startTime < timeLimit)
         if (debug) debugLog.flush()
+        if (solution.size < 3)
+            throw AssertionError("Solution is too short")
         StatsCollator.addStatistics("${name}_ToGene", solution[1])
         StatsCollator.addStatistics("${name}_ProportionsGene", solution[2])
         StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)

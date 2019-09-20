@@ -10,7 +10,9 @@ import java.util.*
 import kotlin.math.*
 import kotlin.streams.toList
 import evodef.SearchSpace
+import groundWar.createAgentParamsFromString
 import groundWar.executables.RHEASearchSpace
+import groundWar.executables.defaultRHEAAgent
 
 /**
  * Created by james on 31/07/2017.
@@ -21,7 +23,8 @@ class GaussianProcessFramework() : EvoAlg {
 
     var nSamples = 1
 
-    var localModel: LandscapeModel = GaussianProcessSearch("default", RHEASearchSpace)
+    var localModel: LandscapeModel = GaussianProcessSearch("default",
+            RHEASearchSpace(createAgentParamsFromString(defaultRHEAAgent.split("\n")), ""))
 
     override fun setModel(newModel: LandscapeModel) {
         localModel = newModel
@@ -59,7 +62,6 @@ class GaussianProcessFramework() : EvoAlg {
     override fun setSamplingRate(samplingRate: Int) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
-
 }
 
 class GaussianProcessSearch(val name: String, override var searchSpace: SearchSpace) : LandscapeModel {
@@ -357,8 +359,9 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
         val timeTaken = (System.currentTimeMillis() - startTime) / 1000.0
 
         val rowData: List<Double> = p.map { it } + value + timeTaken
-        val outputFile = FileWriter("ParameterSearchResult.txt", true)
-        outputFile.write(rowData.joinToString(",") { String.format("%5g", it) })
+        val outputFile = FileWriter("$name.txt", true)
+        outputFile.write(rowData.joinToString(",", postfix = "\n") { String.format("%5g", it) })
+        outputFile.close()
     }
 
     fun complete(): Boolean {

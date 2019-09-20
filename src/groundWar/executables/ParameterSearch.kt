@@ -16,7 +16,28 @@ import java.io.BufferedReader
 import java.io.FileReader
 import java.lang.AssertionError
 import kotlin.math.min
+import kotlin.reflect.KClass
 import kotlin.streams.toList
+
+val defaultMCTSAgent = """
+        algorithm=MCTS
+        timeBudget=50
+        evalBudget=100000
+        sequenceLength=12
+        planningHorizon=100
+        algoParams=C:3.0,maxActions:50,rolloutPolicy:DoNothing,selectionPolicy:SIMPLE,discountFactor:0.99
+        opponentModel=DoNothing
+    """.trimIndent()
+
+val defaultRHEAAgent = """
+        algorithm=RHEA
+        timeBudget=50
+        evalBudget=100000
+        sequenceLength=4
+        planningHorizon=100
+        algoParams=probMutation:0.7,flipAtLeastOneValue,discountFactor:0.999
+        opponentModel=DoNothing
+    """.trimIndent()
 
 fun agentParamsFromCommandLine(args: Array<String>, prefix: String, default: String = ""): AgentParams {
     val fileName = args.firstOrNull { it.startsWith(prefix) }?.split("=")?.get(1)
@@ -42,11 +63,12 @@ fun main(args: Array<String>) {
 
     val agentParams = agentParamsFromCommandLine(args, "Agent")
 
-    val searchSpace = when (args[0]) {
-        "RHEA" -> RHEASearchSpace
-        "MCTS", "MCTS2" -> MCTSSearchSpace
-        "RHCA" -> RHCASearchSpace
-        "Utility" -> UtilitySearchSpace(agentParams)
+    val searchSpace = when (args[0].split("|")[0]) {
+        "RHEA" -> RHEASearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultRHEAAgent),
+                fileName = args[0].split("|")[1])
+        //    "MCTS", "MCTS2" -> MCTSSearchSpace
+        //    "RHCA" -> RHCASearchSpace
+        //    "Utility" -> UtilitySearchSpace(agentParams)
         else -> throw AssertionError("Unknown searchSpace " + args[0])
     }
 
@@ -63,13 +85,6 @@ fun main(args: Array<String>) {
         }
     }.invoke()
 
-    val timeBudget = args.firstOrNull { it.startsWith("time=") }?.split("=")?.get(1)?.toInt() ?: 50
-    val opponentModelParams = args.firstOrNull { it.startsWith("opp=") }?.split("=")?.get(1)
-    val opponentModel: SimpleActionPlayerInterface? = when {
-        args[0] == "MCTS2" -> null
-        opponentModelParams == null -> SimpleActionDoNothing(1000)
-        else -> createAgentParamsFromString(listOf(opponentModelParams)).createAgent("RED")
-    }
     val landscapeModel: LandscapeModel = when {
         args[2] == "GP" -> GaussianProcessSearch("GP", searchSpace)
         args[2] == "STD" -> NTupleSystem(searchSpace)
@@ -88,7 +103,10 @@ fun main(args: Array<String>) {
         else -> throw AssertionError("Unknown NTuple parameter: " + args[2])
     }
     val use3Tuples = args.contains("useThreeTuples")
-    if (landscapeModel is NTupleSystem) landscapeModel.use3Tuple = use3Tuples
+    if (landscapeModel is NTupleSystem) {
+        landscapeModel.use3Tuple = use3Tuples
+        landscapeModel.addTuples()
+    }
 
     val stateSpaceSize = (0 until searchSpace.nDims()).fold(1, { acc, i -> acc * searchSpace.nValues(i) })
     val twoTupleSize = (0 until searchSpace.nDims() - 1).map { i ->
@@ -119,9 +137,7 @@ fun main(args: Array<String>) {
             searchSpace,
             params,
             logger,
-            timeBudget,
             agentParams,
-            opponentModel,
             scoreFunctions = arrayOf(stringToScoreFunction(args.firstOrNull { it.startsWith("SCB|") }),
                     stringToScoreFunction(args.firstOrNull { it.startsWith("SCR|") })),
             victoryFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("V|") })
@@ -163,7 +179,7 @@ fun main(args: Array<String>) {
         }
     }
 
-    val bestAgent = groundWarEvaluator.getAgent(landscapeModel.bestOfSampled)
+    val bestAgent = searchSpace.getAgent(landscapeModel.bestOfSampled)
     StatsCollator.clear()
     runGames(1000,
             bestAgent,
@@ -172,12 +188,10 @@ fun main(args: Array<String>) {
     println(StatsCollator.summaryString())
 }
 
-class GroundWarEvaluator(val searchSpace: SearchSpace,
+class GroundWarEvaluator(val searchSpace: HopshackleSearchSpace,
                          val params: EventGameParams,
                          val logger: EvolutionLogger,
-                         val timeBudget: Int = 50,
                          val opponentParams: AgentParams,
-                         val opponentModel: SimpleActionPlayerInterface?,
                          val scoreFunctions: Array<(LandCombatGame, Int) -> Double> = arrayOf(finalScoreFunction, finalScoreFunction),
                          val victoryFunction: (LandCombatGame, Int) -> Double = finalScoreFunction
 ) : SolutionEvaluator {
@@ -190,6 +204,10 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
 
     var nEvals = 0
 
+    override fun evaluate(settings: IntArray): Double {
+        return evaluate(searchSpace.convertSettings(settings))
+    }
+
     override fun evaluate(settings: DoubleArray): Double {
         val seedToUse = System.currentTimeMillis()
 
@@ -200,24 +218,24 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
             val game = LandCombatGame(world)
             if (it == 1) {
                 if (searchSpace is UtilitySearchSpace) {
-                    game.registerAgent(0, getAgent(doubleArrayOf())) // note that settings do not define this for UtilitySearch
-                    game.registerAgent(1, getAgent(doubleArrayOf()))
+                    game.registerAgent(0, searchSpace.getAgent(doubleArrayOf())) // note that settings do not define this for UtilitySearch
+                    game.registerAgent(1, searchSpace.getAgent(doubleArrayOf()))
                     game.scoreFunction[PlayerId.Red] = searchSpace.getScoreFunction(settings)
                     game.scoreFunction[PlayerId.Blue] = scoreFunctions[1]
                 } else {
                     game.registerAgent(0, opponent)
-                    game.registerAgent(1, getAgent(settings))
+                    game.registerAgent(1, searchSpace.getAgent(settings))
                     game.scoreFunction[PlayerId.Red] = scoreFunctions[0]
                     game.scoreFunction[PlayerId.Blue] = scoreFunctions[1]
                 }
             } else {
                 if (searchSpace is UtilitySearchSpace) {
-                    game.registerAgent(0, getAgent(doubleArrayOf())) // note that settings do not define this for UtilitySearch
-                    game.registerAgent(1, getAgent(doubleArrayOf()))
+                    game.registerAgent(0, searchSpace.getAgent(doubleArrayOf())) // note that settings do not define this for UtilitySearch
+                    game.registerAgent(1, searchSpace.getAgent(doubleArrayOf()))
                     game.scoreFunction[PlayerId.Blue] = searchSpace.getScoreFunction(settings)
                     game.scoreFunction[PlayerId.Red] = scoreFunctions[1]
                 } else {
-                    game.registerAgent(0, getAgent(settings))
+                    game.registerAgent(0, searchSpace.getAgent(settings))
                     game.registerAgent(1, opponent)
                     game.scoreFunction[PlayerId.Red] = scoreFunctions[1]
                     game.scoreFunction[PlayerId.Blue] = scoreFunctions[0]
@@ -241,56 +259,96 @@ class GroundWarEvaluator(val searchSpace: SearchSpace,
 }
 
 
-abstract class HopshackleSearchSpace : SearchSpace {
-    abstract val names: Array<String>
-    abstract val values: Array<Array<*>>
+abstract class HopshackleSearchSpace(val fileName: String) : SearchSpace {
 
-    abstract fun getAgent(settings: Map<String, Any>): SimpleActionPlayerInterface
-    override fun nValues(i: Int) = values[i].size
-    override fun nDims() = values.size
-    override fun name(i: Int) = names[i]
-    override fun value(d: Int, i: Int) = values[d][i] ?: 0.00
+    val searchDimensions: List<String> = if (fileName != "") FileReader(fileName).readLines() else emptyList()
+    val searchKeys: List<String> = searchDimensions.map { it.split("=").first() }
+    val searchTypes: List<KClass<*>> = searchKeys.map { types.getOrDefault(it, Int::class) }
+    val searchValues: List<List<Any>> = searchDimensions.zip(searchTypes)
+            .map { (allV, cl) ->
+                allV.split("=")[1]      // get the stuff after the colon, which should be values to be searched
+                        .split(",")
+                        .map(String::trim).map {
+                            when (cl) {
+                                Int::class -> it.toInt()
+                                Double::class -> it.toDouble()
+                                Boolean::class -> it.toBoolean()
+                                else -> throw AssertionError("Currently unsupported class $cl")
+                            }
+                        }
+            }
+    abstract val types: Map<String, KClass<*>>
+    fun convertSettings(settings: IntArray): DoubleArray {
+        val convertedSettings: DoubleArray = settings.zip(searchValues).map { (i, values) ->
+            val v = values[i]
+            when (v) {
+                is Int -> v.toDouble()
+                is Double -> values[i]
+                is Boolean -> if (v) 1.0 else 0.0
+                else -> settings[i].toDouble()      // if not numeric, default to the category
+            } as Double
+        }.toDoubleArray()
+        return convertedSettings
+    }
+
+    abstract fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface
+    override fun nValues(i: Int) = searchValues[i].size
+    override fun nDims() = searchValues.size
+    override fun name(i: Int) = searchKeys[i]
+    override fun value(d: Int, i: Int) = searchValues[d][i]
 }
 
-object RHEASearchSpace : HopshackleSearchSpace() {
-    override val names: Array<String>
-        get() = arrayOf("sequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne", "discountFactor", "opponentModel")
+class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace(fileName) {
+    override val types: Map<String, KClass<*>>
+        get() = mapOf("useShiftBuffer" to Boolean::class, "probMutation" to Double::class,
+                "flipAtLeastOneValue" to Boolean::class, "discountFactor" to Double::class,
+                "opponentModel" to SimpleActionPlayerInterface::class)
 
-    override val values: Array<Array<*>>
-        get() = arrayOf(
-                arrayOf(3, 6, 12, 24, 48),                    // sequenceLength
-                arrayOf(50, 100, 200, 400),               // horizon
-                arrayOf(false, true),                                   // useShiftBuffer
-                arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
-                arrayOf(false, true),                           // flipAtLeastOne
-                arrayOf(1.0, 0.999, 0.99, 0.95),           // discount rate
-                arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
-                        HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
-                        HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
-                        HeuristicAgent(2.0, 1.0, listOf(HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))
-                )
-        )
+    /*  override val values: Array<Array<*>>
+          get() = arrayOf(
+                  arrayOf(3, 6, 12, 24, 48),                    // sequenceLength
+                  arrayOf(50, 100, 200, 400),               // horizon
+                  arrayOf(false, true),                                   // useShiftBuffer
+                  arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
+                  arrayOf(false, true),                           // flipAtLeastOne
+                  arrayOf(1.0, 0.999, 0.99, 0.95),           // discount rate
+                  arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
+                          HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
+                          HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
+                          HeuristicAgent(2.0, 1.0, listOf(HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))
+                  )
+          ) */
 
-    override fun getAgent(settings: Map<String, Any>): SimpleActionPlayerInterface {
+    override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
+        val settingsMap: Map<String, Any> = settings.withIndex().map { (i, v) ->
+            searchKeys[i] to when (searchTypes[i]) {
+                Int::class -> (v + 0.5).toInt()
+                Double::class -> v
+                Boolean::class -> v > 0.5
+                else -> throw AssertionError("Unsupported class ${searchTypes[i]}")
+            }
+        }.toMap()
+
         return SimpleActionEvoAgent(
-                    underlyingAgent = SimpleEvoAgent(
-                            nEvals = 10000,
-                            timeLimit = settings.getOrDefault("timeBudget", 50) as Int,
-                            useMutationTransducer = false,
-                            sequenceLength = settings.getOrDefault("sequenceLength", 5) as Int,
-                            horizon = settings.getOrDefault("horizon", 100) as Int,
-                            useShiftBuffer = settings.getOrDefault("useShiftBuffer", false) as Boolean,
-                            probMutation = settings.getOrDefault("probMutation", 0.01) as Double,
-                            flipAtLeastOneValue = settings.getOrDefault("flipAtLeastOneValue", false) as Boolean,
-                            discountFactor = settings.getOrDefault("discountFactor", 0.01) as Double
-                    ),
-                    opponentModel = settings.getOrDefault("opponentModel", SimpleActionDoNothing(1000)) as SimpleActionPlayerInterface
-                    //   opponentModel ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
-            )
+                underlyingAgent = SimpleEvoAgent(
+                        nEvals = 10000,
+                        timeLimit = settingsMap.getOrDefault("timeBudget", defaultParams.timeBudget) as Int,
+                        useMutationTransducer = false,
+                        sequenceLength = settingsMap.getOrDefault("sequenceLength", defaultParams.sequenceLength) as Int,
+                        horizon = settingsMap.getOrDefault("horizon", defaultParams.planningHorizon) as Int,
+                        useShiftBuffer = settingsMap.getOrDefault("useShiftBuffer", defaultParams.params.contains("useShiftBuffer")) as Boolean,
+                        probMutation = settingsMap.getOrDefault("probMutation", defaultParams.getParam("probMutation", "0.1").toDouble()) as Double,
+                        flipAtLeastOneValue = settingsMap.getOrDefault("flipAtLeastOneValue", defaultParams.params.contains("flipAtLeastOneValue")) as Boolean,
+                        discountFactor = settingsMap.getOrDefault("discountFactor", defaultParams.getParam("discountFactor", "1.0").toDouble()) as Double
+                ),
+                opponentModel = settingsMap.getOrDefault("opponentModel", SimpleActionDoNothing(1000)) as SimpleActionPlayerInterface
+                //   opponentModel ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
+        )
     }
 
 }
 
+/*
 object RHCASearchSpace : HopshackleSearchSpace() {
 
     override val names: Array<String>
@@ -360,18 +418,26 @@ object MCTSSearchSpace : HopshackleSearchSpace() {
     rolloutPolicy = MCTSSearchSpace.values[5][intSettings[5]] as SimpleActionPlayerInterface,
     opponentModel = MCTSSearchSpace.values[7][intSettings[7]] as SimpleActionPlayerInterface // opponentModel
     )
-    is UtilitySearchSpace -> {
+    is UtilitySearchSpace ->
+    {
         searchSpace.agentParams.createAgent("UtilitySearch")
     }
     else -> throw AssertionError("Unknown type $searchSpace")
 
 
 }
+*/
+class UtilitySearchSpace(val agentParams: AgentParams) : HopshackleSearchSpace("") {
+    override val types: Map<String, KClass<*>>
+        get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
 
-class UtilitySearchSpace(val agentParams: AgentParams) : HopshackleSearchSpace() {
-    override val names: Array<String>
+    override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    val names: Array<String>
         get() = arrayOf("visibilityNode", "visibilityArc", "theirCity", "ownForce", "theirForce")
-    override val values: Array<Array<*>>
+    val values: Array<Array<*>>
         get() = arrayOf(
                 arrayOf(0.0, 0.1, 0.5, 1.0, 5.0),
                 arrayOf(0.0, 0.1, 0.5, 1.0, 5.0),
@@ -388,4 +454,5 @@ class UtilitySearchSpace(val agentParams: AgentParams) : HopshackleSearchSpace()
                         values[2][intSettings[2]] as Double, values[4][intSettings[4]] as Double)
         )
     }
+
 }
