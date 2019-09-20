@@ -1,10 +1,8 @@
 package groundWar.executables
 
-import agents.MCTS.*
 import agents.*
-import agents.RHEA.RHCAAgent
-import agents.RHEA.SimpleActionEvoAgent
-import agents.RHEA.SimpleEvoAgent
+import agents.RHEA.*
+import agents.MCTS.*
 import evodef.*
 import ggi.*
 import groundWar.*
@@ -120,7 +118,11 @@ fun main(args: Array<String>) {
 
     val searchFramework: EvoAlg = when (landscapeModel) {
         is NTupleSystem -> NTupleBanditEA(100.0, min(50.0, stateSpaceSize * 0.01).toInt())
-        is GaussianProcessSearch -> GaussianProcessFramework()
+        is GaussianProcessSearch -> {
+            val retValue = GaussianProcessFramework()
+            retValue.nSamples = 5
+            retValue
+        }
         else -> throw AssertionError("Unknown EvoAlg $landscapeModel")
     }
     searchFramework.model = landscapeModel
@@ -259,11 +261,13 @@ class GroundWarEvaluator(val searchSpace: HopshackleSearchSpace,
 }
 
 
-abstract class HopshackleSearchSpace(val fileName: String) : SearchSpace {
+abstract class HopshackleSearchSpace(fileName: String) : SearchSpace {
 
     val searchDimensions: List<String> = if (fileName != "") FileReader(fileName).readLines() else emptyList()
     val searchKeys: List<String> = searchDimensions.map { it.split("=").first() }
-    val searchTypes: List<KClass<*>> = searchKeys.map { types.getOrDefault(it, Int::class) }
+    val searchTypes: List<KClass<*>> = searchKeys.map {
+        types[it] ?: throw AssertionError("Unknown search variable $it")
+    }
     val searchValues: List<List<Any>> = searchDimensions.zip(searchTypes)
             .map { (allV, cl) ->
                 allV.split("=")[1]      // get the stuff after the colon, which should be values to be searched
@@ -279,7 +283,7 @@ abstract class HopshackleSearchSpace(val fileName: String) : SearchSpace {
             }
     abstract val types: Map<String, KClass<*>>
     fun convertSettings(settings: IntArray): DoubleArray {
-        val convertedSettings: DoubleArray = settings.zip(searchValues).map { (i, values) ->
+        return settings.zip(searchValues).map { (i, values) ->
             val v = values[i]
             when (v) {
                 is Int -> v.toDouble()
@@ -288,7 +292,17 @@ abstract class HopshackleSearchSpace(val fileName: String) : SearchSpace {
                 else -> settings[i].toDouble()      // if not numeric, default to the category
             } as Double
         }.toDoubleArray()
-        return convertedSettings
+    }
+
+    fun settingsToMap(settings: DoubleArray): Map<String, Any> {
+        return settings.withIndex().map { (i, v) ->
+            searchKeys[i] to when (searchTypes[i]) {
+                Int::class -> (v + 0.5).toInt()
+                Double::class -> v
+                Boolean::class -> v > 0.5
+                else -> throw AssertionError("Unsupported class ${searchTypes[i]}")
+            }
+        }.toMap()
     }
 
     abstract fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface
@@ -302,33 +316,12 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
     override val types: Map<String, KClass<*>>
         get() = mapOf("useShiftBuffer" to Boolean::class, "probMutation" to Double::class,
                 "flipAtLeastOneValue" to Boolean::class, "discountFactor" to Double::class,
-                "opponentModel" to SimpleActionPlayerInterface::class)
-
-    /*  override val values: Array<Array<*>>
-          get() = arrayOf(
-                  arrayOf(3, 6, 12, 24, 48),                    // sequenceLength
-                  arrayOf(50, 100, 200, 400),               // horizon
-                  arrayOf(false, true),                                   // useShiftBuffer
-                  arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
-                  arrayOf(false, true),                           // flipAtLeastOne
-                  arrayOf(1.0, 0.999, 0.99, 0.95),           // discount rate
-                  arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
-                          HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
-                          HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
-                          HeuristicAgent(2.0, 1.0, listOf(HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))
-                  )
-          ) */
+                "opponentModel" to SimpleActionPlayerInterface::class, "sequenceLength" to Int::class,
+                "horizon" to Int::class)
 
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
-        val settingsMap: Map<String, Any> = settings.withIndex().map { (i, v) ->
-            searchKeys[i] to when (searchTypes[i]) {
-                Int::class -> (v + 0.5).toInt()
-                Double::class -> v
-                Boolean::class -> v > 0.5
-                else -> throw AssertionError("Unsupported class ${searchTypes[i]}")
-            }
-        }.toMap()
 
+        val settingsMap = settingsToMap(settings)
         return SimpleActionEvoAgent(
                 underlyingAgent = SimpleEvoAgent(
                         nEvals = 10000,
@@ -345,88 +338,62 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 //   opponentModel ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
         )
     }
-
 }
 
-/*
-object RHCASearchSpace : HopshackleSearchSpace() {
+class RHCASearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace(fileName) {
 
-    override val names: Array<String>
-        get() = arrayOf("sequenceLength", "horizon", "useShiftBuffer", "probMutation", "flipAtLeastOne", "populationSize", "parentSize", "evalsPerGeneration", "discountFactor")
+    override val types: Map<String, KClass<*>>
+        get() = mapOf("useShiftBuffer" to Boolean::class, "probMutation" to Double::class,
+                "flipAtLeastOneValue" to Boolean::class, "discountFactor" to Double::class,
+                "opponentModel" to SimpleActionPlayerInterface::class, "sequenceLength" to Int::class,
+                "horizon" to Int::class, "populationSize" to Int::class, "parentSize" to Int::class,
+                "evalsPerGeneration" to Int::class)
 
-    override val values: Array<Array<*>>
-        get() = arrayOf(arrayOf(3, 6, 12, 24),                    // sequenceLength
-                arrayOf(50, 100, 200, 400),               // horizon
-                arrayOf(false, true),                                   // useShiftBuffer
-                arrayOf(0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.7),         // probMutation
-                arrayOf(false, true),                           // flipAtLeastOne
-                arrayOf(32, 64, 128),                       //populationSize
-                arrayOf(1, 2, 4),                               // parentSize
-                arrayOf(5, 10, 20, 30),                            // evalsPerGeneration
-                arrayOf(1.0, 0.999, 0.99)            // discount rate
-                /*       arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
-                               HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
-                               HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
-                               HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
-                       ) */
+    override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
+        val settingsMap = settingsToMap(settings)
+
+        return RHCAAgent(
+                timeLimit = settingsMap.getOrDefault("timeBudget", defaultParams.timeBudget) as Int,
+                sequenceLength = settingsMap.getOrDefault("sequenceLength", defaultParams.sequenceLength) as Int,
+                horizon = settingsMap.getOrDefault("horizon", defaultParams.planningHorizon) as Int,
+                useShiftBuffer = settingsMap.getOrDefault("useShiftBuffer", defaultParams.params.contains("useShiftBuffer")) as Boolean,
+                probMutation = settingsMap.getOrDefault("probMutation", defaultParams.getParam("probMutation", "0.1").toDouble()) as Double,
+                flipAtLeastOneValue = settingsMap.getOrDefault("flipAtLeastOneValue", defaultParams.params.contains("flipAtLeastOneValue")) as Boolean,
+                populationSize = settingsMap.getOrDefault("populationSize", defaultParams.getParam("populationSize", "10").toInt()) as Int,
+                parentSize = settingsMap.getOrDefault("parentSize", defaultParams.getParam("parentSize", "1").toInt()) as Int,
+                evalsPerGeneration = settingsMap.getOrDefault("evalsPerGeneration", defaultParams.getParam("evalsPerGeneration", "10").toInt()) as Int,
+                discountFactor = settingsMap.getOrDefault("discountFactor", defaultParams.getParam("discountFactor", "1.0").toDouble()) as Double
         )
-}
-
-object MCTSSearchSpace : HopshackleSearchSpace() {
-
-    override val names: Array<String>
-        get() = arrayOf("maxDepth", "horizon", "pruneTree", "C", "maxActions", "rolloutPolicy", "discountFactor", "opponentModel")
-    override val values: Array<Array<*>>
-        get() = arrayOf(
-                arrayOf(3, 6, 12),                  // maxDepth (==sequenceLength)
-                arrayOf(50, 100, 200, 400),               // horizon
-                arrayOf(false, true),                           // pruneTree
-                arrayOf(0.03, 0.3, 3.0, 30.0),           // C
-                arrayOf(20, 40, 80),             // maxActions
-                arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom),                          // rolloutPolicy
-                arrayOf(1.0, 0.999, 0.99),            // discount rate
-                arrayOf(SimpleActionDoNothing(1000), SimpleActionRandom,    // opponentModel
-                        HeuristicAgent(3.0, 1.2, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK)),
-                        HeuristicAgent(10.0, 2.0, listOf(HeuristicOptions.WITHDRAW)),
-                        HeuristicAgent(2.0, 1.0, listOf(HeuristicOptions.ATTACK, HeuristicOptions.WITHDRAW))
-                )
-        )
-
-    RHCASearchSpace -> RHCAAgent(
-    timeLimit = timeBudget,
-    sequenceLength = RHCASearchSpace.values[0][intSettings[0]] as Int,
-    horizon = RHCASearchSpace.values[1][intSettings[1]] as Int,
-    useShiftBuffer = RHCASearchSpace.values[2][intSettings[2]] as Boolean,
-    probMutation = RHCASearchSpace.values[3][intSettings[3]] as Double,
-    flipAtLeastOneValue = RHCASearchSpace.values[4][intSettings[4]] as Boolean,
-    populationSize = RHCASearchSpace.values[5][intSettings[5]] as Int,
-    parentSize = RHCASearchSpace.values[6][intSettings[6]] as Int,
-    evalsPerGeneration = RHCASearchSpace.values[7][intSettings[7]] as Int,
-    discountFactor = RHCASearchSpace.values[8][intSettings[8]] as Double
-    )
-    MCTSSearchSpace -> MCTSTranspositionTableAgentMaster(MCTSParameters(
-    C = MCTSSearchSpace.values[3][intSettings[3]] as Double,
-    maxPlayouts = 10000,
-    timeLimit = timeBudget,
-    horizon = MCTSSearchSpace.values[1][intSettings[1]] as Int,
-    pruneTree = MCTSSearchSpace.values[2][intSettings[2]] as Boolean,
-    maxDepth = MCTSSearchSpace.values[0][intSettings[0]] as Int,
-    maxActions = MCTSSearchSpace.values[4][intSettings[4]] as Int,
-    discountRate = MCTSSearchSpace.values[6][intSettings[6]] as Double
-    ),
-    stateFunction = LandCombatStateFunction,
-    rolloutPolicy = MCTSSearchSpace.values[5][intSettings[5]] as SimpleActionPlayerInterface,
-    opponentModel = MCTSSearchSpace.values[7][intSettings[7]] as SimpleActionPlayerInterface // opponentModel
-    )
-    is UtilitySearchSpace ->
-    {
-        searchSpace.agentParams.createAgent("UtilitySearch")
     }
-    else -> throw AssertionError("Unknown type $searchSpace")
+}
 
+class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace(fileName) {
+
+    override val types: Map<String, KClass<*>>
+        get() = mapOf("maxDepth" to Int::class, "horizon" to Int::class, "pruneTree" to Boolean::class,
+                "C" to Double::class, "maxActions" to Int::class, "rolloutPolicy" to SimpleActionPlayerInterface::class,
+                "discountFactor" to Double::class, "opponentModel" to SimpleActionPlayerInterface::class)
+
+    override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
+        val settingsMap = settingsToMap(settings)
+        return MCTSTranspositionTableAgentMaster(MCTSParameters(
+                C =settingsMap.getOrDefault("C", defaultParams.getParam("C", "0.1").toDouble()) as Double,
+                maxPlayouts = 10000,
+                timeLimit = settingsMap.getOrDefault("timeBudget", defaultParams.timeBudget) as Int,
+                horizon = settingsMap.getOrDefault("horizon", defaultParams.planningHorizon) as Int,
+                pruneTree = settingsMap.getOrDefault("pruneTree", defaultParams.params.contains("pruneTree")) as Boolean,
+                maxDepth = settingsMap.getOrDefault("maxDepth", defaultParams.getParam("maxDepth", "10").toInt()) as Int,
+                maxActions = settingsMap.getOrDefault("maxActions", defaultParams.getParam("maxActions", "10").toInt()) as Int,
+                discountRate = settingsMap.getOrDefault("discountFactor", defaultParams.getParam("discountFactor", "1.0").toDouble()) as Double
+        ),
+                stateFunction = LandCombatStateFunction,
+                rolloutPolicy = settingsMap.getOrDefault("rolloutPolicy", SimpleActionDoNothing(1000)) as SimpleActionPlayerInterface,
+                opponentModel = settingsMap.getOrDefault("opponentModel", SimpleActionDoNothing(1000)) as SimpleActionPlayerInterface
+        )
+    }
 
 }
-*/
+
 class UtilitySearchSpace(val agentParams: AgentParams) : HopshackleSearchSpace("") {
     override val types: Map<String, KClass<*>>
         get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.

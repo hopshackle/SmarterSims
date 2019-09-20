@@ -19,7 +19,7 @@ import groundWar.executables.defaultRHEAAgent
  */
 val SimProperties = Properties()
 
-class GaussianProcessFramework() : EvoAlg {
+class GaussianProcessFramework : EvoAlg {
 
     var nSamples = 1
 
@@ -47,7 +47,7 @@ class GaussianProcessFramework() : EvoAlg {
 
         repeat(nEvals) {
             val nextPoint = currentModel.getParameterSearchValues()
-            val finalScore = (0 until nSamples).map{evaluator.evaluate(nextPoint)}.average()
+            val finalScore = (0 until nSamples).map { evaluator.evaluate(nextPoint) }.average()
             localModel.addPoint(nextPoint, finalScore)
         }
 
@@ -72,6 +72,7 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
+    private val extraDebug = false
     private val solutionsTried = ArrayList<DoubleArray>()
     override val bestOfSampled: DoubleArray
         get() = solutionsTried.map { Pair(it, getMeanEstimate(it)) }.maxBy { it.second }?.first ?: doubleArrayOf()
@@ -96,17 +97,23 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
     private fun predict(x: DoubleArray): Array<Matrix> {
         val xstar = Array(1) { DoubleArray(parameterConstraints.size) }
         for (j in x.indices)
-            xstar[0][j] = x[j] - Xmean!![j]
+            xstar[0][j] = x[j] - Xmean[j]
         return mainGP!!.predict(Matrix(xstar))
     }
 
-    var iteration = 0
+    private fun fileStore(): List<String> {
+        if (File(name + ".txt").exists())
+            return BufferedReader(FileReader("$name.txt")).lines().toList()
+        return emptyList()
+    }
+
+    var iteration = fileStore().count()
         private set
     private val parameterConstraints = ArrayList<ParameterDetail>()
     private var startTime: Long = 0
     private var mainGP: GaussianProcess? = null
     private var timeGP: GaussianProcess? = null
-    private var Xmean: DoubleArray? = null
+    private var Xmean: DoubleArray = DoubleArray(parameterConstraints.size) { 0.00 }
     private var Ymean: Double = 0.toDouble()
     private var Tmean: Double = 0.toDouble()
     private val useExpectedImprovement = SimProperties.getProperty("ExpectedImprovementPerUnitTimeInParameterSearch", "false").equals("true")
@@ -115,6 +122,25 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
     private val kernelToUse = SimProperties.getProperty("ParameterSearchKernel", "SE:LIN")
 
     private val rnd = Random(System.currentTimeMillis())
+
+    init {
+        // searchSpace defines the space to search - once we extract the ranges from it
+        for (k in (0 until searchSpace.nDims())) {
+            val key = searchSpace.name(k)
+            val options = searchSpace.nValues(k)
+            if (searchSpace.value(k, 0) is Number) {
+                val minValue = (0 until options).map { (searchSpace.value(k, it) as Number).toDouble() }.min() ?: 0.00
+                val maxValue = (0 until options).map { (searchSpace.value(k, it) as Number).toDouble() }.max() ?: 0.00
+                parameterConstraints.add(ParameterDetail(key, minValue, maxValue))
+            } else {
+                parameterConstraints.add(ParameterDetail(key, (0 until options).map {
+                    searchSpace.value(k, it)
+                }))
+            }
+        }
+        Xmean = DoubleArray(parameterConstraints.size) { 0.00 }
+    }
+
     // we generate a load of random points in the space, and then evaluate them all
 // noise parameter is always the last one given kernel construction
 // first we find the incumbent point and value (from the N random ones)
@@ -129,10 +155,10 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
             for (i in 0 until N) {
                 val sample = randomParameterValues(true)
                 for (j in sample.indices)
-                    xstar[i][j] = sample[j] - Xmean!![j]
+                    xstar[i][j] = sample[j] - Xmean[j]
             }
-            println(String.format("Base noise is %.3g (sd: %.3g)", baseNoise, sqrt(baseNoise)))
-            println("All params: " + mainGP!!.logtheta.transpose().array[0].joinToString("|") { String.format("%2g", it) })
+            if (extraDebug) println(String.format("Base noise is %.3g (sd: %.3g)", baseNoise, sqrt(baseNoise)))
+            if (extraDebug) println("All params: " + mainGP!!.logtheta.transpose().array[0].joinToString("|") { String.format("%2g", it) })
             val predictions = mainGP!!.predict(Matrix(xstar))
             var timePredictions = arrayOfNulls<Matrix>(2)
             if (useExpectedImprovement) {
@@ -156,7 +182,7 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
                     bestMean = value
                     bestUCB = sqrt(predictions[1].get(i, 0) - baseNoise)
                     for (j in optimalSetting.indices) {
-                        optimalSetting[j] = xstar[i][j] + Xmean!![j]
+                        optimalSetting[j] = xstar[i][j] + Xmean[j]
                         if (parameterConstraints[j].logScale)
                             optimalSetting[j] = exp(optimalSetting[j])
                     }
@@ -185,7 +211,7 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
                     bestLatent = latentNoise
                     bestEstimate = value
                     for (j in nextSetting.indices) {
-                        nextSetting[j] = xstar[i][j] + Xmean!![j]
+                        nextSetting[j] = xstar[i][j] + Xmean[j]
                         if (parameterConstraints[j].logScale)
                             nextSetting[j] = Math.exp(nextSetting[j])
                     }
@@ -195,44 +221,32 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
                     bestEIScore = value
                     bestPredictedTime = predictedTime
                     for (j in nextSettingWithEI.indices) {
-                        nextSettingWithEI[j] = xstar[i][j] + Xmean!![j]
+                        nextSettingWithEI[j] = xstar[i][j] + Xmean[j]
                         if (parameterConstraints[j].logScale)
                             nextSettingWithEI[j] = Math.exp(nextSettingWithEI[j])
                     }
                 }
             }
-            println(String.format("Optimal mean is %.3g (sigma = %.2g) with params %s",
-                    bestMean + Ymean, bestUCB, optimalSetting.joinToString("|") { String.format("%2g", it) }))
-            println(String.format("Acquisition expected mean is %.3g (sigma = %.2g) with params %s",
+
+            val logFile = BufferedWriter(FileWriter("$name.log", true))
+            val logMessage = String.format("Optimal mean is %.3g (sigma = %.2g, noise = %.2g) with params %s",
+                    bestMean + Ymean, bestUCB, sqrt(baseNoise), optimalSetting.joinToString("|") { String.format("%2g", it) })
+            logFile.write(logMessage + "\n")
+            logFile.close()
+            if (extraDebug) println(logMessage)
+            if (extraDebug) println(String.format("Acquisition expected mean is %.3g (sigma = %.2g) with params %s",
                     bestEstimate + Ymean, bestLatent, nextSetting.joinToString("|") { String.format("%2g", it) }))
 
             if (negNoise > 0) println("$negNoise samples had negative latent noise")
 
             if (useExpectedImprovement) {
-                println(String.format("EI/T expected mean is %.3g (sigma = %.2g) in predicted T of %.0f with params %s",
+                if (extraDebug) println(String.format("EI/T expected mean is %.3g (sigma = %.2g) in predicted T of %.0f with params %s",
                         bestEIScore + Ymean, (bestExpectedImprovement * bestPredictedTime + bestMean - bestEIScore) / kappa,
                         bestPredictedTime - 30, nextSettingWithEI.joinToString("|") { String.format("%2g", it) }))
                 return nextSettingWithEI
             }
             return nextSetting
         }
-
-    init {
-        // searchSpace defines the space to search - once we extract the ranges from it
-        for (k in (0 until searchSpace.nDims())) {
-            val key = searchSpace.name(k)
-            val options = searchSpace.nValues(k)
-            if (searchSpace.value(k, 0) is Number) {
-                val minValue = (0 until options).map { (searchSpace.value(k, it) as Number).toDouble() }.min() ?: 0.00
-                val maxValue = (0 until options).map { (searchSpace.value(k, it) as Number).toDouble() }.max() ?: 0.00
-                parameterConstraints.add(ParameterDetail(key, minValue, maxValue))
-            } else {
-                parameterConstraints.add(ParameterDetail(key, (0 until options).map {
-                    searchSpace.value(k, it)
-                }))
-            }
-        }
-    }
 
     fun getParameterSearchValues(): DoubleArray {
         // TODO: Currently just apply GP to continuous variables. Categorical ones to be added later.
@@ -258,6 +272,8 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
                     retValue[i] = exp(retValue[i])
                 if (pd.integer && !(pd.logScale && onLogScale))
                     retValue[i] = (retValue[i] + 0.5).toInt().toDouble()
+            } else if (pd.boolean) {
+                retValue[i] = rnd.nextDouble()
             } else {
                 retValue[i] = rnd.nextInt(pd.categoricalValues.size).toDouble()
             }
@@ -277,14 +293,15 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
         val protoT = ArrayList<Double>()
 
         // use file instead of database for now
-        val fileAsLines = BufferedReader(FileReader("$name.txt")).lines().toList()
 
-        fileAsLines.map {
-            val allData = it.split(",")
+        fileStore().map {
+            val allData = it.split(",").map(String::trim)
             val rowData = parameterConstraints.withIndex().map { (i, pd) ->
-                if (!pd.continuous)
-                    throw AssertionError("GP not yet working for categorical parameters")
-                val value = allData[i].toDouble()
+                val value = when {
+                    pd.continuous -> allData[i].toDouble()
+                    pd.boolean -> allData[i].toDouble()
+                    else -> throw AssertionError("GP not yet working for categorical parameters")
+                }
                 if (pd.logScale) ln(value) else value
             }
             protoX.add(rowData)
@@ -349,8 +366,8 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
 
         val theta = Array(kernelParameters) { DoubleArray(1) }
         // train GP
-        mainGP!!.train(Matrix(X), Matrix(Y), Matrix(theta), 20)
-        if (useExpectedImprovement) timeGP!!.train(Matrix(X), Matrix(T), Matrix(theta), 20)
+        mainGP!!.train(Matrix(X), Matrix(Y), Matrix(theta), 5)
+        if (useExpectedImprovement) timeGP!!.train(Matrix(X), Matrix(T), Matrix(theta), 5)
     }
 
     override fun addPoint(p: DoubleArray, value: Double) {
@@ -373,6 +390,7 @@ internal class ParameterDetail {
 
     var name: String
     var continuous: Boolean = false
+    var boolean: Boolean = false
     var logScale: Boolean = false
     var integer: Boolean = false
     var fromValue: Double = 0.toDouble()
@@ -400,7 +418,10 @@ internal class ParameterDetail {
     constructor(parameter: String, values: List<Any>) {
         name = parameter
         continuous = false
+        if (values.size == 2 && values.all { it is Boolean })
+            boolean = true
         categoricalValues = values.map { i -> i }.toList()
+        println(String.format("%s, values of %s", name, categoricalValues.joinToString()))
     }
 }
 
