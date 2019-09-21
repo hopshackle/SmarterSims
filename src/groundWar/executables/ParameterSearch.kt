@@ -27,6 +27,16 @@ val defaultMCTSAgent = """
         opponentModel=DoNothing
     """.trimIndent()
 
+val defaultRHCAAgent = """
+        algorithm=RHCA
+        timeBudget=50
+        evalBudget=100000
+        sequenceLength=4
+        planningHorizon=100
+        algoParams=probMutation:0.7,flipAtLeastOneValue,discountFactor:0.999,populationSize=20,parentSize=1,evalsPerGeneration=20
+        opponentModel=DoNothing
+    """.trimIndent()
+
 val defaultRHEAAgent = """
         algorithm=RHEA
         timeBudget=50
@@ -64,9 +74,11 @@ fun main(args: Array<String>) {
     val searchSpace = when (args[0].split("|")[0]) {
         "RHEA" -> RHEASearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultRHEAAgent),
                 fileName = args[0].split("|")[1])
-        //    "MCTS", "MCTS2" -> MCTSSearchSpace
-        //    "RHCA" -> RHCASearchSpace
-        //    "Utility" -> UtilitySearchSpace(agentParams)
+            "MCTS" -> MCTSSearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultMCTSAgent),
+                    fileName = args[0].split("|")[1])
+            "RHCA" -> RHCASearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultRHCAAgent),
+                    fileName = args[0].split("|")[1])
+            "Utility" -> UtilitySearchSpace(agentParams)
         else -> throw AssertionError("Unknown searchSpace " + args[0])
     }
 
@@ -313,6 +325,9 @@ abstract class HopshackleSearchSpace(fileName: String) : SearchSpace {
 }
 
 class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace(fileName) {
+
+    val opponentModel = (defaultParams.createAgent("default") as SimpleActionEvoAgent).opponentModel
+
     override val types: Map<String, KClass<*>>
         get() = mapOf("useShiftBuffer" to Boolean::class, "probMutation" to Double::class,
                 "flipAtLeastOneValue" to Boolean::class, "discountFactor" to Double::class,
@@ -334,7 +349,7 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                         flipAtLeastOneValue = settingsMap.getOrDefault("flipAtLeastOneValue", defaultParams.params.contains("flipAtLeastOneValue")) as Boolean,
                         discountFactor = settingsMap.getOrDefault("discountFactor", defaultParams.getParam("discountFactor", "1.0").toDouble()) as Double
                 ),
-                opponentModel = settingsMap.getOrDefault("opponentModel", SimpleActionDoNothing(1000)) as SimpleActionPlayerInterface
+                opponentModel = opponentModel
                 //   opponentModel ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
         )
     }
@@ -369,6 +384,8 @@ class RHCASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
 
 class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace(fileName) {
 
+    val opponentModel = (defaultParams.createAgent("default") as MCTSTranspositionTableAgentMaster).opponentModel
+
     override val types: Map<String, KClass<*>>
         get() = mapOf("maxDepth" to Int::class, "horizon" to Int::class, "pruneTree" to Boolean::class,
                 "C" to Double::class, "maxActions" to Int::class, "rolloutPolicy" to SimpleActionPlayerInterface::class,
@@ -388,7 +405,7 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
         ),
                 stateFunction = LandCombatStateFunction,
                 rolloutPolicy = settingsMap.getOrDefault("rolloutPolicy", SimpleActionDoNothing(1000)) as SimpleActionPlayerInterface,
-                opponentModel = settingsMap.getOrDefault("opponentModel", SimpleActionDoNothing(1000)) as SimpleActionPlayerInterface
+                opponentModel = opponentModel
         )
     }
 
