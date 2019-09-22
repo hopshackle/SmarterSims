@@ -22,7 +22,7 @@ fun createIntervalParamsFromString(details: List<String>): IntervalParams {
     return IntervalParams(
             startingForce = paramMap.getOrDefault("startingForce", intervalList("100 : 100")),
             fogStrengthAssumption = paramMap.getOrDefault("fogStrengthAssumption", intervalList("0 : 0")),
-            fogMemory =  paramMap.getOrDefault("fogMemory", intervalList("100 : 100")),
+            fogMemory = paramMap.getOrDefault("fogMemory", intervalList("100 : 100")),
             speed = paramMap.getOrDefault("speed", intervalList("10.0 : 10.0")),
             fortAttackerDivisor = paramMap.getOrDefault("fortAttackerDivisor", listOf(interval("2.0")))[0],
             fortDefenderExpBonus = paramMap.getOrDefault("fortDefenderExpBonus", listOf(interval("0.10")))[0],
@@ -131,6 +131,19 @@ data class EventGameParams(
         val minAssaultFactor: DoubleArray = doubleArrayOf(0.1, 0.1)
 )
 
+data class ScoreParams(
+        val ownCity: Double = 5.0,
+        val theirCity: Double = -5.0,
+        val ownForce: Double = 1.0,
+        val theirForce: Double = 1.0,
+        val arcVisibility: Double = 0.0,
+        val nodeVisibility: Double = 0.0,
+        val fortressValue: Double = 0.0,
+        val forceEntropy: Double = 0.0,
+        val localAdvantage: Double = 0.0,
+        val reserveForce: Double = 0.0
+)
+
 data class AgentParams(
         val algorithm: String = "RHEA",
         val timeBudget: Int = 50,
@@ -234,6 +247,27 @@ fun createAgentParamsFromString(details: List<String>): AgentParams {
             planningHorizon = paramMap.getOrDefault("planningHorizon", "100").toInt(),
             algoParams = paramMap.getOrDefault("algoParams", ""),
             opponentModel = paramMap.getOrDefault("opponentModel", "")
+    )
+}
+
+fun createScoreParamsFromString(details: List<String>): ScoreParams {
+
+    val default = ScoreParams()
+
+    val paramMap: Map<String, Double> = details.map {
+        val temp = it.split("=")
+        temp[0].trim() to temp[1].trim().toDouble()
+    }.toMap()
+
+    return ScoreParams(
+            ownCity = paramMap.getOrDefault("ownCity", default.ownCity),
+            ownForce = paramMap.getOrDefault("ownForce", default.ownCity),
+            theirCity = paramMap.getOrDefault("theirCity", default.theirCity),
+            theirForce = paramMap.getOrDefault("theirForce", default.theirForce),
+            fortressValue = paramMap.getOrDefault("fortressValue", default.fortressValue),
+            forceEntropy = paramMap.getOrDefault("forceEntropy", default.forceEntropy),
+            localAdvantage = paramMap.getOrDefault("localAdvantage", default.localAdvantage),
+            reserveForce = paramMap.getOrDefault("reserveForce", default.reserveForce)
     )
 }
 

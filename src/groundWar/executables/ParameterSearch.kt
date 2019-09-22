@@ -49,7 +49,6 @@ val defaultRHEAAgent = """
 
 fun agentParamsFromCommandLine(args: Array<String>, prefix: String, default: String = ""): AgentParams {
     val fileName = args.firstOrNull { it.startsWith(prefix) }?.split("=")?.get(1)
-    if (fileName == null && args[0] == "Utility") throw AssertionError("Must specify a file for agent params (Agent=...) if using Utility Search space")
     return if (fileName == null) {
         if (default == "") {
             println("No data found for $prefix AgentParams: using default Heuristic")
@@ -64,6 +63,17 @@ fun agentParamsFromCommandLine(args: Array<String>, prefix: String, default: Str
     }
 }
 
+fun scoreParamsFromCommandLine(args: Array<String>, prefix: String): ScoreParams {
+    val fileName = args.firstOrNull { it.startsWith(prefix) }?.split("=")?.get(1)
+    return if (fileName == null) {
+        println("No data found for $prefix ScoreParams: using default")
+        ScoreParams()
+    } else {
+        val fileAsLines = BufferedReader(FileReader(fileName)).lines().toList()
+        createScoreParamsFromString(fileAsLines)
+    }
+}
+
 fun main(args: Array<String>) {
     if (args.size < 3) throw AssertionError("Must specify at least three parameters: RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
     val totalRuns = args[1].split("|")[0].toInt()
@@ -74,11 +84,12 @@ fun main(args: Array<String>) {
     val searchSpace = when (args[0].split("|")[0]) {
         "RHEA" -> RHEASearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultRHEAAgent),
                 fileName = args[0].split("|")[1])
-            "MCTS" -> MCTSSearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultMCTSAgent),
-                    fileName = args[0].split("|")[1])
-            "RHCA" -> RHCASearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultRHCAAgent),
-                    fileName = args[0].split("|")[1])
-            "Utility" -> UtilitySearchSpace(agentParams)
+        "MCTS" -> MCTSSearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultMCTSAgent),
+                fileName = args[0].split("|")[1])
+        "RHCA" -> RHCASearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultRHCAAgent),
+                fileName = args[0].split("|")[1])
+        "Utility" -> UtilitySearchSpace(agentParams, scoreParamsFromCommandLine(args, "baseScore"),
+                fileName = args[0].split("|")[1])
         else -> throw AssertionError("Unknown searchSpace " + args[0])
     }
 
@@ -387,14 +398,14 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
     val opponentModel = (defaultParams.createAgent("default") as MCTSTranspositionTableAgentMaster).opponentModel
 
     override val types: Map<String, KClass<*>>
-        get() = mapOf("maxDepth" to Int::class, "horizon" to Int::class, "pruneTree" to Boolean::class,
+        get() = mapOf("sequenceLength" to Int::class, "horizon" to Int::class, "pruneTree" to Boolean::class,
                 "C" to Double::class, "maxActions" to Int::class, "rolloutPolicy" to SimpleActionPlayerInterface::class,
                 "discountFactor" to Double::class, "opponentModel" to SimpleActionPlayerInterface::class)
 
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         val settingsMap = settingsToMap(settings)
         return MCTSTranspositionTableAgentMaster(MCTSParameters(
-                C =settingsMap.getOrDefault("C", defaultParams.getParam("C", "0.1").toDouble()) as Double,
+                C = settingsMap.getOrDefault("C", defaultParams.getParam("C", "0.1").toDouble()) as Double,
                 maxPlayouts = 10000,
                 timeLimit = settingsMap.getOrDefault("timeBudget", defaultParams.timeBudget) as Int,
                 horizon = settingsMap.getOrDefault("horizon", defaultParams.planningHorizon) as Int,
@@ -408,35 +419,30 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 opponentModel = opponentModel
         )
     }
-
 }
 
-class UtilitySearchSpace(val agentParams: AgentParams) : HopshackleSearchSpace("") {
+class UtilitySearchSpace(val agentParams: AgentParams, val defaultScore: ScoreParams, fileName: String) : HopshackleSearchSpace(fileName) {
     override val types: Map<String, KClass<*>>
-        get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
+        get() = mapOf("visibilityNode" to Double::class, "visibilityArc" to Double::class, "theirCity" to Double::class,
+                "ownForce" to Double::class, "theirForce" to Double::class, "fortressValue" to Double::class)
 
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return agentParams.createAgent("STD")
     }
-
-    val names: Array<String>
-        get() = arrayOf("visibilityNode", "visibilityArc", "theirCity", "ownForce", "theirForce")
-    val values: Array<Array<*>>
-        get() = arrayOf(
-                arrayOf(0.0, 0.1, 0.5, 1.0, 5.0),
-                arrayOf(0.0, 0.1, 0.5, 1.0, 5.0),
-                arrayOf(0.0, -1.0, -5.0, -10.0),
-                arrayOf(0.0, 0.1, 0.5, 1.0, 3.0),
-                arrayOf(0.0, -0.1, -0.5, -1.0, -3.0)
-        )
 
     fun getScoreFunction(settings: DoubleArray): (LandCombatGame, Int) -> Double {
-        val intSettings = settings.map { v -> (v + 0.5).toInt() }.toIntArray()
+        val settingsMap = settingsToMap(settings)
         return compositeScoreFunction(
-                visibilityScore(values[0][intSettings[0]] as Double, values[1][intSettings[1]] as Double),
-                simpleScoreFunction(5.0, values[3][intSettings[3]] as Double,
-                        values[2][intSettings[2]] as Double, values[4][intSettings[4]] as Double)
+                visibilityScore(
+                        settingsMap.getOrDefault("visibilityNode", defaultScore.nodeVisibility) as Double,
+                        settingsMap.getOrDefault("visibilityArc", defaultScore.arcVisibility) as Double),
+                simpleScoreFunction(
+                        5.0,
+                        settingsMap.getOrDefault("ownForce", defaultScore.ownForce) as Double,
+                        settingsMap.getOrDefault("theirCity", defaultScore.theirCity) as Double,
+                        settingsMap.getOrDefault("theirForce", defaultScore.theirForce) as Double),
+                fortressScore(
+                        settingsMap.getOrDefault("fortressValue", defaultScore.fortressValue) as Double)
         )
     }
-
 }

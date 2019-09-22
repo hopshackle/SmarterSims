@@ -75,11 +75,13 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
     private val extraDebug = false
     private val solutionsTried = ArrayList<DoubleArray>()
     override val bestOfSampled: DoubleArray
+        get() = solutionsTried.map { Pair(it, getMeanEstimate(it) - getExplorationEstimate(it)) }.maxBy { it.second }?.first
+                ?: doubleArrayOf()
+    // we subtract 1 sd from the mean to get a bounded result
+
+    override val bestSolution: DoubleArray
         get() = solutionsTried.map { Pair(it, getMeanEstimate(it)) }.maxBy { it.second }?.first ?: doubleArrayOf()
 
-    private var _bestSolution: DoubleArray = doubleArrayOf()
-    override val bestSolution: DoubleArray
-        get() = _bestSolution
 
     override fun getMeanEstimate(x: DoubleArray): Double {
         val predictions = predict(x)
@@ -118,7 +120,7 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
     private var Tmean: Double = 0.toDouble()
     private val useExpectedImprovement = SimProperties.getProperty("ExpectedImprovementPerUnitTimeInParameterSearch", "false").equals("true")
     private val kappa = SimProperties.getProperty("ParameterSearchKappaForGP-UCB", "2.0").toDouble()
-    private val startSeeds = SimProperties.getProperty("ParameterSearchInitialRandomSeeds", "20").toInt()
+    private val startSeeds = SimProperties.getProperty("ParameterSearchInitialRandomSeeds", "50").toInt()
     private val kernelToUse = SimProperties.getProperty("ParameterSearchKernel", "SE:LIN")
 
     private val rnd = Random(System.currentTimeMillis())
@@ -129,9 +131,10 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
             val key = searchSpace.name(k)
             val options = searchSpace.nValues(k)
             if (searchSpace.value(k, 0) is Number) {
-                val minValue = (0 until options).map { (searchSpace.value(k, it) as Number).toDouble() }.min() ?: 0.00
-                val maxValue = (0 until options).map { (searchSpace.value(k, it) as Number).toDouble() }.max() ?: 0.00
-                parameterConstraints.add(ParameterDetail(key, minValue, maxValue))
+                val allValues = (0 until options).map { (searchSpace.value(k, it) as Number).toDouble() }
+                val minValue = allValues.min() ?: 0.00
+                val maxValue = allValues.max() ?: 0.00
+                parameterConstraints.add(ParameterDetail(key, minValue, maxValue, allValues.all { abs(it.roundToInt() - it) < 0.0001 }))
             } else {
                 parameterConstraints.add(ParameterDetail(key, (0 until options).map {
                     searchSpace.value(k, it)
@@ -166,6 +169,8 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
             }
             var bestScore = java.lang.Double.NEGATIVE_INFINITY
             var bestMean = java.lang.Double.NEGATIVE_INFINITY
+            var safeMean = java.lang.Double.NEGATIVE_INFINITY
+            var safeNoise = 0.0
             var bestEstimate = 0.0
             var bestPredictedTime = 0.0
             var bestEIScore = 0.0
@@ -175,20 +180,30 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
             val nextSetting = DoubleArray(parameterConstraints.size)
             val nextSettingWithEI = DoubleArray(parameterConstraints.size)
             val optimalSetting = DoubleArray(parameterConstraints.size)
+            val safeSetting = DoubleArray(parameterConstraints.size)
             var negNoise = 0
             for (i in 0 until N) {
                 val value = predictions[0].get(i, 0)
+                val localNoise = sqrt(predictions[1].get(i, 0) - baseNoise)
                 if (value > bestMean) {
                     bestMean = value
-                    bestUCB = sqrt(predictions[1].get(i, 0) - baseNoise)
+                    bestUCB = localNoise
                     for (j in optimalSetting.indices) {
                         optimalSetting[j] = xstar[i][j] + Xmean[j]
                         if (parameterConstraints[j].logScale)
                             optimalSetting[j] = exp(optimalSetting[j])
                     }
                 }
+                if (value - localNoise > safeMean) {
+                    safeMean = value - localNoise
+                    safeNoise = localNoise
+                    for (j in safeSetting.indices) {
+                        safeSetting[j] = xstar[i][j] + Xmean[j]
+                        if (parameterConstraints[j].logScale)
+                            safeSetting[j] = exp(safeSetting[j])
+                    }
+                }
             }
-            _bestSolution = optimalSetting
             for (i in 0 until N) {
                 val value = predictions[0].get(i, 0)
                 var latentNoise = predictions[1].get(i, 0) - baseNoise
@@ -229,8 +244,10 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
             }
 
             val logFile = BufferedWriter(FileWriter("$name.log", true))
-            val logMessage = String.format("Optimal mean is %.3g (sigma = %.2g, noise = %.2g) with params %s",
-                    bestMean + Ymean, bestUCB, sqrt(baseNoise), optimalSetting.joinToString("|") { String.format("%2g", it) })
+            val logMessage = String.format("Optimal mean is %.3g (sigma = %.2g, noise = %.2g) with params %s\n\t" +
+                    "Safe mean is %.3g (value = %.2g, sigma = %.2g) with params %s",
+                    bestMean + Ymean, bestUCB, sqrt(baseNoise), optimalSetting.joinToString("|") { String.format("%2g", it) },
+                    safeMean + Ymean, safeMean + Ymean + safeNoise, safeNoise, safeSetting.joinToString("|") { String.format("%2g", it) })
             logFile.write(logMessage + "\n")
             logFile.close()
             if (extraDebug) println(logMessage)
@@ -397,16 +414,15 @@ internal class ParameterDetail {
     var toValue: Double = 0.toDouble()
     var categoricalValues: List<Any> = emptyList()
 
-    constructor(parameter: String, from: Double, to: Double) {
+    constructor(parameter: String, from: Double, to: Double, isInteger: Boolean) {
         name = parameter
         continuous = true
-        if (from - from.toInt() < 0.0001 && to - to.toInt() < 0.0001)
-            integer = true
-        if (to / from > 1e2 || from / to > 1e2) {
-            if (to < 0.0) throw AssertionError("Negative values on logScale not yet supported")
+        integer = isInteger
+        if ((to != 0.00 && from != 0.00) && to / from > 1e2 || from / to > 1e2) {
+            if (to < 0.0 || from < 0.0) throw AssertionError("Negative values on logScale not yet supported")
             logScale = true
-            fromValue = Math.log(from)
-            toValue = Math.log(to)
+            fromValue = ln(from)
+            toValue = ln(to)
         } else {
             logScale = false
             fromValue = from
