@@ -343,7 +343,7 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
         get() = mapOf("useShiftBuffer" to Boolean::class, "probMutation" to Double::class,
                 "flipAtLeastOneValue" to Boolean::class, "discountFactor" to Double::class,
                 "opponentModel" to SimpleActionPlayerInterface::class, "sequenceLength" to Int::class,
-                "horizon" to Int::class)
+                "horizon" to Int::class, "timeBudget" to Int::class)
 
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
 

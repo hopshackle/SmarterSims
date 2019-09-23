@@ -31,6 +31,10 @@ val defaultScoreFunctions = mutableMapOf(
         PlayerId.Blue to simpleScoreFunction(1.0, 0.0, -1.0, 0.0),
         PlayerId.Red to simpleScoreFunction(1.0, 0.0, -1.0, 0.0)
 )
+val defaultVictoryFunctions = mutableMapOf(
+        PlayerId.Blue to { game: LandCombatGame -> game.world.cities.all { it.owner == PlayerId.Blue } },
+        PlayerId.Red to { game: LandCombatGame -> game.world.cities.all { it.owner == PlayerId.Red } }
+)
 
 class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List<Int>> = emptyMap()) : ActionAbstractGameState {
 
@@ -53,6 +57,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     }
 
     var scoreFunction: MutableMap<PlayerId, (LandCombatGame, Int) -> Double> = defaultScoreFunctions
+    var victoryFunction: MutableMap<PlayerId, (LandCombatGame) -> Boolean> = defaultVictoryFunctions
 
     override fun copy(perspective: Int): LandCombatGame {
         val newWorld = if (world.params.fogOfWar) {
@@ -143,8 +148,9 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
 
     override fun isTerminal(): Boolean {
         // game is over if all cities are controlled by the same player, whoever that is
-        val player0 = world.cities[0].owner
-        return (nTicks() > 1000 || world.cities.all { c -> c.owner == player0 })
+        return (nTicks() > 1000 ||
+                victoryFunction[PlayerId.Blue]?.invoke(this) ?: false ||
+                victoryFunction[PlayerId.Red]?.invoke(this) ?: false)
     }
 
     override fun nTicks() = eventQueue.currentTime

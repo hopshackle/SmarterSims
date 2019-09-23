@@ -85,7 +85,7 @@ class GaussianProcessSearch(val name: String, override var searchSpace: SearchSp
 
     override fun getMeanEstimate(x: DoubleArray): Double {
         val predictions = predict(x)
-        return predictions[0].get(0, 0)
+        return predictions[0].get(0, 0) + Ymean
     }
 
     override fun getExplorationEstimate(x: DoubleArray): Double {

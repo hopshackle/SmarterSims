@@ -19,6 +19,22 @@ fun main(args: Array<String>) {
     //      OODALoop = 10 : [5, 50]          - a single parameter setting for BLUE, and an Interval for RED
 
     // initially however I will hard-code this here
+    if (args.contains("--help") || args.contains("-h")) println(
+            """The first three arguments must be
+                |- number of simulations to run
+                |- input file name with Interval details
+                |- output file name to write results to
+                |
+                |Then there are a number of optional arguments:
+                |SCB|       <The Blue Score function>
+                |SCR|       <The Red Score function>
+                |blue=      file with parameterisation of the blue AI agent
+                |red=       file with parameterisation of the red AI agent
+                |map=       JSON file with map to use for all simulations
+                |VB=fort    <The Blue victory function will be to control all forts>
+                |VR=fort    <The Red victory function will be to control all forts>
+            """.trimMargin()
+    )
 
     val simsToRun = if (args.size > 0) args[0].toInt() else 100
     val inputFile = if (args.size > 1) args[1] else ""
@@ -34,8 +50,14 @@ fun main(args: Array<String>) {
     val blueAgentParams = agentParamsFromCommandLine(args, "blue", default = defaultBlueAgent) // defaults from ControlView
     val redAgentParams = agentParamsFromCommandLine(args, "red", default = defaultRedAgent)
 
-    val victoryFunction = arrayOf(stringToScoreFunction(args.firstOrNull { it.startsWith("VB|") }),
-            stringToScoreFunction(args.firstOrNull { it.startsWith("VR|") }))
+    val mapOverride: String = args.firstOrNull { it.startsWith("map") }?.split("=")?.get(1) ?: ""
+
+    val victoryFunctions: Map<PlayerId, (LandCombatGame) -> Boolean> = mapOf(
+            PlayerId.Blue to (if (args.contains("VB=fort")) { game: LandCombatGame -> game.world.cities.filter(City::fort).all { it.owner == PlayerId.Blue } }
+            else { game: LandCombatGame -> defaultScoreFunctions[PlayerId.Blue]?.invoke(game, 0) ?: 0.00 > defaultScoreFunctions[PlayerId.Red]?.invoke(game, 1) ?: 0.00 }),
+            PlayerId.Red to (if (args.contains("VR=fort")) { game: LandCombatGame -> game.world.cities.filter(City::fort).all { it.owner == PlayerId.Red } }
+            else { game: LandCombatGame -> defaultScoreFunctions[PlayerId.Red]?.invoke(game, 0) ?: 0.00 > defaultScoreFunctions[PlayerId.Blue]?.invoke(game, 1) ?: 0.00 })
+    )
 
     val numberFormatter: (Any?) -> String = { it ->
         when (it) {
@@ -47,8 +69,8 @@ fun main(args: Array<String>) {
     }
 
     val statisticsToKeep: Map<String, (LandCombatGame) -> Number> = mapOf(
-            "BLUE_WINS" to { g: LandCombatGame -> if (victoryFunction[0](g, 0) > 0.0) 1 else 0 },
-            "RED_WINS" to { g: LandCombatGame -> if (victoryFunction[1](g, 1) > 0.0) 1 else 0 },
+            "BLUE_WINS" to { g: LandCombatGame -> if (victoryFunctions[PlayerId.Blue]?.invoke(g) ?: false) 1 else 0 },
+            "RED_WINS" to { g: LandCombatGame -> if (victoryFunctions[PlayerId.Red]?.invoke(g) ?: false) 1 else 0 },
             "BLUE_FORCE" to { g: LandCombatGame -> simpleScoreFunction(0.0, 1.0, 0.0, 0.0).invoke(g, 0) },
             "RED_FORCE" to { g: LandCombatGame -> simpleScoreFunction(0.0, 1.0, 0.0, 0.0).invoke(g, 1) },
             "BLUE_CITIES" to { g: LandCombatGame -> simpleScoreFunction(1.0, 0.0, 0.0, 0.0).invoke(g, 0).toInt() },
@@ -82,7 +104,11 @@ fun main(args: Array<String>) {
     repeat(simsToRun) {
 
         val params = intervalParams.sampleParams()
-        val game = LandCombatGame(World(params = params))
+        val world = if (mapOverride == "") World(params = params) else {
+            val fileAsLines = BufferedReader(FileReader(mapOverride)).readLines().joinToString("\n")
+            createWorld(fileAsLines, params)
+        }
+        val game = LandCombatGame(world)
         game.scoreFunction[PlayerId.Blue] = blueScoreFunction
         game.scoreFunction[PlayerId.Red] = redScoreFunction
 

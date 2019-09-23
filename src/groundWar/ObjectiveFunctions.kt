@@ -36,6 +36,7 @@ fun stringToScoreFunction(stringRep: String?): (LandCombatGame, Int) -> Double {
     return retValue
 }
 
+
 fun simpleScoreFunction(ourCityValue: Double, ourForceValue: Double, theirCityValue: Double, theirForceValue: Double): (LandCombatGame, Int) -> Double {
     return { game: LandCombatGame, player: Int ->
         val playerId = numberToPlayerID(player)
