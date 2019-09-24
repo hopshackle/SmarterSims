@@ -75,11 +75,29 @@ fun scoreParamsFromCommandLine(args: Array<String>, prefix: String): ScoreParams
 }
 
 fun main(args: Array<String>) {
+    if (args.contains("--help") || args.contains("-h")) println(
+            """The first three arguments must be
+                |- search type <RHEA|MCTS|RHCA|Utility>|<filename for searchSpace definition>
+                |- number of runs|report every
+                |- search algorithm <STD|EXP_MEAN|EXP_SQRT|GP|EXP_FULL:dd> where dd is in [0.0, 1.0]
+                |
+                |Then there are a number of optional arguments:
+                |baseAgent=     The filename for the baseAgent (from which the searchSpace definition deviates)
+                |Agent=         The filename for the agent used as the opponent (for Utility, this is used on both sides!)
+                |GameParams=    The filename with game params to use
+                |useThreeTuples If specified and not using GP, then we use 3-tuples as well as 1-, 2- and N-tuples
+                |SCR=           Score function for Red
+                |SCB=           Score function for Blue      
+                |fortVictory    If specified, then instead of using material advantage, we score a game only on difference in forts taken
+            """.trimMargin()
+    )
+
     if (args.size < 3) throw AssertionError("Must specify at least three parameters: RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
     val totalRuns = args[1].split("|")[0].toInt()
     val reportEvery = args[1].split("|").getOrNull(1)?.toInt() ?: totalRuns
 
     val agentParams = agentParamsFromCommandLine(args, "Agent")
+    val fortVictory = args.contains("fortVictory")
 
     val searchSpace = when (args[0].split("|")[0]) {
         "RHEA" -> RHEASearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultRHEAAgent),
@@ -165,7 +183,7 @@ fun main(args: Array<String>) {
             agentParams,
             scoreFunctions = arrayOf(stringToScoreFunction(args.firstOrNull { it.startsWith("SCB|") }),
                     stringToScoreFunction(args.firstOrNull { it.startsWith("SCR|") })),
-            victoryFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("V|") })
+            fortVictory = fortVictory
     )
 
     repeat(totalRuns / reportEvery) {
@@ -212,7 +230,10 @@ fun main(args: Array<String>) {
     runGames(1000,
             bestAgent,
             agentParams.createAgent("opponent"),
-            eventParams = params)
+            scoreFunctions = arrayOf(stringToScoreFunction(args.firstOrNull { it.startsWith("SCB|") }),
+                    stringToScoreFunction(args.firstOrNull { it.startsWith("SCR|") })),
+            eventParams = params,
+            fortVictory = fortVictory)
     println(StatsCollator.summaryString())
 }
 
@@ -221,7 +242,7 @@ class GroundWarEvaluator(val searchSpace: HopshackleSearchSpace,
                          val logger: EvolutionLogger,
                          val opponentParams: AgentParams,
                          val scoreFunctions: Array<(LandCombatGame, Int) -> Double> = arrayOf(finalScoreFunction, finalScoreFunction),
-                         val victoryFunction: (LandCombatGame, Int) -> Double = finalScoreFunction
+                         val fortVictory: Boolean
 ) : SolutionEvaluator {
 
     override fun optimalFound() = false
@@ -269,9 +290,16 @@ class GroundWarEvaluator(val searchSpace: HopshackleSearchSpace,
                     game.scoreFunction[PlayerId.Blue] = scoreFunctions[0]
                 }
             }
+            val objectivePlayer = if (it == 1) 1 else 0
 
+            if (fortVictory)
+                game.victoryFunction[numberToPlayerID(objectivePlayer)] = allFortsConquered(numberToPlayerID(objectivePlayer))
             game.next(1000)
-            finalScore += victoryFunction(game, if (it == 1) 1 else 0)
+
+            finalScore += if (fortVictory)
+                fortressScore(10.0)(game, objectivePlayer)
+            else
+                finalScoreFunction(game, objectivePlayer)
         }
         nEvals++
         //     println("Game score ${settings.joinToString()} is ${game.score(0).toInt()}")

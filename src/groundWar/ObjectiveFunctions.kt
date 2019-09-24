@@ -14,6 +14,10 @@ val hasMaterialAdvantage: (LandCombatGame, Int) -> Boolean = { game: LandCombatG
     finalScoreFunction(game, player) > finalScoreFunction(game, 1 - player)
 }
 
+fun allFortsConquered(player: PlayerId): (LandCombatGame) -> Boolean = { game: LandCombatGame ->
+    game.world.cities.filter(City::fort).all { it.owner == player }
+}
+
 fun stringToScoreFunction(stringRep: String?): (LandCombatGame, Int) -> Double {
     if (stringRep == null) {
         return finalScoreFunction

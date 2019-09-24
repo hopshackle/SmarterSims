@@ -43,7 +43,7 @@ fun main(args: Array<String>) {
 fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: SimpleActionPlayerInterface,
              intervalParams: IntervalParams? = null, eventParams: EventGameParams? = null, worldSeeds: LongArray = longArrayOf(),
              scoreFunctions: Array<(LandCombatGame, Int) -> Double> = arrayOf(interimScoreFunction, interimScoreFunction),
-             victoryFunctions: Array<(LandCombatGame, Int) -> Boolean> = arrayOf(hasMaterialAdvantage, hasMaterialAdvantage)) {
+             fortVictory: Boolean = false) {
 
     val agents = mapOf(PlayerId.Blue to blueAgent, PlayerId.Red to redAgent)
 
@@ -77,6 +77,11 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
         println(String.format("Game %2d\tScore: %6.1f\tCities: %2d\tRoutes: %2d\tseed: %d\tTime: %3d\tTicks: %4d\tDecisions: %d:%d", r, gameScore, world.cities.size, world.routes.size, params.seed,
                 System.currentTimeMillis() - startTime, game.nTicks(), decisions.first.size, decisions.second.size))
 
+        val victoryFunctions: Array<(LandCombatGame, Int) -> Boolean> = if (fortVictory) {
+            arrayOf({ g, _ -> allFortsConquered(PlayerId.Blue).invoke(g) }, hasMaterialAdvantage)
+        } else {
+            arrayOf(hasMaterialAdvantage, hasMaterialAdvantage)
+        }
         StatsCollator.addStatistics("BLUE_victory", if (victoryFunctions[0](game, 0)) 1.0 else 0.0)
         StatsCollator.addStatistics("RED_victory", if (victoryFunctions[1](game, 1)) 1.0 else 0.0)
         StatsCollator.addStatistics("BLUE_wins", if (gameScore > 0.0) 1.0 else 0.0)

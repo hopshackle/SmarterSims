@@ -59,6 +59,7 @@ fun runWithParams(params: EventGameParams,
                   redAgent: SimpleActionPlayerInterface,
                   blueScoreFunction: (LandCombatGame, Int) -> Double = finalScoreFunction,
                   redScoreFunction: (LandCombatGame, Int) -> Double = finalScoreFunction,
+                  blueVictoryFunction: ((LandCombatGame) -> Boolean)? = null,
                   showAgentPlans: Boolean = false,
                   mapFile: String = "") {
     val fileAsLines = if (mapFile != "") BufferedReader(FileReader(mapFile)).readLines().joinToString("\n") else ""
@@ -72,6 +73,9 @@ fun runWithParams(params: EventGameParams,
 
     game.scoreFunction[PlayerId.Blue] = blueScoreFunction
     game.scoreFunction[PlayerId.Red] = redScoreFunction
+    if (blueVictoryFunction != null)
+        game.victoryFunction[PlayerId.Blue] = blueVictoryFunction
+    
     StatsCollator.clear()
 
     game.registerAgent(0, blueAgent)

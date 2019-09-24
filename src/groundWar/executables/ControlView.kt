@@ -158,7 +158,8 @@ class ControlView {
                             blueScoreFunction = blueFunction,
                             redScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -1.0),
                             showAgentPlans = agentPlanBox.isSelected,
-                            mapFile = mapNameField.text
+                            mapFile = mapNameField.text,
+                            blueVictoryFunction = if (asymmetricVictoryBox.isSelected) allFortsConquered(PlayerId.Blue) else null
                     )
                 }
                 runningThread.start()
