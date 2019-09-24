@@ -204,7 +204,10 @@ fun main(args: Array<String>) {
         }
     }
 
-    val bestAgent = searchSpace.getAgent(landscapeModel.bestOfSampled)
+    val bestAgent = when (landscapeModel) {
+        is GaussianProcessSearch -> searchSpace.getAgent(landscapeModel.bestOfSampled)
+        else -> searchSpace.getAgent(searchSpace.convertSettings(landscapeModel.bestOfSampled.map { it.toInt() }.toIntArray()))
+    }
     StatsCollator.clear()
     runGames(1000,
             bestAgent,
@@ -337,13 +340,12 @@ abstract class HopshackleSearchSpace(fileName: String) : SearchSpace {
 
 class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace(fileName) {
 
-    val opponentModel = (defaultParams.createAgent("default") as SimpleActionEvoAgent).opponentModel
-
     override val types: Map<String, KClass<*>>
         get() = mapOf("useShiftBuffer" to Boolean::class, "probMutation" to Double::class,
                 "flipAtLeastOneValue" to Boolean::class, "discountFactor" to Double::class,
-                "opponentModel" to SimpleActionPlayerInterface::class, "sequenceLength" to Int::class,
-                "horizon" to Int::class, "timeBudget" to Int::class)
+                "sequenceLength" to Int::class,
+                "horizon" to Int::class, "timeBudget" to Int::class,
+                "opponentWithdraw" to Boolean::class, "opponentAttack" to Double::class, "opponentDefense" to Double::class)
 
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
 
@@ -360,8 +362,7 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                         flipAtLeastOneValue = settingsMap.getOrDefault("flipAtLeastOneValue", defaultParams.params.contains("flipAtLeastOneValue")) as Boolean,
                         discountFactor = settingsMap.getOrDefault("discountFactor", defaultParams.getParam("discountFactor", "1.0").toDouble()) as Double
                 ),
-                opponentModel = opponentModel
-                //   opponentModel ?: SimpleActionDoNothing(1000) //RHEASearchSpace.values[5][settings[5]] as SimpleActionPlayerInterface
+                opponentModel = defaultParams.getOpponentModel(settingsMap)
         )
     }
 }
@@ -371,7 +372,7 @@ class RHCASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
     override val types: Map<String, KClass<*>>
         get() = mapOf("useShiftBuffer" to Boolean::class, "probMutation" to Double::class,
                 "flipAtLeastOneValue" to Boolean::class, "discountFactor" to Double::class,
-                "opponentModel" to SimpleActionPlayerInterface::class, "sequenceLength" to Int::class,
+                "sequenceLength" to Int::class,
                 "horizon" to Int::class, "populationSize" to Int::class, "parentSize" to Int::class,
                 "evalsPerGeneration" to Int::class)
 
@@ -395,12 +396,11 @@ class RHCASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
 
 class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace(fileName) {
 
-    val opponentModel = (defaultParams.createAgent("default") as MCTSTranspositionTableAgentMaster).opponentModel
-
     override val types: Map<String, KClass<*>>
         get() = mapOf("sequenceLength" to Int::class, "horizon" to Int::class, "pruneTree" to Boolean::class,
                 "C" to Double::class, "maxActions" to Int::class, "rolloutPolicy" to SimpleActionPlayerInterface::class,
-                "discountFactor" to Double::class, "opponentModel" to SimpleActionPlayerInterface::class)
+                "discountFactor" to Double::class, "opponentMCTS" to Boolean::class, "timeBudget" to Int::class,
+                "opponentWithdraw" to Boolean::class, "opponentAttack" to Double::class, "opponentDefense" to Double::class)
 
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         val settingsMap = settingsToMap(settings)
@@ -416,7 +416,10 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
         ),
                 stateFunction = LandCombatStateFunction,
                 rolloutPolicy = settingsMap.getOrDefault("rolloutPolicy", SimpleActionDoNothing(1000)) as SimpleActionPlayerInterface,
-                opponentModel = opponentModel
+                opponentModel = when {
+                    (settingsMap.getOrDefault("opponentMCTS", false) as Boolean) -> null
+                    else -> defaultParams.getOpponentModel(settingsMap)
+                }
         )
     }
 }

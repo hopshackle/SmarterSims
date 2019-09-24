@@ -85,6 +85,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
             state.visibilityModels[it.key] = it.value
         }
         state.scoreFunction = scoreFunction
+        state.victoryFunction = victoryFunction
         state.eventQueue.currentTime = nTicks()
         return state
     }
@@ -144,7 +145,12 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
         return this
     }
 
-    override fun score(player: Int) = scoreFunction[numberToPlayerID(player)]?.invoke(this, player) ?: 0.0
+    override fun score(player: Int): Double {
+        if (isTerminal())
+            return if (victoryFunction[numberToPlayerID(player)]?.invoke(this)
+                            ?: false) Double.MAX_VALUE else -Double.MAX_VALUE
+        return scoreFunction[numberToPlayerID(player)]?.invoke(this, player) ?: 0.0
+    }
 
     override fun isTerminal(): Boolean {
         // game is over if all cities are controlled by the same player, whoever that is

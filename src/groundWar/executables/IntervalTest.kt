@@ -56,7 +56,7 @@ fun main(args: Array<String>) {
             PlayerId.Blue to (if (args.contains("VB=fort")) { game: LandCombatGame -> game.world.cities.filter(City::fort).all { it.owner == PlayerId.Blue } }
             else { game: LandCombatGame -> defaultScoreFunctions[PlayerId.Blue]?.invoke(game, 0) ?: 0.00 > defaultScoreFunctions[PlayerId.Red]?.invoke(game, 1) ?: 0.00 }),
             PlayerId.Red to (if (args.contains("VR=fort")) { game: LandCombatGame -> game.world.cities.filter(City::fort).all { it.owner == PlayerId.Red } }
-            else { game: LandCombatGame -> defaultScoreFunctions[PlayerId.Red]?.invoke(game, 0) ?: 0.00 > defaultScoreFunctions[PlayerId.Blue]?.invoke(game, 1) ?: 0.00 })
+            else { game: LandCombatGame -> defaultScoreFunctions[PlayerId.Red]?.invoke(game, 1) ?: 0.00 > defaultScoreFunctions[PlayerId.Blue]?.invoke(game, 0) ?: 0.00 })
     )
 
     val numberFormatter: (Any?) -> String = { it ->
@@ -77,8 +77,8 @@ fun main(args: Array<String>) {
             "BLUE_FORTS" to { g: LandCombatGame -> fortressScore(1.0).invoke(g, 0).toInt() },
             "RED_FORTS" to { g: LandCombatGame -> fortressScore(1.0).invoke(g, 1).toInt() },
             "RED_CITIES" to { g: LandCombatGame -> simpleScoreFunction(1.0, 0.0, 0.0, 0.0).invoke(g, 1).toInt() },
-            "BLUE_SCORE" to { g: LandCombatGame -> g.score(0) },
-            "RED_SCORE" to { g: LandCombatGame -> g.score(1) },
+            "BLUE_SCORE" to { g: LandCombatGame -> blueScoreFunction(g, 0) },
+            "RED_SCORE" to { g: LandCombatGame -> redScoreFunction(g, 1) },
             "GAME_LENGTH" to { g: LandCombatGame -> g.nTicks() },
             "COMPLETE_VICTORY" to { g: LandCombatGame -> if (g.nTicks() < 1000) 1 else 0 }
     )

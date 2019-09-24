@@ -160,16 +160,7 @@ data class AgentParams(
     }
 
     fun createAgent(colour: String): SimpleActionPlayerInterface {
-        val oppParams = opponentModel.split(":")
-        val opponentModel = when (oppParams[0]) {
-            "Heuristic" -> {
-                val options = oppParams.subList(3, oppParams.size).map(HeuristicOptions::valueOf)
-                HeuristicAgent(oppParams[1].toDouble(), oppParams[2].toDouble(), options)
-            }
-            "DoNothing" -> SimpleActionDoNothing(1000)
-            "Random" -> SimpleActionRandom
-            else -> null
-        }
+        val opponentModel = getOpponentModel()
         return when (algorithm) {
             "Random" -> SimpleActionRandom
             "Heuristic" -> {
@@ -222,6 +213,35 @@ data class AgentParams(
                     opponentModel = opponentModel,
                     name = colour + "_MCTS")
             else -> throw AssertionError("Unknown agent type: " + algorithm)
+        }
+    }
+
+    fun getOpponentModel(settingsMap: Map<String, Any> = emptyMap()): SimpleActionPlayerInterface {
+        var oppParams = opponentModel.split(":").toMutableList()
+        (oppParams.size..4).forEach { oppParams.add("") }
+        if (settingsMap.contains("opponentWithdraw")) {
+            if (settingsMap["opponentWithdraw"] as Boolean) {
+                oppParams[3] = "WITHDRAW"
+                oppParams[4] = "ATTACK"
+            } else {
+                oppParams[4] = "WITHDRAW"
+                oppParams[3] = "ATTACK"
+            }
+        }
+        if (settingsMap.contains("opponentAttack")) {
+            oppParams[1] = settingsMap["opponentAttack"].toString()
+        }
+        if (settingsMap.contains("opponentDefense")) {
+            oppParams[2] = settingsMap["opponentDefense"].toString()
+        }
+        return when (oppParams[0]) {
+            "Heuristic" -> {
+                val options = oppParams.subList(3, oppParams.size).map(HeuristicOptions::valueOf)
+                HeuristicAgent(oppParams[1].toDouble(), oppParams[2].toDouble(), options)
+            }
+            "DoNothing" -> SimpleActionDoNothing(1000)
+            "Random" -> SimpleActionRandom
+            else -> SimpleActionDoNothing(1000)
         }
     }
 
