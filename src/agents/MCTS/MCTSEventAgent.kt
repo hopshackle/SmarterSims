@@ -62,7 +62,7 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
         } while (iteration < params.maxPlayouts && System.currentTimeMillis() < startTime + params.timeLimit)
         StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
         StatsCollator.addStatistics("${name}_Iterations", iteration)
-        val (meanDepth, maxDepth) = getDepth(gameState)
+        val (meanDepth, maxDepth) = getDepth(playerRef, gameState)
         StatsCollator.addStatistics("${name}_MeanDepth", meanDepth)
         StatsCollator.addStatistics("${name}_MaxDepth", maxDepth)
         StatsCollator.addStatistics("${name}_States", tree.size)
@@ -72,12 +72,12 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
         //    println("$iteration iterations executed for player $playerId")
         if (MCTSPlanMaintenance)
             currentPlan = getPlan(gameState, tree, stateFunction, playerRef)
-        return getBestAction(gameState)
+        return getBestAction(playerRef, gameState)
     }
 
     // returns (meanDepth, maxDepth)
-    fun getDepth(gameState: ActionAbstractGameState): Pair<Double, Int> {
-        var keysToProcess = setOf(stateFunction(gameState))
+    fun getDepth(playerRef: Int, gameState: ActionAbstractGameState): Pair<Double, Int> {
+        var keysToProcess = setOf(playerRef.toString() + "|" + stateFunction(gameState))
         val processedKeys = mutableSetOf<String>()
         var depths = IntArray(50) { 0 }
         var currentDepth = 0
@@ -93,18 +93,20 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
         return Pair(meanDepth, currentDepth - 1)
     }
 
-    fun getBestAction(state: ActionAbstractGameState): Action {
-        val key = stateFunction(state)
+    fun getBestAction(playerRef: Int, state: ActionAbstractGameState): Action {
+        val key = playerRef.toString() + "|" + stateFunction(state)
         val chosenAction = tree[key]?.getBestAction()
-        if (chosenAction == null) throw AssertionError("Null action")
+        if (chosenAction == null)
+            throw AssertionError("Null action")
         return chosenAction
     }
 
     fun resetTree(root: ActionAbstractGameState, playerRef: Int) {
-        if (params.pruneTree && tree.containsKey(stateFunction(root))) {
+        val key = playerRef.toString() + "|" + stateFunction(root)
+        if (params.pruneTree && tree.containsKey(key)) {
             val keysToKeep = mutableSetOf<String>()
             val unprocessedKeys = TreeSet<String>()
-            unprocessedKeys.add(stateFunction(root))
+            unprocessedKeys.add(key)
             do {
                 val nextKey = unprocessedKeys.first()
                 keysToKeep.add(nextKey)
@@ -206,10 +208,10 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
     }
 
     fun setRoot(gameState: ActionAbstractGameState, playerRef: Int) {
-        val key = stateFunction(gameState)
+        val key = playerRef.toString() + "|" + stateFunction(gameState)
         if (debug) println("Adding root state " + key)
         if (!stateToActionMap.contains(key))
-            stateToActionMap[key] = gameState.possibleActions(playerRef, params.maxActions)
+            stateToActionMap[key] = gameState.possibleActions(playerRef, params.maxActions, params.actionFilter)
 
         if (!tree.contains(key))
             tree[key] = TTNode(params, stateToActionMap[key] ?: emptyList())
@@ -221,7 +223,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         if (firstAction) setRoot(gameState, playerRef)
 
         actionCount++
-        val currentState = stateFunction(gameState)
+        val currentState = playerRef.toString() + "|" + stateFunction(gameState)
         actionsTaken += gameState.codonsPerAction()  // for comparability with RHEA
 
         val node = tree[currentState]
@@ -247,7 +249,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
     private fun possibleActions(gameState: ActionAbstractGameState, currentState: String, playerRef: Int): List<Action> {
         // we create X random actions on the same lines as an EvoAgent would
         if (!stateToActionMap.containsKey(currentState)) {
-            stateToActionMap[currentState] = gameState.possibleActions(playerRef, params.maxActions)
+            stateToActionMap[currentState] = gameState.possibleActions(playerRef, params.maxActions, params.actionFilter)
         }
 
         return stateToActionMap[currentState] ?: emptyList()
@@ -302,7 +304,7 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
         val discountedReward = incrementalRewardsAtTime.map { it.first * params.discountRate.pow(it.second) }.sum()
         var previousState = ""
         trajectory.forEach { (state, _, _, possibleActions, action) ->
-            val node = tree[state]
+            val node =  tree[state]
             when {
                 node == null && nodesToExpand > 0 -> {
                     nodesToExpand--

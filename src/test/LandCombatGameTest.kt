@@ -592,10 +592,10 @@ class TranslateGeneTests {
 
     @Test
     fun MCTSActionsSkipsTranslateGeneLogic() {
-        val world = World(cities, routes, params = params.copy(actionFilter = "MCTS", minAssaultFactor = doubleArrayOf(1.0, 1.0)))
+        val world = World(cities, routes, params = params.copy(minAssaultFactor = doubleArrayOf(1.0, 1.0)))
         val localGame = LandCombatGame(world)
         assertEquals(localGame.world.cities.size, 3)
-        val availableBlueActions = localGame.possibleActions(0)
+        val availableBlueActions = localGame.possibleActions(0, filterType = "core")
         assertEquals(availableBlueActions.size, 7)
         val baseWait = params.OODALoop[0]
         assertTrue(availableBlueActions.contains(LaunchExpedition(PlayerId.Blue, 0, 1, 1.0, baseWait)))
@@ -611,7 +611,7 @@ class TranslateGeneTests {
         localGame.planEvent(0, CityInflux(PlayerId.Blue, Force(100.0), 0, -1))
         localGame.next(1)
         // we now increase the blue force so that the two previously illegitimate options are now legal
-        val availableBlueActionsAfterForceIncrease = localGame.possibleActions(0)
+        val availableBlueActionsAfterForceIncrease = localGame.possibleActions(0, filterType = "core")
         assertEquals(availableBlueActionsAfterForceIncrease.size, 9)
         assertTrue(availableBlueActionsAfterForceIncrease.contains(LaunchExpedition(PlayerId.Blue, 0, 1, 1.0, baseWait)))
         assertTrue(availableBlueActionsAfterForceIncrease.contains(LaunchExpedition(PlayerId.Blue, 0, 1, 2.0 / 3.0, baseWait)))

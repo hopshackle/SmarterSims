@@ -198,6 +198,7 @@ data class AgentParams(
                             maxPlayouts = evalBudget,
                             timeLimit = timeBudget,
                             maxActions = getParam("maxActions", "20").toInt(),
+                            actionFilter = getParam("actionFilter", "none"),
                             maxDepth = sequenceLength,
                             horizon = planningHorizon,
                             pruneTree = params.contains("pruneTree"),
