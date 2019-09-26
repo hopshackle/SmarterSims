@@ -1,6 +1,7 @@
 package groundWar
 
 import ggi.*
+import kotlin.math.max
 import kotlin.random.Random
 
 enum class HeuristicOptions {
@@ -85,6 +86,36 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
         }
 
         return NoAction(player, gameState.world.params.OODALoop[player])
+    }
+
+    private fun reinforceOption(gameState: LandCombatGame, player: Int): Action {
+        val playerId = numberToPlayerID(player)
+        // the idea here is that we look for city not adjacent to a city that is a threat (at least defenseRation the force size of any enemy neighbour)
+        // and that is next to a threatened friendly city (i.e. one which is less than defenseRatio force of an enemy neighbour)
+
+        with(gameState.world) {
+            val defendedCities = cities.withIndex().map { (i, c) ->
+                val maxCityEnemy: Double = allRoutesFromCity[i]?.map { r -> cities[r.toCity] }?.filterNot { it.owner == playerId }?.map { it.pop.size }?.max()
+                        ?: 0.00
+                val maxTransitEnemy: Double = currentTransits.filter { t -> t.toCity == i && t.playerId != playerId && t.force.size > c.pop.size * defenseRatio }.map { it.force.size }.max()
+                        ?: 0.00
+                val maxEnemy = max(maxCityEnemy, maxTransitEnemy)
+                Triple(i, c, maxEnemy)
+            }.filter { (i, c, m) -> c.owner == playerId && c.pop.size > 0.00 && c.pop.size > m * defenseRatio }
+
+            val threatenedCities = cities.withIndex().map { (i, c) ->
+                val maxCityEnemy: Double = allRoutesFromCity[i]?.map { r -> cities[r.toCity] }?.filterNot { it.owner == playerId }?.map { it.pop.size }?.max()
+                        ?: 0.00
+                val maxTransitEnemy: Double = currentTransits.filter { t -> t.toCity == i && t.playerId != playerId && t.force.size > c.pop.size * defenseRatio }.map { it.force.size }.max()
+                        ?: 0.00
+                val maxEnemy = max(maxCityEnemy, maxTransitEnemy)
+                Triple(i, c, maxEnemy)
+            }.filter { (i, c, m) -> c.owner == playerId &&  c.pop.size < m * defenseRatio }
+
+            defendedCities.filter{(i, c, m) ->
+                allRoutesFromCity[i]?.
+            }
+        }
     }
 
     override fun getLastPlan(): List<Action> {

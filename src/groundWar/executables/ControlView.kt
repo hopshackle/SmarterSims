@@ -145,8 +145,8 @@ class ControlView {
                 val redAgent = createAgentParamsFromString(redAgentDetails.text.split("\n")).createAgent("RED")
                 val blueFunction = when {
                     asymmetricVictoryBox.isSelected -> compositeScoreFunction(
-                            simpleScoreFunction(0.0, 0.5, 0.0, 0.0),
-                            fortressScore(25.0)
+                            listOf(simpleScoreFunction(0.0, 0.5, 0.0, 0.0),
+                                    fortressScore(25.0))
                     )
                     else -> simpleScoreFunction(5.0, 1.0, -5.0, -1.0)
                 }

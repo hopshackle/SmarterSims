@@ -48,6 +48,12 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
 
     val agents = mapOf(PlayerId.Blue to blueAgent, PlayerId.Red to redAgent)
 
+    val victoryFunctions: Array<(LandCombatGame, Int) -> Boolean> = if (fortVictory) {
+        arrayOf({ g, _ -> allFortsConquered(PlayerId.Blue).invoke(g) }, hasMaterialAdvantage)
+    } else {
+        arrayOf(hasMaterialAdvantage, hasMaterialAdvantage)
+    }
+
     for (r in 1..maxGames) {
 
         agents[PlayerId.Blue]?.reset()
@@ -64,6 +70,9 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
         val game = LandCombatGame(world)
         game.scoreFunction[PlayerId.Blue] = scoreFunctions[0]
         game.scoreFunction[PlayerId.Red] = scoreFunctions[1]
+        if (fortVictory) {
+            game.victoryFunction[PlayerId.Blue] = { g -> allFortsConquered(PlayerId.Blue).invoke(g) }
+        }
         game.registerAgent(0, agents[numberToPlayerID(0)] ?: SimpleActionDoNothing(1000))
         game.registerAgent(1, agents[numberToPlayerID(1)] ?: SimpleActionDoNothing(1000))
         val startTime = System.currentTimeMillis()
@@ -78,11 +87,7 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
         println(String.format("Game %2d\tScore: %6.1f\tCities: %2d\tRoutes: %2d\tseed: %d\tTime: %3d\tTicks: %4d\tDecisions: %d:%d", r, gameScore, world.cities.size, world.routes.size, params.seed,
                 System.currentTimeMillis() - startTime, game.nTicks(), decisions.first.size, decisions.second.size))
 
-        val victoryFunctions: Array<(LandCombatGame, Int) -> Boolean> = if (fortVictory) {
-            arrayOf({ g, _ -> allFortsConquered(PlayerId.Blue).invoke(g) }, hasMaterialAdvantage)
-        } else {
-            arrayOf(hasMaterialAdvantage, hasMaterialAdvantage)
-        }
+
         StatsCollator.addStatistics("BLUE_victory", if (victoryFunctions[0](game, 0)) 1.0 else 0.0)
         StatsCollator.addStatistics("RED_victory", if (victoryFunctions[1](game, 1)) 1.0 else 0.0)
         StatsCollator.addStatistics("BLUE_wins", if (gameScore > 0.0) 1.0 else 0.0)

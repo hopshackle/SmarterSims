@@ -1,7 +1,9 @@
 package groundWar
 
+import kotlin.math.ln
 
-fun compositeScoreFunction(vararg functions: (LandCombatGame, Int) -> Double): (LandCombatGame, Int) -> Double {
+
+fun compositeScoreFunction(functions: List<(LandCombatGame, Int) -> Double>): (LandCombatGame, Int) -> Double {
     return { game: LandCombatGame, player: Int ->
         functions.map { f -> f(game, player) }.sum()
     }
@@ -23,21 +25,21 @@ fun stringToScoreFunction(stringRep: String?): (LandCombatGame, Int) -> Double {
         return finalScoreFunction
     }
     var sp = stringRep.split("|").filterNot { it.startsWith("SC") }.map { it.toDouble() }
-    sp = sp + (sp.size until 7).map { 0.00 }
-    var retValue = simpleScoreFunction(sp[0], sp[2], sp[1], sp[3])
-    if (sp.subList(4, 6).any { it != 0.00 }) {
-        retValue = compositeScoreFunction(
-                retValue,
-                visibilityScore(sp[4], sp[5])
-        )
-    }
-    if (sp.subList(6, 7).any { it != 0.00 }) {
-        retValue = compositeScoreFunction(
-                retValue,
-                fortressScore(sp[6])
-        )
-    }
-    return retValue
+    sp = sp + (sp.size until 9).map { 0.00 }
+    var scoreComponents = mutableListOf(simpleScoreFunction(sp[0], sp[2], sp[1], sp[3]))
+    if (sp.subList(4, 6).any { it != 0.00 })
+        scoreComponents.add(visibilityScore(sp[4], sp[5]))
+
+    if (sp.subList(6, 7).any { it != 0.00 })
+        scoreComponents.add(fortressScore(sp[6]))
+
+    if (sp.subList(7, 8).any { it != 0.00 })
+        scoreComponents.add(entropyScoreFunction(sp[7]))
+
+    if (sp.subList(8, 9).any { it != 0.00 })
+        scoreComponents.add(localAdvantageScoreFunction(sp[8]))
+
+    return compositeScoreFunction(scoreComponents)
 }
 
 
@@ -83,9 +85,37 @@ fun visibilityScore(nodeValue: Double = 5.0, arcValue: Double = 2.0): (LandComba
     return { game: LandCombatGame, player: Int ->
         val playerColour = numberToPlayerID(player)
         with(game.world) {
-            val citiesVisible = (0 until cities.size).count { checkVisible(it, playerColour) }
+            val citiesVisible = (cities.indices).count { checkVisible(it, playerColour) }
             val arcsVisible = routes.count { checkVisible(it, playerColour) }
             citiesVisible * nodeValue + arcsVisible / 2.0 * arcValue
+        }
+    }
+}
+
+fun entropyScoreFunction(coefficient: Double): (LandCombatGame, Int) -> Double {
+    return { game: LandCombatGame, player: Int ->
+        val playerColour = numberToPlayerID(player)
+        with(game.world) {
+            val distinctForces = (cities.filter { it.owner == playerColour }.map { it.pop.size } +
+                    currentTransits.filter { it.playerId == playerColour }.map { it.force.size })
+                    .filter { it > 0.05 }
+            val total = distinctForces.sum()
+            val distribution = distinctForces.map { it / total }
+            coefficient * distribution.map { -it * ln(it) }.sum()
+        }
+    }
+}
+
+fun localAdvantageScoreFunction(coefficient: Double): (LandCombatGame, Int) -> Double {
+    return { game: LandCombatGame, player: Int ->
+        val playerColour = numberToPlayerID(player)
+        with(game.world) {
+            cities.withIndex()
+                    .filter { it.value.owner == playerColour }
+                    .flatMap { allRoutesFromCity[it.index]?.map { r -> Pair(r.fromCity, r.toCity) } ?: emptyList() }
+                    .filterNot{(_, toCity) -> cities[toCity].owner == playerColour}
+                    .map { (fromCity, toCity) -> Pair(cities[fromCity].pop.size, cities[toCity].pop.size) }
+                    .map { it.first - it.second }.sum()
         }
     }
 }
