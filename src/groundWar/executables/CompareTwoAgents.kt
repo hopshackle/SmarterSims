@@ -34,9 +34,10 @@ fun main(args: Array<String>) {
     val blueScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCB") })
     val redScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCR") })
 
+    val fortVictory = args.contains("fortVictory")
     StatsCollator.clear()
     runGames(maxGames, agentParams1.createAgent("BLUE"), agentParams2.createAgent("RED"), intervalParams,
-            scoreFunctions = arrayOf(blueScoreFunction, redScoreFunction))
+            scoreFunctions = arrayOf(blueScoreFunction, redScoreFunction), fortVictory = fortVictory)
     println(StatsCollator.summaryString())
 }
 
