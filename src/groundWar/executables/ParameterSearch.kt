@@ -390,7 +390,7 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                         flipAtLeastOneValue = settingsMap.getOrDefault("flipAtLeastOneValue", defaultParams.params.contains("flipAtLeastOneValue")) as Boolean,
                         discountFactor = settingsMap.getOrDefault("discountFactor", defaultParams.getParam("discountFactor", "1.0").toDouble()) as Double
                 ),
-                opponentModel = defaultParams.getOpponentModel(settingsMap)
+                opponentModel = defaultParams.getOpponentModel(settingsMap) ?: SimpleActionDoNothing(1000)
         )
     }
 }
@@ -446,6 +446,7 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 rolloutPolicy = settingsMap.getOrDefault("rolloutPolicy", SimpleActionDoNothing(1000)) as SimpleActionPlayerInterface,
                 opponentModel = when {
                     (settingsMap.getOrDefault("opponentMCTS", false) as Boolean) -> null
+                    defaultParams.opponentModel == "MCTS" -> null
                     else -> defaultParams.getOpponentModel(settingsMap)
                 }
         )

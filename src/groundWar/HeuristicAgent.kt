@@ -112,9 +112,10 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
                 Triple(i, c, maxEnemy)
             }.filter { (i, c, m) -> c.owner == playerId &&  c.pop.size < m * defenseRatio }
 
-            defendedCities.filter{(i, c, m) ->
-                allRoutesFromCity[i]?.
-            }
+       //     defendedCities.filter{(i, c, m) ->
+       //         allRoutesFromCity[i]?.
+       //     }
+            return NoAction(0, 1000)
         }
     }
 

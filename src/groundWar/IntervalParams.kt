@@ -217,7 +217,7 @@ data class AgentParams(
         }
     }
 
-    fun getOpponentModel(settingsMap: Map<String, Any> = emptyMap()): SimpleActionPlayerInterface {
+    fun getOpponentModel(settingsMap: Map<String, Any> = emptyMap()): SimpleActionPlayerInterface? {
         var oppParams = opponentModel.split(":").toMutableList()
         (oppParams.size..4).forEach { oppParams.add("") }
         if (settingsMap.contains("opponentWithdraw")) {
@@ -242,6 +242,7 @@ data class AgentParams(
             }
             "DoNothing" -> SimpleActionDoNothing(1000)
             "Random" -> SimpleActionRandom
+            "MCTS" -> null
             else -> SimpleActionDoNothing(1000)
         }
     }
