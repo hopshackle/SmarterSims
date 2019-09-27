@@ -140,6 +140,7 @@ class MCTSTranspositionTableAgentMaster(val params: MCTSParameters,
         tree.clear()
         opponentModel?.reset()
         stateLinks.clear()
+        stateToActionMap.clear()
         return this
     }
 
