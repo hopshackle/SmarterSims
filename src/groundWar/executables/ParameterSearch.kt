@@ -446,7 +446,7 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 rolloutPolicy = settingsMap.getOrDefault("rolloutPolicy", SimpleActionDoNothing(1000)) as SimpleActionPlayerInterface,
                 opponentModel = when {
                     (settingsMap.getOrDefault("opponentMCTS", false) as Boolean) -> null
-                    defaultParams.opponentModel == "null" -> null
+                    defaultParams.opponentModel == "MCTS" -> null
                     else -> defaultParams.getOpponentModel(settingsMap)
                 }
         )
