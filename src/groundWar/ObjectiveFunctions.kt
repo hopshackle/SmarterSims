@@ -115,7 +115,7 @@ fun localAdvantageScoreFunction(coefficient: Double): (LandCombatGame, Int) -> D
                     .flatMap { allRoutesFromCity[it.index]?.map { r -> Pair(r.fromCity, r.toCity) } ?: emptyList() }
                     .filterNot{(_, toCity) -> cities[toCity].owner == playerColour}
                     .map { (fromCity, toCity) -> Pair(cities[fromCity].pop.size, cities[toCity].pop.size) }
-                    .map { it.first - it.second }.sum()
+                    .map { it.first - it.second }.sum() * coefficient
         }
     }
 }

@@ -256,10 +256,13 @@ fun createAgentParamsFromString(details: List<String>): AgentParams {
     //      OODALoop = 10, [5, 50]          - a single parameter setting for BLUE, and an Interval for RED
 
     // firstly we create a map from parameter name to value
-    val paramMap: Map<String, String> = details.map {
+    val paramMap: Map<String, String> = details.filter{it.trim() != ""}.map {
         val temp = it.split("=")
         temp[0].trim() to temp[1].trim()
     }.toMap()
+
+    if (!paramMap.contains("algoParams"))
+        throw AssertionError("Agent description must contain algoParams")
 
     return AgentParams(
             algorithm = paramMap.getOrDefault("algorithm", "RHEA"),
