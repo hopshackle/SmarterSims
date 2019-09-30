@@ -65,7 +65,7 @@ class WorldView(var game: LandCombatGame, val dim: Dimension = Dimension(400, 25
                         (cities[r.toCity].location.x * xScale).toInt(), (cities[r.toCity].location.y * yScale).toInt())
             }
 
-            for (c in cities) {
+            for ((i, c) in cities.withIndex()) {
                 val ellipse: Shape = if (c.fort) {
                     Rectangle2D.Double(xScale * (c.location.x - c.radius), yScale * (c.location.y - c.radius),
                             2 * c.radius * xScale, 2 * c.radius * yScale)
