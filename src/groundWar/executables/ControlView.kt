@@ -145,10 +145,14 @@ class ControlView {
                 val redAgent = createAgentParamsFromString(redAgentDetails.text.split("\n")).createAgent("RED")
                 val blueFunction = when {
                     asymmetricVictoryBox.isSelected -> compositeScoreFunction(
-                            listOf(simpleScoreFunction(0.0, 0.5, 0.0, 0.0),
+                            listOf(simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
+                                    entropyScoreFunction(-1.0),
                                     fortressScore(25.0))
                     )
-                    else -> simpleScoreFunction(5.0, 1.0, -5.0, -1.0)
+                    else -> compositeScoreFunction(listOf(
+                            simpleScoreFunction(5.0, 1.0, -5.0, -0.5),
+                            entropyScoreFunction(-1.0)
+                    ))
                 }
                 runningThread = Thread {
                     runWithParams(
@@ -156,7 +160,10 @@ class ControlView {
                             blueAgent,
                             redAgent,
                             blueScoreFunction = blueFunction,
-                            redScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -1.0),
+                            redScoreFunction = compositeScoreFunction(listOf(
+                                    simpleScoreFunction(5.0, 1.0, -5.0, -1.0),
+                                    entropyScoreFunction(-1.0)
+                            )),
                             showAgentPlans = agentPlanBox.isSelected,
                             mapFile = mapNameField.text,
                             blueVictoryFunction = if (asymmetricVictoryBox.isSelected) allFortsConquered(PlayerId.Blue) else null
