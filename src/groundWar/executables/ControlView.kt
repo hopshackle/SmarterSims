@@ -152,7 +152,8 @@ class ControlView {
                     )
                     else -> compositeScoreFunction(listOf(
                             simpleScoreFunction(5.0, 1.0, -5.0, -0.5),
-                            entropyScoreFunction(-1.0)
+                            entropyScoreFunction(-1.0),
+                            localAdvantageScoreFunction(0.1)
                     ))
                 }
                 runningThread = Thread {
