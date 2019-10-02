@@ -153,7 +153,7 @@ class ControlView {
                     else -> compositeScoreFunction(listOf(
                             simpleScoreFunction(5.0, 1.0, -5.0, -0.5),
                             entropyScoreFunction(-1.0),
-                            localAdvantageScoreFunction(0.1)
+                            localAdvantageScoreFunction(0.01)
                     ))
                 }
                 runningThread = Thread {
@@ -164,7 +164,8 @@ class ControlView {
                             blueScoreFunction = blueFunction,
                             redScoreFunction = compositeScoreFunction(listOf(
                                     simpleScoreFunction(5.0, 1.0, -5.0, -1.0),
-                                    entropyScoreFunction(-1.0)
+                                    entropyScoreFunction(-1.0),
+                                    localAdvantageScoreFunction(0.01)
                             )),
                             showAgentPlans = agentPlanBox.isSelected,
                             mapFile = mapNameField.text,
