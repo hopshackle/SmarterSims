@@ -179,7 +179,7 @@ data class AgentParams(
                             probMutation = getParam("probMutation", "0.01").toDouble(),
                             discountFactor = getParam("discountFactor", "1.0").toDouble(),
                             name = colour + "_RHEA"),
-                    opponentModel = opponentModel)
+                    opponentModel = opponentModel ?: SimpleActionDoNothing(1000))
             "RHCA" -> RHCAAgent(
                     flipAtLeastOneValue = params.contains("flipAtLeastOneValue"),
                     probMutation = getParam("probMutation", "0.01").toDouble(),
