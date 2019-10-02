@@ -17,7 +17,18 @@ class WorldView(var game: LandCombatGame, val dim: Dimension = Dimension(400, 25
 
     val oliveGreen = Color(84, 79, 61)
 
-    val outline = Color.lightGray
+    val outline = when {
+        game.world.imageFile == null -> Color.lightGray
+        game.world.imageFile == "" -> Color.lightGray
+        else -> Color.darkGray
+    }
+
+    val textColour = when (outline) {
+        Color.lightGray -> Color.white
+        Color.darkGray -> Color.black
+        else -> Color.red
+    }
+
     val playerCols = hashMapOf<PlayerId, Color>(
             PlayerId.Neutral to Color.getHSBColor(0.3f, 0.8f, 0.8f),
             PlayerId.Blue to Color.getHSBColor(0.57f, 0.9f, 0.9f),
@@ -54,7 +65,7 @@ class WorldView(var game: LandCombatGame, val dim: Dimension = Dimension(400, 25
                         (cities[r.toCity].location.x * xScale).toInt(), (cities[r.toCity].location.y * yScale).toInt())
             }
 
-            for (c in cities) {
+            for ((i, c) in cities.withIndex()) {
                 val ellipse: Shape = if (c.fort) {
                     Rectangle2D.Double(xScale * (c.location.x - c.radius), yScale * (c.location.y - c.radius),
                             2 * c.radius * xScale, 2 * c.radius * yScale)
@@ -68,7 +79,7 @@ class WorldView(var game: LandCombatGame, val dim: Dimension = Dimension(400, 25
                 g.fill(ellipse)
                 val label = if (c.owner == PlayerId.Fog) "?" else "${c.pop.size.roundToInt()}"
                 DrawUtil().centreString(g, label, xScale * c.location.x, yScale * c.location.y)
-                DrawUtil().centreString(g, c.name, xScale * (c.location.x + params.radius + 20), yScale * (c.location.y + params.radius + 20), Color.WHITE)
+                DrawUtil().centreString(g, c.name, xScale * (c.location.x + params.radius + 20), yScale * (c.location.y + params.radius + 20), textColour)
             }
 
             for (t in currentTransits) {
@@ -79,7 +90,7 @@ class WorldView(var game: LandCombatGame, val dim: Dimension = Dimension(400, 25
                 g.draw(ellipse)
                 g.fill(ellipse)
                 val label = "${t.force.size.roundToInt()}"
-                g.setColor(Color.white)
+                g.setColor(textColour)
                 DrawUtil().centreString(g, label, xScale * currentLocation.x, yScale * currentLocation.y)
             }
 

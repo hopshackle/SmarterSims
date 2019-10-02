@@ -4,6 +4,7 @@ import ggi.*
 import groundWar.fatigue.FatigueModel
 import groundWar.fatigue.LinearFatigue
 import groundWar.fogOfWar.HistoricVisibility
+import org.apache.commons.math3.ode.events.FilterType
 import test.noVisibility
 import kotlin.math.*
 import kotlin.collections.*
@@ -105,10 +106,25 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
 
     override fun nActions() = 10
 
-    override fun possibleActions(player: Int, max: Int): List<Action> {
-        return (0 until max * 10).asSequence().map {
-            translateGene(player, IntArray(codonsPerAction()) { LCG_rnd.nextInt(nActions()) })
-        }.distinct().take(max).toList()
+    override fun possibleActions(player: Int, max: Int, filterType: String): List<Action> {
+        return when (filterType) {
+            "core" -> {
+                val playerId = numberToPlayerID(player)
+                world.cities.withIndex()
+                        .filter { it.value.owner == playerId && it.value.pop.size > 0.01 }
+                        .flatMap { (startIndex, _) -> world.allRoutesFromCity[startIndex]!!.map { Pair(it.fromCity, it.toCity) } }
+                        .flatMap { (fromCity, toCity) ->
+                            (1..3)
+                                    .map { LaunchExpedition(playerId, fromCity, toCity, it / 3.0, world.params.OODALoop[player]) }
+                        }.filter{it.isValid(this)} +
+                        listOf(InterruptibleWait(player, world.params.OODALoop[player]),
+                                InterruptibleWait(player, 3 * world.params.OODALoop[player]),
+                                InterruptibleWait(player, 10 * world.params.OODALoop[player]))
+            }
+            else -> (0 until max * 10).asSequence().map {
+                translateGene(player, IntArray(codonsPerAction()) { LCG_rnd.nextInt(nActions()) })
+            }.distinct().take(max).toList()
+        }
     }
 
     override fun translateGene(player: Int, gene: IntArray): Action {
@@ -147,8 +163,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
 
     override fun score(player: Int): Double {
         if (isTerminal())
-            return if (victoryFunction[numberToPlayerID(player)]?.invoke(this)
-                            ?: false) Double.MAX_VALUE else -Double.MAX_VALUE
+            return if (victoryFunction[numberToPlayerID(player)]?.invoke(this) == true) Double.MAX_VALUE else -Double.MAX_VALUE
         return scoreFunction[numberToPlayerID(player)]?.invoke(this, player) ?: 0.0
     }
 

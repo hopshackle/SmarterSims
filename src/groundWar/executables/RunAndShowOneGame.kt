@@ -75,7 +75,7 @@ fun runWithParams(params: EventGameParams,
     game.scoreFunction[PlayerId.Red] = redScoreFunction
     if (blueVictoryFunction != null)
         game.victoryFunction[PlayerId.Blue] = blueVictoryFunction
-    
+
     StatsCollator.clear()
 
     game.registerAgent(0, blueAgent)
@@ -88,7 +88,11 @@ fun runWithParams(params: EventGameParams,
         }
     }
 
-    val mapDimension = Dimension(min(max(world.params.width, 400), 1000), min(max(world.params.height, 250), 1000))
+    val mapDimension = if (world.imageFile != null && world.imageFile != "")
+        Dimension(min(max(world.params.width, 400), 1000), min(max(world.params.height, 250), 1000))
+    else
+        Dimension(400, 250)
+
     val multiView = ListComponent()
     val omniView = WorldView(game, mapDimension)
     val redView = WorldView(game, mapDimension)

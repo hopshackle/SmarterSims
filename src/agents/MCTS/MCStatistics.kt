@@ -12,7 +12,8 @@ data class MCTSParameters(
         val discountRate: Double = 1.0,
         val pruneTree: Boolean = false,
         val maxDepth: Int = 100,
-        val maxActions: Int = 20
+        val maxActions: Int = 20,
+        val actionFilter: String = "none"
 )
 
 enum class MCTSSelectionMethod { ROBUST, SIMPLE }

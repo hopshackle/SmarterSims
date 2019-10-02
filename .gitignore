@@ -2,6 +2,8 @@
 .idea/
 out/
 build/
+resource/manifests
+resources/manifests
 
 .DS_Store
 

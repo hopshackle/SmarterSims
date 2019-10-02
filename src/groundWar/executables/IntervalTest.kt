@@ -105,8 +105,8 @@ fun main(args: Array<String>) {
 
         val params = intervalParams.sampleParams()
         val world = if (mapOverride == "") World(params = params) else {
-            val fileAsLines = BufferedReader(FileReader(mapOverride)).readLines().joinToString("\n")
-            createWorld(fileAsLines, params)
+            val worldFileAsLines = BufferedReader(FileReader(mapOverride)).readLines().joinToString("\n")
+            createWorld(worldFileAsLines, params)
         }
         val game = LandCombatGame(world)
         game.scoreFunction[PlayerId.Blue] = blueScoreFunction

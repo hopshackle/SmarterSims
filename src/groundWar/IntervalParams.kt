@@ -198,6 +198,7 @@ data class AgentParams(
                             maxPlayouts = evalBudget,
                             timeLimit = timeBudget,
                             maxActions = getParam("maxActions", "20").toInt(),
+                            actionFilter = getParam("actionFilter", "none"),
                             maxDepth = sequenceLength,
                             horizon = planningHorizon,
                             pruneTree = params.contains("pruneTree"),
@@ -216,7 +217,7 @@ data class AgentParams(
         }
     }
 
-    fun getOpponentModel(settingsMap: Map<String, Any> = emptyMap()): SimpleActionPlayerInterface {
+    fun getOpponentModel(settingsMap: Map<String, Any> = emptyMap()): SimpleActionPlayerInterface? {
         var oppParams = opponentModel.split(":").toMutableList()
         (oppParams.size..4).forEach { oppParams.add("") }
         if (settingsMap.contains("opponentWithdraw")) {
@@ -241,6 +242,7 @@ data class AgentParams(
             }
             "DoNothing" -> SimpleActionDoNothing(1000)
             "Random" -> SimpleActionRandom
+            "MCTS" -> null
             else -> SimpleActionDoNothing(1000)
         }
     }
@@ -254,10 +256,13 @@ fun createAgentParamsFromString(details: List<String>): AgentParams {
     //      OODALoop = 10, [5, 50]          - a single parameter setting for BLUE, and an Interval for RED
 
     // firstly we create a map from parameter name to value
-    val paramMap: Map<String, String> = details.map {
+    val paramMap: Map<String, String> = details.filter{it.trim() != ""}.map {
         val temp = it.split("=")
         temp[0].trim() to temp[1].trim()
     }.toMap()
+
+    if (!paramMap.contains("algoParams"))
+        throw AssertionError("Agent description must contain algoParams")
 
     return AgentParams(
             algorithm = paramMap.getOrDefault("algorithm", "RHEA"),

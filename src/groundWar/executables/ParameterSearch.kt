@@ -390,7 +390,7 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                         flipAtLeastOneValue = settingsMap.getOrDefault("flipAtLeastOneValue", defaultParams.params.contains("flipAtLeastOneValue")) as Boolean,
                         discountFactor = settingsMap.getOrDefault("discountFactor", defaultParams.getParam("discountFactor", "1.0").toDouble()) as Double
                 ),
-                opponentModel = defaultParams.getOpponentModel(settingsMap)
+                opponentModel = defaultParams.getOpponentModel(settingsMap) ?: SimpleActionDoNothing(1000)
         )
     }
 }
@@ -456,7 +456,8 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
 class UtilitySearchSpace(val agentParams: AgentParams, val defaultScore: ScoreParams, fileName: String) : HopshackleSearchSpace(fileName) {
     override val types: Map<String, KClass<*>>
         get() = mapOf("visibilityNode" to Double::class, "visibilityArc" to Double::class, "theirCity" to Double::class,
-                "ownForce" to Double::class, "theirForce" to Double::class, "fortressValue" to Double::class)
+                "ownForce" to Double::class, "theirForce" to Double::class, "fortressValue" to Double::class,
+                "forceEntropy" to Double::class, "localAdvantage" to Double::class)
 
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         return agentParams.createAgent("STD")
@@ -464,7 +465,7 @@ class UtilitySearchSpace(val agentParams: AgentParams, val defaultScore: ScorePa
 
     fun getScoreFunction(settings: DoubleArray): (LandCombatGame, Int) -> Double {
         val settingsMap = settingsToMap(settings)
-        return compositeScoreFunction(
+        return compositeScoreFunction(listOf(
                 visibilityScore(
                         settingsMap.getOrDefault("visibilityNode", defaultScore.nodeVisibility) as Double,
                         settingsMap.getOrDefault("visibilityArc", defaultScore.arcVisibility) as Double),
@@ -474,7 +475,9 @@ class UtilitySearchSpace(val agentParams: AgentParams, val defaultScore: ScorePa
                         settingsMap.getOrDefault("theirCity", defaultScore.theirCity) as Double,
                         settingsMap.getOrDefault("theirForce", defaultScore.theirForce) as Double),
                 fortressScore(
-                        settingsMap.getOrDefault("fortressValue", defaultScore.fortressValue) as Double)
+                        settingsMap.getOrDefault("fortressValue", defaultScore.fortressValue) as Double),
+                entropyScoreFunction(settingsMap.getOrDefault("forceEntropy", defaultScore.forceEntropy) as Double),
+                localAdvantageScoreFunction(settingsMap.getOrDefault("localAdvantage", defaultScore.localAdvantage) as Double))
         )
     }
 }

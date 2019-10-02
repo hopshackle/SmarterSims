@@ -1,10 +1,11 @@
 package groundWar
 
 import ggi.*
+import kotlin.math.max
 import kotlin.random.Random
 
 enum class HeuristicOptions {
-    ATTACK, WITHDRAW
+    ATTACK, WITHDRAW, REINFORCE
 }
 
 class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val policy: List<HeuristicOptions> = listOf(HeuristicOptions.ATTACK), val seed: Int = 1) : SimpleActionPlayerInterface {
@@ -28,6 +29,10 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
                     HeuristicOptions.WITHDRAW -> {
                         val withdraw = withdrawOption(gameState, playerRef)
                         if (withdraw !is NoAction) return withdraw
+                    }
+                    HeuristicOptions.REINFORCE -> {
+                        val reinforce = reinforceOption(gameState, playerRef)
+                        if (reinforce !is NoAction) return reinforce
                     }
                 }
             }
@@ -85,6 +90,47 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
         }
 
         return NoAction(player, gameState.world.params.OODALoop[player])
+    }
+
+    private fun reinforceOption(gameState: LandCombatGame, player: Int): Action {
+        val playerId = numberToPlayerID(player)
+        // the idea here is that we look for city not adjacent to a city that is a threat (at least defenseRation the force size of any enemy neighbour)
+        // and that is next to a threatened friendly city (i.e. one which is less than defenseRatio force of an enemy neighbour)
+
+        with(gameState.world) {
+            val defendedCities = cities.withIndex().map { (i, c) ->
+                val maxCityEnemy: Double = allRoutesFromCity[i]?.map { r -> cities[r.toCity] }?.filterNot { it.owner == playerId }?.map { it.pop.size }?.max()
+                        ?: 0.00
+                val maxTransitEnemy: Double = currentTransits.filter { t -> t.toCity == i && t.playerId != playerId && t.force.size > c.pop.size * defenseRatio }.map { it.force.size }.max()
+                        ?: 0.00
+                val surplus = max(maxCityEnemy, maxTransitEnemy) - c.pop.size * defenseRatio
+                Triple(i, c, surplus)
+            }.filter { (i, c, m) -> c.owner == playerId && c.pop.size > 0.00 && m > 0.00 }
+
+            val threatenedCities = cities.withIndex().map { (i, c) ->
+                val maxCityEnemy: Double = allRoutesFromCity[i]?.map { r -> cities[r.toCity] }?.filterNot { it.owner == playerId }?.map { it.pop.size }?.max()
+                        ?: 0.00
+                val maxTransitEnemy: Double = currentTransits.filter { t -> t.toCity == i && t.playerId != playerId && t.force.size > c.pop.size * defenseRatio }.map { it.force.size }.max()
+                        ?: 0.00
+                val needed = max(maxCityEnemy, maxTransitEnemy) - c.pop.size * defenseRatio
+                Triple(i, c, needed)
+            }.filter { (i, c, m) -> c.owner == playerId && m < 0.00 }
+
+            val options = defendedCities.zip(threatenedCities).filter { (reinforcer, defender) ->
+                val (i, _, m) = defender
+                val (i2, _, m2) = reinforcer
+                (allRoutesFromCity[i2]?.any { it.toCity == i } ?: false) &&
+                       m2 >= -m
+            }
+
+            return if (options.isEmpty()) {
+                NoAction(player, gameState.world.params.OODALoop[player])
+            } else {
+                val chosen = options.random()
+                LaunchExpedition(playerId, chosen.first.first, chosen.second.first,
+                        chosen.first.third / chosen.first.second.pop.size, gameState.world.params.OODALoop[player])
+            }
+        }
     }
 
     override fun getLastPlan(): List<Action> {

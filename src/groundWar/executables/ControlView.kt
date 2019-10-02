@@ -20,19 +20,19 @@ const val testVersion = false
 
 val defaultBlueAgent = """
         algorithm=MCTS
-        timeBudget=50
+        timeBudget=300
         evalBudget=100000
         sequenceLength=12
         planningHorizon=100
-        algoParams=C:3.0,maxActions:50,rolloutPolicy:DoNothing,selectionPolicy:SIMPLE,discountFactor:0.99
-        opponentModel=DoNothing
+        algoParams=C:3.0,actionFilter:core,rolloutPolicy:DoNothing,selectionPolicy:SIMPLE,discountFactor:0.99
+        opponentModel=MCTS
     """.trimIndent()
 
 val defaultRedAgent = """
         algorithm=RHEA
-        timeBudget=50
+        timeBudget=300
         evalBudget=100000
-        sequenceLength=4
+        sequenceLength=12
         planningHorizon=100
         algoParams=probMutation:0.7,flipAtLeastOneValue,discountFactor:0.999
         opponentModel=DoNothing
@@ -43,7 +43,7 @@ class ControlView {
     val params = EventGameParams()
     val propertyMap: MutableMap<String, Any?> = EventGameParams::class.memberProperties.map { it.name to it.get(params) }.toMap().toMutableMap()
     val parameterNames = listOf("nAttempts", "minConnections", "maxDistance", "width", "height", "startingForce", "lanchesterCoeff", "lanchesterExp",
-            "fatigueRate", "percentFort", "fortAttackerDivisor", "fortDefenderExpBonus", "fogOfWar", "fogStrengthAssumption", "speed",
+            "fatigueRate", "percentFort", "fortAttackerDivisor", "fortDefenderExpBonus", "fogOfWar", "fogStrengthAssumption", "fogMemory", "speed",
             "OODALoop", "orderDelay", "controlLimit", "minAssaultFactor", "seed")
     var runningThread = Thread()
 
@@ -134,6 +134,7 @@ class ControlView {
                         fortDefenderExpBonus = propertyMap["fortDefenderExpBonus"] as Double,
                         fogOfWar = propertyMap["fogOfWar"] as Boolean,
                         fogStrengthAssumption = propertyMap["fogStrengthAssumption"] as DoubleArray,
+                        fogMemory = propertyMap["fogMemory"] as IntArray,
                         speed = propertyMap["speed"] as DoubleArray,
                         OODALoop = propertyMap["OODALoop"] as IntArray,
                         orderDelay = propertyMap["orderDelay"] as IntArray,
@@ -145,10 +146,15 @@ class ControlView {
                 val redAgent = createAgentParamsFromString(redAgentDetails.text.split("\n")).createAgent("RED")
                 val blueFunction = when {
                     asymmetricVictoryBox.isSelected -> compositeScoreFunction(
-                            simpleScoreFunction(0.0, 0.5, 0.0, 0.0),
-                            fortressScore(25.0)
+                            listOf(simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
+                                    entropyScoreFunction(-1.0),
+                                    fortressScore(25.0))
                     )
-                    else -> simpleScoreFunction(5.0, 1.0, -5.0, -1.0)
+                    else -> compositeScoreFunction(listOf(
+                            simpleScoreFunction(5.0, 1.0, -5.0, -0.5),
+                            entropyScoreFunction(-1.0),
+                            localAdvantageScoreFunction(0.01)
+                    ))
                 }
                 runningThread = Thread {
                     runWithParams(
@@ -156,7 +162,11 @@ class ControlView {
                             blueAgent,
                             redAgent,
                             blueScoreFunction = blueFunction,
-                            redScoreFunction = simpleScoreFunction(5.0, 1.0, -5.0, -1.0),
+                            redScoreFunction = compositeScoreFunction(listOf(
+                                    simpleScoreFunction(5.0, 1.0, -5.0, -1.0),
+                                    entropyScoreFunction(-1.0),
+                                    localAdvantageScoreFunction(0.01)
+                            )),
                             showAgentPlans = agentPlanBox.isSelected,
                             mapFile = mapNameField.text,
                             blueVictoryFunction = if (asymmetricVictoryBox.isSelected) allFortsConquered(PlayerId.Blue) else null

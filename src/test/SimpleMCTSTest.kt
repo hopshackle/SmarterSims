@@ -29,7 +29,7 @@ class SimpleMazeGame(val playerCount: Int, val target: Int) : ActionAbstractGame
 
     override fun playerCount() = playerCount
 
-    override fun possibleActions(player: Int, max: Int) = listOf(
+    override fun possibleActions(player: Int, max: Int, filterType: String) = listOf(
             Move(player, Direction.LEFT),
             Move(player, Direction.RIGHT),
             NoAction(player, 1)
@@ -118,12 +118,12 @@ class MCTSMasterTest {
     fun bestActionWithSimpleSelection() {
         val testState = simpleMazeGame.copy() as ActionAbstractGameState
         val rootNode = TTNode(params, testState.possibleActions(2))
-        agents[2].tree[MazeStateFunction(testState)] = rootNode
+        agents[2].tree["2|" + MazeStateFunction(testState)] = rootNode
         rootNode.update(Move(2, Direction.LEFT), testState.possibleActions(2), 1.0)
         rootNode.update(Move(2, Direction.LEFT), testState.possibleActions(2), 1.0)
         rootNode.update(Move(2, Direction.RIGHT), testState.possibleActions(2), 2.0)
         rootNode.update(NoAction(2, 1), testState.possibleActions(2), 1.5)
-        assertEquals(agents[2].getBestAction(testState), Move(2, Direction.RIGHT))
+        assertEquals(agents[2].getBestAction(2, testState), Move(2, Direction.RIGHT))
     }
 
     @Test
@@ -132,12 +132,12 @@ class MCTSMasterTest {
         agents[2] = MCTSTranspositionTableAgentMaster(params = thisParams, stateFunction = MazeStateFunction)
         val testState = simpleMazeGame.copy() as ActionAbstractGameState
         val rootNode = TTNode(thisParams, testState.possibleActions(2))
-        agents[2].tree[MazeStateFunction(testState)] = rootNode
+        agents[2].tree["2|" + MazeStateFunction(testState)] = rootNode
         rootNode.update(Move(2, Direction.LEFT), testState.possibleActions(2), 1.0)
         rootNode.update(Move(2, Direction.LEFT), testState.possibleActions(2), 1.0)
         rootNode.update(Move(2, Direction.RIGHT), testState.possibleActions(2), 2.0)
         rootNode.update(NoAction(2, 1), testState.possibleActions(2), 1.5)
-        assertEquals(agents[2].getBestAction(testState), Move(2, Direction.LEFT))
+        assertEquals(agents[2].getBestAction(2, testState), Move(2, Direction.LEFT))
     }
 
 
@@ -187,7 +187,7 @@ class MCTSMasterTest {
         val nextState = simpleMazeGame.copy() as ActionAbstractGameState
         chosenAction.apply(nextState)
         nextState.next(1)
-        assertTrue(agents[2].tree.containsKey(MazeStateFunction(nextState)))
+        assertTrue(agents[2].tree.containsKey("2|" + MazeStateFunction(nextState)))
         assertEquals(agents[2].tree.size, 101)
         agents[2].resetTree(nextState, 2)
         assertEquals(agents[2].tree.size.toDouble(), 92.0, 2.0)
@@ -217,7 +217,7 @@ class MCTSMasterTest {
     fun allNodesExpandedBeforeNextOnePicked() {
         simpleMazeGame.next(1)
         assertEquals(agents[0].tree.size, 3)
-        val rootAgent0 = agents[0].tree["0|0|0|0"]
+        val rootAgent0 = agents[0].tree["0|0|0|0|0"]
         assertFalse(rootAgent0 == null)
         assertEquals(rootAgent0!!.actionMap.values.count { it.visitCount == 1 }, 2)
         assertEquals(rootAgent0.actionMap.values.count { it.validVisitCount == 2 }, 3)
@@ -286,7 +286,7 @@ class MCTSChildTest {
 
     @Test
     fun testTrajectoryPopulatedAndBackPropagationIsCorrect() {
-        val root = MazeStateFunction(simpleMazeGame)
+        val root = "0|" + MazeStateFunction(simpleMazeGame)
         tree[root] = TTNode(params, simpleMazeGame.possibleActions(0))
         assertEquals(tree.size, 1)
         assertTrue(tree.containsKey(root))
@@ -296,7 +296,7 @@ class MCTSChildTest {
         repeat(5) {
             actionsSelected.add(childAgent.getAction(simpleMazeGame, 0))
             actionsSelected.last().apply(simpleMazeGame)
-            statesEnRoute.add(MazeStateFunction(simpleMazeGame))
+            statesEnRoute.add("0|" + MazeStateFunction(simpleMazeGame))
         }
         assertEquals(childAgent.trajectory().size, 5)
         childAgent.backPropagate(5.0, 5)
@@ -357,7 +357,7 @@ class MCTSChildTest {
         val thisParams = params.copy(discountRate = 0.95)
         var discountAgent = MCTSChildTestAgent(tree, mutableMapOf(), thisParams, MazeStateFunction)
         val testState = simpleMazeGame.copy() as ActionAbstractGameState
-        val root = MazeStateFunction(testState)
+        val root = "0|" + MazeStateFunction(testState)
         val rootNode = TTNode(thisParams, testState.possibleActions(0))
         tree[root] = rootNode
 
