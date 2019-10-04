@@ -31,8 +31,8 @@ fun main(args: Array<String>) {
                 |blue=      file with parameterisation of the blue AI agent
                 |red=       file with parameterisation of the red AI agent
                 |map=       JSON file with map to use for all simulations
-                |VB=fort    <The Blue victory function will be to control all forts>
-                |VR=fort    <The Red victory function will be to control all forts>
+                |VB=targets    <The Blue victory function will be to control all locations with VP>
+                |VR=targets    <The Red victory function will be to control all locations with VP>
             """.trimMargin()
     )
 
@@ -51,12 +51,18 @@ fun main(args: Array<String>) {
     val redAgentParams = agentParamsFromCommandLine(args, "red", default = defaultRedAgent)
 
     val mapOverride: String = args.firstOrNull { it.startsWith("map") }?.split("=")?.get(1) ?: ""
+    val targetMap = if (mapOverride == "") emptyMap() else {
+        val mapFileAsLines = BufferedReader(FileReader(mapOverride)).readLines().joinToString("\n")
+        victoryValuesFromJSON(mapFileAsLines)
+    }
 
     val victoryFunctions: Map<PlayerId, (LandCombatGame) -> Boolean> = mapOf(
-            PlayerId.Blue to (if (args.contains("VB=fort")) { game: LandCombatGame -> game.world.cities.filter(City::fort).all { it.owner == PlayerId.Blue } }
-            else { game: LandCombatGame -> defaultScoreFunctions[PlayerId.Blue]?.invoke(game, 0) ?: 0.00 > defaultScoreFunctions[PlayerId.Red]?.invoke(game, 1) ?: 0.00 }),
-            PlayerId.Red to (if (args.contains("VR=fort")) { game: LandCombatGame -> game.world.cities.filter(City::fort).all { it.owner == PlayerId.Red } }
-            else { game: LandCombatGame -> defaultScoreFunctions[PlayerId.Red]?.invoke(game, 1) ?: 0.00 > defaultScoreFunctions[PlayerId.Blue]?.invoke(game, 0) ?: 0.00 })
+            PlayerId.Blue to (if (args.contains("VB=targets")) {
+                allTargetsConquered(PlayerId.Blue, targetMap)
+            } else { game: LandCombatGame -> defaultScoreFunctions[PlayerId.Blue]?.invoke(game, 0) ?: 0.00 > defaultScoreFunctions[PlayerId.Red]?.invoke(game, 1) ?: 0.00 }),
+            PlayerId.Red to (if (args.contains("VR=targets")) {
+                allTargetsConquered(PlayerId.Red, targetMap)
+            } else { game: LandCombatGame -> defaultScoreFunctions[PlayerId.Red]?.invoke(game, 1) ?: 0.00 > defaultScoreFunctions[PlayerId.Blue]?.invoke(game, 0) ?: 0.00 })
     )
 
     val numberFormatter: (Any?) -> String = { it ->

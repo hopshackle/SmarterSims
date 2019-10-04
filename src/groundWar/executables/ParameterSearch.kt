@@ -117,7 +117,7 @@ fun main(args: Array<String>) {
                 println("No GameParams specified - using default values")
                 EventGameParams()
             }
-            else -> {
+                else -> {
                 val fileAsLines = BufferedReader(FileReader(fileName)).lines().toList()
                 createIntervalParamsFromString(fileAsLines).sampleParams()
             }

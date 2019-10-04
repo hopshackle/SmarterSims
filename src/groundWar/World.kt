@@ -402,6 +402,14 @@ fun createWorldFromJSON(data: String, params: EventGameParams): World {
     return World(cities, routes, params = params.copy(height = height, width = width), imageFile = if (image != "") image else null)
 }
 
+fun victoryValuesFromJSON(data: String): Map<String, Double> {
+    val json = JSONObject(data)
+    return json.getJSONArray("cities").map {
+        val c = it as JSONObject
+        c.getString("name") to if (c.has("VP")) c.getDouble("VP") else 0.0
+    }.filterNot { it.second == 0.00 }.toMap()
+}
+
 fun createWorldFromMap(data: String, params: EventGameParams): World {
     val lines = data.split("\n").toList()
     if (lines.any { it.length != lines[0].length })

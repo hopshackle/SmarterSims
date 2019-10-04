@@ -93,21 +93,8 @@ class WorldView(var game: LandCombatGame, val dim: Dimension = Dimension(400, 25
                 g.setColor(textColour)
                 DrawUtil().centreString(g, label, xScale * currentLocation.x, yScale * currentLocation.y)
             }
-
-            for (t in game.targets.getOrDefault(PlayerId.Blue, emptyList())) {
-                DrawUtil().centreString(g, "TGT", xScale * (cities[t].location.x + params.radius + 40),
-                        yScale * (cities[t].location.y + params.radius), playerCols[PlayerId.Blue])
-            }
-            for (t in game.targets.getOrDefault(PlayerId.Red, emptyList())) {
-                DrawUtil().centreString(g, "TGT", xScale * (cities[t].location.x + params.radius + 40),
-                        yScale * (cities[t].location.y + params.radius - 40), playerCols[PlayerId.Red])
-            }
         }
     }
-
-//    fun drawCities(Graphics2D g) {
-//
-//    }
 
     override fun getPreferredSize(): Dimension {
         return dim

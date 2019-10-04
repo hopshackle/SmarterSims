@@ -2,6 +2,8 @@ package groundWar.executables
 
 import groundWar.*
 import java.awt.*
+import java.io.BufferedReader
+import java.io.FileReader
 import javax.swing.*
 import kotlin.reflect.full.memberProperties
 
@@ -101,7 +103,6 @@ class ControlView {
         }
         setting.add(fileChooserPanel)
 
-        val asymmetricVictoryBox = JCheckBox("Blue to target forts?", false)
         val agentPlanBox = JCheckBox("Show Agent Plans?", false)
 
         val agentParameters = JPanel(GridLayout(0, 1, 1, 1))
@@ -144,32 +145,30 @@ class ControlView {
                 )
                 val blueAgent = createAgentParamsFromString(blueAgentDetails.text.split("\n")).createAgent("BLUE")
                 val redAgent = createAgentParamsFromString(redAgentDetails.text.split("\n")).createAgent("RED")
-                val blueFunction = when {
-                    asymmetricVictoryBox.isSelected -> compositeScoreFunction(
-                            listOf(simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
-                                    entropyScoreFunction(-1.0),
-                                    fortressScore(25.0))
-                    )
-                    else -> compositeScoreFunction(listOf(
-                            simpleScoreFunction(5.0, 1.0, -5.0, -0.5),
-                            entropyScoreFunction(-1.0),
-                            localAdvantageScoreFunction(0.01)
-                    ))
-                }
+                val fileAsLines = if (mapNameField.text != "") BufferedReader(FileReader(mapNameField.text)).readLines().joinToString("\n") else ""
+                val cityValues = if (fileAsLines == "") emptyMap() else victoryValuesFromJSON(fileAsLines)
+                val cityValue = if (cityValues.isEmpty()) 5.0 else 0.0
+
                 runningThread = Thread {
                     runWithParams(
                             simParams,
                             blueAgent,
                             redAgent,
-                            blueScoreFunction = blueFunction,
+                            blueScoreFunction = compositeScoreFunction(listOf(
+                                    simpleScoreFunction(cityValue, 1.0, 0.0, -0.5),
+                                    specificTargetScoreFunction(cityValues),
+                                    entropyScoreFunction(-1.0),
+                                    localAdvantageScoreFunction(0.01)
+                            )),
                             redScoreFunction = compositeScoreFunction(listOf(
-                                    simpleScoreFunction(5.0, 1.0, -5.0, -1.0),
+                                    simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
+                                    specificTargetScoreFunction(cityValues),
                                     entropyScoreFunction(-1.0),
                                     localAdvantageScoreFunction(0.01)
                             )),
                             showAgentPlans = agentPlanBox.isSelected,
                             mapFile = mapNameField.text,
-                            blueVictoryFunction = if (asymmetricVictoryBox.isSelected) allFortsConquered(PlayerId.Blue) else null
+                            blueVictoryFunction = if (cityValues.isNotEmpty()) allTargetsConquered(PlayerId.Blue, cityValues) else null
                     )
                 }
                 runningThread.start()
@@ -184,7 +183,6 @@ class ControlView {
         buttonPanel.add(pauseButton)
         val optionPanel = JPanel()
         if (testVersion) optionPanel.add(agentPlanBox)
-        optionPanel.add(asymmetricVictoryBox)
         setting.add(optionPanel)
         setting.add(buttonPanel)
 

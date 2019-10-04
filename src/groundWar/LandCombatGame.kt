@@ -37,7 +37,7 @@ val defaultVictoryFunctions = mutableMapOf(
         PlayerId.Red to { game: LandCombatGame -> game.world.cities.all { it.owner == PlayerId.Red } }
 )
 
-class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List<Int>> = emptyMap()) : ActionAbstractGameState {
+class LandCombatGame(val world: World = World()) : ActionAbstractGameState {
 
     val LCG_rnd = Random(world.params.seed)
     // the first digits are the city...so we need at least the number of cities
@@ -81,7 +81,7 @@ class LandCombatGame(val world: World = World(), val targets: Map<PlayerId, List
     }
 
     private fun copyHelper(world: World): LandCombatGame {
-        val state = LandCombatGame(world, targets)
+        val state = LandCombatGame(world)
         visibilityModels.forEach {
             state.visibilityModels[it.key] = it.value
         }

@@ -64,12 +64,13 @@ fun runWithParams(params: EventGameParams,
                   mapFile: String = "") {
     val fileAsLines = if (mapFile != "") BufferedReader(FileReader(mapFile)).readLines().joinToString("\n") else ""
     val world = if (fileAsLines == "") World(params = params) else createWorld(fileAsLines, params)
+
     if (mapFile != "" && !fileAsLines.startsWith("{")) {
         val output = FileWriter(mapFile.substringBefore('.') + ".json")
         output.write(world.toJSON().toString(1))
         output.close()
     }
-    val game = LandCombatGame(world, targets = emptyMap())
+    val game = LandCombatGame(world)
 
     game.scoreFunction[PlayerId.Blue] = blueScoreFunction
     game.scoreFunction[PlayerId.Red] = redScoreFunction

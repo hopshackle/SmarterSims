@@ -20,6 +20,10 @@ fun allFortsConquered(player: PlayerId): (LandCombatGame) -> Boolean = { game: L
     game.world.cities.filter(City::fort).all { it.owner == player }
 }
 
+fun allTargetsConquered(player: PlayerId, targets: Map<String, Double>): (LandCombatGame) -> Boolean = { game: LandCombatGame ->
+    game.world.cities.filter { it.name in targets }.all { it.owner == player }
+}
+
 fun stringToScoreFunction(stringRep: String?): (LandCombatGame, Int) -> Double {
     if (stringRep == null) {
         return finalScoreFunction
@@ -66,17 +70,14 @@ fun fortressScore(fortressValue: Double): (LandCombatGame, Int) -> Double {
     }
 }
 
-fun specificTargetScoreFunction(targetValue: Double = 100.0,
-                                ownForceValue: Double = 1.0, enemyForceValue: Double = -1.0): (LandCombatGame, Int) -> Double {
+fun specificTargetScoreFunction(targetValues: Map<String, Double>): (LandCombatGame, Int) -> Double {
     return { game: LandCombatGame, player: Int ->
         val playerColour = numberToPlayerID(player)
         with(game.world) {
-            val targetsAcquired = game.targets[playerColour]?.count { i -> cities[i].owner == playerColour } ?: 0
-            val ourForces = cities.filter { c -> c.owner == playerColour }.sumByDouble { it.pop.size } +
-                    currentTransits.filter { t -> t.playerId == playerColour }.sumByDouble { it.force.effectiveSize }
-            val enemyForces = cities.filter { c -> c.owner != playerColour }.sumByDouble { it.pop.size } +
-                    currentTransits.filter { t -> t.playerId != playerColour }.sumByDouble { it.force.effectiveSize }
-            targetsAcquired * targetValue + ourForces * ownForceValue - enemyForces * enemyForceValue
+            targetValues
+                    .filter { (name, _) -> cities.find { it.name == name }?.owner == playerColour }
+                    .map { (_, value) -> value }
+                    .sum()
         }
     }
 }
@@ -113,7 +114,7 @@ fun localAdvantageScoreFunction(coefficient: Double): (LandCombatGame, Int) -> D
             cities.withIndex()
                     .filter { it.value.owner == playerColour }
                     .flatMap { allRoutesFromCity[it.index]?.map { r -> Pair(r.fromCity, r.toCity) } ?: emptyList() }
-                    .filterNot{(_, toCity) -> cities[toCity].owner == playerColour}
+                    .filterNot { (_, toCity) -> cities[toCity].owner == playerColour }
                     .map { (fromCity, toCity) -> Pair(cities[fromCity].pop.size, cities[toCity].pop.size) }
                     .map { it.first - it.second }.sum() * coefficient
         }
