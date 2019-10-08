@@ -73,8 +73,10 @@ fun main(args: Array<String>) {
             else -> it.toString()
         }
     }
-
-    val statisticsToKeep: Map<String, (LandCombatGame) -> Number> = mapOf(
+    val tMap: Map<String, (LandCombatGame) -> Number> = targetMap.map { (targetName, _) ->
+        "${targetName}_BLUE" to { g: LandCombatGame -> if (g.world.cities.first { it.name == targetName }?.owner == PlayerId.Blue) 1 else 0 }
+    }.toMap()
+    val coreStats: Map<String, (LandCombatGame) -> Number> = mapOf(
             "BLUE_WINS" to { g: LandCombatGame -> if (victoryFunctions[PlayerId.Blue]?.invoke(g) == true) 1 else 0 },
             "RED_WINS" to { g: LandCombatGame -> if (victoryFunctions[PlayerId.Red]?.invoke(g) == true) 1 else 0 },
             "BLUE_FORCE" to { g: LandCombatGame -> simpleScoreFunction(0.0, 1.0, 0.0, 0.0).invoke(g, 0) },
@@ -88,6 +90,8 @@ fun main(args: Array<String>) {
             "GAME_LENGTH" to { g: LandCombatGame -> g.nTicks() },
             "COMPLETE_VICTORY" to { g: LandCombatGame -> if (g.nTicks() < 1000) 1 else 0 }
     )
+
+    val statisticsToKeep = coreStats + tMap
     val statisticKeys = statisticsToKeep.keys.toList()
     val gameParamNames = EventGameParams::class.memberProperties.map { it.name }.toList()
     val (gameParamKeys, otherKeys) = IntervalParams::class.memberProperties

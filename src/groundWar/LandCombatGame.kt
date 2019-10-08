@@ -163,7 +163,7 @@ class LandCombatGame(val world: World = World()) : ActionAbstractGameState {
 
     override fun score(player: Int): Double {
         if (isTerminal())
-            return if (victoryFunction[numberToPlayerID(player)]?.invoke(this) == true) Double.MAX_VALUE else -Double.MAX_VALUE
+            return if (victoryFunction[numberToPlayerID(player)]?.invoke(this) == true) 10000.0 else -10000.0
         return scoreFunction[numberToPlayerID(player)]?.invoke(this, player) ?: 0.0
     }
 
