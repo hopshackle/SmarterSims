@@ -75,8 +75,8 @@ fun main(args: Array<String>) {
     }
 
     val statisticsToKeep: Map<String, (LandCombatGame) -> Number> = mapOf(
-            "BLUE_WINS" to { g: LandCombatGame -> if (victoryFunctions[PlayerId.Blue]?.invoke(g) ?: false) 1 else 0 },
-            "RED_WINS" to { g: LandCombatGame -> if (victoryFunctions[PlayerId.Red]?.invoke(g) ?: false) 1 else 0 },
+            "BLUE_WINS" to { g: LandCombatGame -> if (victoryFunctions[PlayerId.Blue]?.invoke(g) == true) 1 else 0 },
+            "RED_WINS" to { g: LandCombatGame -> if (victoryFunctions[PlayerId.Red]?.invoke(g) == true) 1 else 0 },
             "BLUE_FORCE" to { g: LandCombatGame -> simpleScoreFunction(0.0, 1.0, 0.0, 0.0).invoke(g, 0) },
             "RED_FORCE" to { g: LandCombatGame -> simpleScoreFunction(0.0, 1.0, 0.0, 0.0).invoke(g, 1) },
             "BLUE_CITIES" to { g: LandCombatGame -> simpleScoreFunction(1.0, 0.0, 0.0, 0.0).invoke(g, 0).toInt() },
@@ -117,6 +117,9 @@ fun main(args: Array<String>) {
         val game = LandCombatGame(world)
         game.scoreFunction[PlayerId.Blue] = blueScoreFunction
         game.scoreFunction[PlayerId.Red] = redScoreFunction
+
+        if (args.contains("VB=targets")) game.victoryFunction[PlayerId.Blue] = allTargetsConquered(PlayerId.Blue, targetMap)
+        if (args.contains("VR=targets")) game.victoryFunction[PlayerId.Red] = allTargetsConquered(PlayerId.Red, targetMap)
 
         val blueAgent = blueAgentParams.createAgent("BLUE")
         game.registerAgent(0, blueAgent)
