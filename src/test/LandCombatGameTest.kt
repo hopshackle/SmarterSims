@@ -592,7 +592,7 @@ class TranslateGeneTests {
 
     @Test
     fun MCTSActionsSkipsTranslateGeneLogic() {
-        val world = World(cities, routes, params = params.copy(minAssaultFactor = doubleArrayOf(1.0, 1.0)))
+        val world = World(cities, routes, params = params.copy(minAssaultFactor = doubleArrayOf(1.0, 1.0))).deepCopy()
         val localGame = LandCombatGame(world)
         assertEquals(localGame.world.cities.size, 3)
         val availableBlueActions = localGame.possibleActions(0, filterType = "core")
