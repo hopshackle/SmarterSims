@@ -44,9 +44,6 @@ fun main(args: Array<String>) {
     val fileAsLines = BufferedReader(FileReader(inputFile)).lines().toList()
     val intervalParams = createIntervalParamsFromString(fileAsLines)
 
-    val blueScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCB") })
-    val redScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCR") })
-
     val blueAgentParams = agentParamsFromCommandLine(args, "blue", default = defaultBlueAgent) // defaults from ControlView
     val redAgentParams = agentParamsFromCommandLine(args, "red", default = defaultRedAgent)
 
@@ -55,6 +52,9 @@ fun main(args: Array<String>) {
         val mapFileAsLines = BufferedReader(FileReader(mapOverride)).readLines().joinToString("\n")
         victoryValuesFromJSON(mapFileAsLines)
     }
+
+    val blueScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCB") }, targetMap)
+    val redScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCR") }, targetMap)
 
     val victoryFunctions: Map<PlayerId, (LandCombatGame) -> Boolean> = mapOf(
             PlayerId.Blue to (if (args.contains("VB=targets")) {

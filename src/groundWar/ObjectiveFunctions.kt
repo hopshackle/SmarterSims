@@ -24,11 +24,10 @@ fun allTargetsConquered(player: PlayerId, targets: Map<String, Double>): (LandCo
     game.world.cities.filter { it.name in targets }.all { it.owner == player }
 }
 
-fun stringToScoreFunction(stringRep: String?): (LandCombatGame, Int) -> Double {
-    if (stringRep == null) {
-        return finalScoreFunction
-    }
-    var sp = stringRep.split("|").filterNot { it.startsWith("SC") }.map { it.toDouble() }
+fun stringToScoreFunction(stringRep: String?, targetMap: Map<String, Double> = emptyMap()): (LandCombatGame, Int) -> Double {
+    val scoreString = stringRep ?: "SC|5|-5|1|-1"
+
+    var sp = scoreString.split("|").filterNot { it.startsWith("SC") }.map { it.toDouble() }
     sp = sp + (sp.size until 9).map { 0.00 }
     var scoreComponents = mutableListOf(simpleScoreFunction(sp[0], sp[2], sp[1], sp[3]))
     if (sp.subList(4, 6).any { it != 0.00 })
@@ -42,6 +41,9 @@ fun stringToScoreFunction(stringRep: String?): (LandCombatGame, Int) -> Double {
 
     if (sp.subList(8, 9).any { it != 0.00 })
         scoreComponents.add(localAdvantageScoreFunction(sp[8]))
+
+    if (targetMap.isNotEmpty())
+        scoreComponents.add(specificTargetScoreFunction(targetMap))
 
     return compositeScoreFunction(scoreComponents)
 }
