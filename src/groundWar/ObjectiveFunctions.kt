@@ -25,9 +25,9 @@ fun allTargetsConquered(player: PlayerId, targets: Map<String, Double>): (LandCo
 }
 
 fun stringToScoreFunction(stringRep: String?, targetMap: Map<String, Double> = emptyMap()): (LandCombatGame, Int) -> Double {
-    val scoreString = stringRep ?: "SC|5|-5|1|-1"
+    val scoreString = stringRep ?: "SC=5|-5|1|-1"
 
-    var sp = scoreString.split("|").filterNot { it.startsWith("SC") }.map { it.toDouble() }
+    var sp = scoreString.split(Regex("[=|]")).filterNot { it.startsWith("SC") }.map { it.toDouble() }
     sp = sp + (sp.size until 9).map { 0.00 }
     var scoreComponents = mutableListOf(simpleScoreFunction(sp[0], sp[2], sp[1], sp[3]))
     if (sp.subList(4, 6).any { it != 0.00 })

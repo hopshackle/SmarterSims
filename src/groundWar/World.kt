@@ -31,6 +31,12 @@ fun numberToPlayerID(player: Int): PlayerId {
 
 data class Force(val size: Double, val fatigue: Double = 0.0, val timeStamp: Int = 0) {
     val effectiveSize = size * (1.0 - fatigue)
+
+    init {
+        if (size.isNaN())
+            throw AssertionError("NaN")
+    }
+
     operator fun plus(other: Force): Force {
         if (fatigue > 0.0 && other.fatigue > 0.0 && timeStamp != other.timeStamp)
             throw AssertionError("Can only add fatigued forces with the same timestamp")
@@ -374,7 +380,7 @@ fun createWorldFromJSON(data: String, params: EventGameParams): World {
     val image = if (json.has("image")) json.getString("image") else null
     val height = json.getInt("height")
     val width = json.getInt("width")
-    val defaultLimit = if (json.has("forceLimit")) json.getDouble("forcelimit") else 0.0
+    val defaultLimit = if (json.has("forceLimit")) json.getDouble("forceLimit") else 0.0
     val cities = json.getJSONArray("cities").map {
         val c = it as JSONObject
         City(Vec2d(c.getDouble("x"), c.getDouble("y")),

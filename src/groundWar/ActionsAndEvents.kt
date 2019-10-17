@@ -97,7 +97,8 @@ data class CityInflux(val playerId: PlayerId, val pop: Force, val destination: I
                         p.lanchesterCoeff[player] / if (city.fort) p.fortAttackerDivisor else 1.0,
                         p.lanchesterExp[player],
                         p.lanchesterCoeff[1 - player],
-                        p.lanchesterExp[1 - player] + if (city.fort) p.fortDefenderExpBonus else 0.0
+                        p.lanchesterExp[1 - player] + if (city.fort) p.fortDefenderExpBonus else 0.0,
+                        city.limit
                 )
                 if (result > 0.0) {
                     // attackers win
@@ -203,6 +204,8 @@ data class LaunchExpedition(val playerId: PlayerId, val origin: Int, val destina
                 val sourceCityPop = cities[origin].pop.size
                 var forcesSent = proportion * sourceCityPop
                 if (forcesSent < 1.0) forcesSent = min(1.0, sourceCityPop)
+                val routeLimit = allRoutesFromCity[origin]?.find { it.toCity == destination }?.limit ?: 0.0
+                if (routeLimit > 0.0 && routeLimit < forcesSent) forcesSent = routeLimit
                 return forcesSent
             }
         }
