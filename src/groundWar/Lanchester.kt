@@ -2,6 +2,7 @@ package groundWar
 
 import kotlin.math.max
 import kotlin.math.pow
+import kotlin.math.sqrt
 
 /*
  A returned positive value is the number of surviving attackers; a negative value is interpreted as the number of
@@ -21,10 +22,11 @@ fun lanchesterLinearBattle(attack: Double, defence: Double, attackerDamageCoeff:
     return if (defendingForce > 0.0) -defendingForce else attackingForce
 }
 
-fun lanchesterClosedFormBattle(attack: Force, defence: Force, attCoeff: Double, attExp: Double, defCoeff: Double, defExp: Double): Double {
+fun lanchesterClosedFormBattle(attack: Force, defence: Force, attCoeff: Double, attExp: Double, defCoeff: Double, defExp: Double, defenceLimit: Double = 0.0): Double {
     // firstly calculate which side will win
+    if (defence.size == 0.00) return attack.size // no defence
     val effectiveAttackCoeff = attCoeff * max(0.0, 1.0 - attack.fatigue)
-    val effectiveDefenceCoeff = defCoeff * max(0.0, 1.0 - defence.fatigue)
+    val effectiveDefenceCoeff = defCoeff * max(0.0, 1.0 - defence.fatigue) * if (defenceLimit > 0.0) sqrt(defenceLimit / defence.size) else 1.0
     val constant: Double = effectiveAttackCoeff * attack.size.pow(attExp + 1) - effectiveDefenceCoeff * defence.size.pow(defExp + 1)
     if (constant > 0.0) {
         // attacker wins

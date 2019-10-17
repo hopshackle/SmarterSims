@@ -26,8 +26,8 @@ fun main(args: Array<String>) {
                 |- output file name to write results to
                 |
                 |Then there are a number of optional arguments:
-                |SCB|       <The Blue Score function>
-                |SCR|       <The Red Score function>
+                |SCB=       <The Blue Score function>
+                |SCR=       <The Red Score function>
                 |blue=      file with parameterisation of the blue AI agent
                 |red=       file with parameterisation of the red AI agent
                 |map=       JSON file with map to use for all simulations
@@ -45,7 +45,7 @@ fun main(args: Array<String>) {
     val intervalParams = createIntervalParamsFromString(fileAsLines)
 
     val blueAgentParams = agentParamsFromCommandLine(args, "blue", default = defaultBlueAgent) // defaults from ControlView
-    val redAgentParams = agentParamsFromCommandLine(args, "red", default = defaultRedAgent)
+    val redAgentParams = agentParamsFromCommandLine(args, "red", default = defaultBlueAgent)
 
     val mapOverride: String = args.firstOrNull { it.startsWith("map") }?.split("=")?.get(1) ?: ""
     val targetMap = if (mapOverride == "") emptyMap() else {

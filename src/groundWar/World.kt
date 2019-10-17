@@ -31,6 +31,12 @@ fun numberToPlayerID(player: Int): PlayerId {
 
 data class Force(val size: Double, val fatigue: Double = 0.0, val timeStamp: Int = 0) {
     val effectiveSize = size * (1.0 - fatigue)
+
+    init {
+        if (size.isNaN())
+            throw AssertionError("NaN")
+    }
+
     operator fun plus(other: Force): Force {
         if (fatigue > 0.0 && other.fatigue > 0.0 && timeStamp != other.timeStamp)
             throw AssertionError("Can only add fatigued forces with the same timestamp")
@@ -40,9 +46,11 @@ data class Force(val size: Double, val fatigue: Double = 0.0, val timeStamp: Int
 
 
 data class City(val location: Vec2d, val radius: Int = 25, var pop: Force = Force(0.0),
-                var owner: PlayerId = PlayerId.Neutral, val name: String = "", val fort: Boolean = false)
+                var owner: PlayerId = PlayerId.Neutral, val name: String = "",
+                val fort: Boolean = false, val limit: Double = 0.0)
 
-data class Route(val fromCity: Int, val toCity: Int, val length: Double, val terrainDifficulty: Double)
+data class Route(val fromCity: Int, val toCity: Int, val length: Double,
+                 val terrainDifficulty: Double = 1.0, val limit: Double = 0.0)
 
 fun routesCross(start: Vec2d, end: Vec2d, routesToCheck: List<Route>, cities: List<City>): Boolean {
     return routesToCheck.any { r -> routesCross(start, end, cities[r.fromCity].location, cities[r.toCity].location) }
@@ -188,7 +196,7 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
                 if (i != j && cities[i].location.distanceTo(cities[j].location) <= params.autoConnect
                         && !routesCross(cities[i].location, cities[j].location, routes, cities)
                         && !routePassesTooCloseToOtherCity(i, j)) {
-                    routes += Route(i, j, cities[i].location.distanceTo(cities[j].location), 1.0)
+                    routes += Route(i, j, cities[i].location.distanceTo(cities[j].location))
                 }
             }
             var count = 0;
@@ -240,8 +248,8 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
 
         val proposal = eligibleCities[random.nextInt(eligibleCities.size)]
         val distance = cities[cityIndex].location.distanceTo(proposal.location)
-        routes += Route(cityIndex, cities.indexOf(proposal), distance, 1.0)
-        routes += Route(cities.indexOf(proposal), cityIndex, distance, 1.0)
+        routes += Route(cityIndex, cities.indexOf(proposal), distance)
+        routes += Route(cities.indexOf(proposal), cityIndex, distance)
         return true
     }
 
@@ -265,9 +273,9 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
         val state = copy()
         state.cities = ArrayList(cities.withIndex().map { (i, c) ->
             when {
-                checkVisible(i, perspective) -> City(c.location, c.radius, c.pop, c.owner, c.name, c.fort)
-                visibility.lastVisible(i) > -1 -> City(c.location, c.radius, Force(visibility.lastKnownForce(i)), c.owner, c.name, c.fort)
-                else -> City(c.location, c.radius, Force(params.fogStrengthAssumption[playerIDToNumber(perspective)]), PlayerId.Fog, c.name, c.fort)
+                checkVisible(i, perspective) -> City(c.location, c.radius, c.pop, c.owner, c.name, c.fort, c.limit)
+                visibility.lastVisible(i) > -1 -> City(c.location, c.radius, Force(visibility.lastKnownForce(i)), c.owner, c.name, c.fort, c.limit)
+                else -> City(c.location, c.radius, Force(params.fogStrengthAssumption[playerIDToNumber(perspective)]), PlayerId.Fog, c.name, c.fort, c.limit)
             }
             // TODO: With only 2 players, ownership of a city cannot change without both seeing this. So it is safe to assume c.owner is unchanged
             // TODO: regardless of how old the visibility data is (to be changed with more than 2 players)
@@ -280,7 +288,7 @@ data class World(var cities: List<City> = ArrayList(), var routes: List<Route> =
 
     fun deepCopy(): World {
         val state = copy()
-        state.cities = ArrayList(cities.map { c -> City(c.location, c.radius, c.pop, c.owner, c.name, c.fort) })
+        state.cities = ArrayList(cities.map { c -> City(c.location, c.radius, c.pop, c.owner, c.name, c.fort, c.limit) })
         state.currentTransits = ArrayList(currentTransits.filter { true }) // each Transit is immutable, but not the list of active ones
         state.routes = routes       // immutable, so safe
         state.allRoutesFromCity = allRoutesFromCity // immutable, so safe
@@ -372,6 +380,7 @@ fun createWorldFromJSON(data: String, params: EventGameParams): World {
     val image = if (json.has("image")) json.getString("image") else null
     val height = json.getInt("height")
     val width = json.getInt("width")
+    val defaultLimit = if (json.has("forceLimit")) json.getDouble("forceLimit") else 0.0
     val cities = json.getJSONArray("cities").map {
         val c = it as JSONObject
         City(Vec2d(c.getDouble("x"), c.getDouble("y")),
@@ -383,7 +392,8 @@ fun createWorldFromJSON(data: String, params: EventGameParams): World {
                 } else PlayerId.Neutral,
                 pop = Force(if (c.has("pop")) c.getDouble("pop") else 0.0),
                 fort = c.getBoolean("fort"),
-                name = c.getString("name")
+                name = c.getString("name"),
+                limit = if (c.has("forcelimit")) c.getDouble("forceLimit") else defaultLimit
         )
     }
     // name, x, y, fort are expected values
@@ -394,8 +404,9 @@ fun createWorldFromJSON(data: String, params: EventGameParams): World {
         val to: Int = cities.indexOfFirst { it.name == r.getString("to") }
         if (to == -1) throw AssertionError("Unknown city name ${r.getString("to")}")
         val length = cities[from].location.distanceTo(cities[to].location)
-        listOf(Route(from, to, length, 1.0),
-                Route(to, from, length, 1.0))
+        val forceLimit = if (r.has("forceLimit")) r.getDouble("forceLimit") else defaultLimit
+        listOf(Route(from, to, length, limit = forceLimit),
+                Route(to, from, length, limit = forceLimit))
     }
     // from, to are expected values (referring to city names)
 
@@ -443,8 +454,8 @@ fun createWorldFromMap(data: String, params: EventGameParams): World {
                             cityRadii.filterNot { it.first in listOf(city1.index, city2.index) }.map { Pair(it.second, it.third) })) {
                 //       println("Route between cities $city1 and $city2; ${acc1.size} routes")
                 val length = city1.value.location.distanceTo(city2.value.location)
-                listOf(Route(city1.index, city2.index, length, 1.0),
-                        Route(city2.index, city1.index, length, 1.0))
+                listOf(Route(city1.index, city2.index, length),
+                        Route(city2.index, city1.index, length))
             } else {
                 emptyList()
             }

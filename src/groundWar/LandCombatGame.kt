@@ -114,8 +114,12 @@ class LandCombatGame(val world: World = World()) : ActionAbstractGameState {
                         .filter { it.value.owner == playerId && it.value.pop.size > 0.01 }
                         .flatMap { (startIndex, _) -> world.allRoutesFromCity[startIndex]!!.map { Pair(it.fromCity, it.toCity) } }
                         .flatMap { (fromCity, toCity) ->
-                            (1..3)
-                                    .map { LaunchExpedition(playerId, fromCity, toCity, it / 3.0, world.params.OODALoop[player]) }
+                            val proportionLimit = (world.allRoutesFromCity[fromCity]?.find{it.toCity == toCity}?.limit ?: 0.0) / world.cities[fromCity].pop.size
+                            val loopLimit = if (proportionLimit > 0.00) max(1, (proportionLimit * 3).toInt()) else 3
+                            (1..loopLimit)
+                                    .map {
+                                        LaunchExpedition(playerId, fromCity, toCity, it / 3.0 , world.params.OODALoop[player])
+                                    }
                         }.filter{it.isValid(this)} +
                         listOf(InterruptibleWait(player, world.params.OODALoop[player]),
                                 InterruptibleWait(player, 3 * world.params.OODALoop[player]),

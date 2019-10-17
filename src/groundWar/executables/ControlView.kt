@@ -147,25 +147,17 @@ class ControlView {
                 val redAgent = createAgentParamsFromString(redAgentDetails.text.split("\n")).createAgent("RED")
                 val fileAsLines = if (mapNameField.text != "") BufferedReader(FileReader(mapNameField.text)).readLines().joinToString("\n") else ""
                 val cityValues = if (fileAsLines == "") emptyMap() else victoryValuesFromJSON(fileAsLines)
-                val cityValue = if (cityValues.isEmpty()) 5.0 else 0.0
+                val cityValue = if (cityValues.isEmpty()) 5.0 else 5.0
+
+                val scoreString = "SC|$cityValue|0|1|-0.5|0.1|0|0|-3|0"
 
                 runningThread = Thread {
                     runWithParams(
                             simParams,
                             blueAgent,
                             redAgent,
-                            blueScoreFunction = compositeScoreFunction(listOf(
-                                    simpleScoreFunction(cityValue, 1.0, 0.0, -0.5),
-                                    specificTargetScoreFunction(cityValues),
-                                    entropyScoreFunction(-1.0),
-                                    localAdvantageScoreFunction(0.01)
-                            )),
-                            redScoreFunction = compositeScoreFunction(listOf(
-                                    simpleScoreFunction(5.0, 1.0, 0.0, -0.5),
-                                    specificTargetScoreFunction(cityValues),
-                                    entropyScoreFunction(-1.0),
-                                    localAdvantageScoreFunction(0.01)
-                            )),
+                            blueScoreFunction = stringToScoreFunction(scoreString, cityValues),
+                            redScoreFunction = stringToScoreFunction(scoreString, cityValues),
                             showAgentPlans = agentPlanBox.isSelected,
                             mapFile = mapNameField.text,
                             blueVictoryFunction = if (cityValues.isNotEmpty()) allTargetsConquered(PlayerId.Blue, cityValues) else null
