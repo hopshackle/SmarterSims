@@ -74,7 +74,7 @@ fun main(args: Array<String>) {
         }
     }
     val tMap: Map<String, (LandCombatGame) -> Number> = targetMap.map { (targetName, _) ->
-        "${targetName}_BLUE" to { g: LandCombatGame -> if (g.world.cities.first { it.name == targetName }?.owner == PlayerId.Blue) 1 else 0 }
+        "${targetName}_BLUE" to { g: LandCombatGame -> if (g.world.cities.first { it.name == targetName }.owner == PlayerId.Blue) 1 else 0 }
     }.toMap()
     val coreStats: Map<String, (LandCombatGame) -> Number> = mapOf(
             "BLUE_WINS" to { g: LandCombatGame -> if (victoryFunctions[PlayerId.Blue]?.invoke(g) == true) 1 else 0 },
