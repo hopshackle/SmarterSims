@@ -15,8 +15,8 @@ fun main(args: Array<String>) {
     StatsCollator.clear()
 
     // args[0] is the number of games to run
-    // args[1] is the file that contains agentParams to use
-    // args[2] is the file that contains intervalParams to use (this is used with a fixed set at the moment, it is not resampled for each game)
+    // args[1], args[2] is the file that contains agentParams to use
+    // args[3] is the file that contains intervalParams to use (this is used with a fixed set at the moment, it is not resampled for each game)
     val maxGames = if (args.size > 0) args[0].toInt() else 100
     val agentParams1 = if (args.size > 1) {
         val fileAsLines = BufferedReader(FileReader(args[1])).lines().toList()

@@ -26,6 +26,7 @@ fun main(args: Array<String>) {
 
     val rnd = Random(1)
     val seeds = (0 until maxGames).map { rnd.nextLong() }.toLongArray()
+    var agentWins = Array(allAgents.size) { IntArray(allAgents.size) { 0 } }
     var agentScores = Array(allAgents.size) { DoubleArray(allAgents.size) { 0.0 } }
     allAgents.withIndex().forEach { (i, agenti) ->
         allAgents.withIndex().forEach { (j, agentj) ->
@@ -33,13 +34,23 @@ fun main(args: Array<String>) {
             runGames(maxGames, agenti.createAgent("BLUE"), agentj.createAgent("RED"), eventParams = eventParams, worldSeeds = seeds)
             agentScores[i][j] += StatsCollator.getStatistics("BLUE_SCORE") / 2.0
             agentScores[j][i] -= StatsCollator.getStatistics("BLUE_SCORE") / 2.0
+
+            agentWins[i][j] += StatsCollator.getStatistics(("BLUE_wins")).toInt()
+            agentWins[j][i] += maxGames - StatsCollator.getStatistics(("BLUE_wins")).toInt()
         }
     }
 
-    val fileWriter = FileWriter("AgentRoundRobin.csv")
+    val fileWriter = FileWriter("AgentRoundRobinScores.csv")
     fileWriter.write("," + fileNames.joinToString() { it.nameWithoutExtension } + "\n")
     agentScores.zip(fileNames).forEach { (scores, file) ->
-        fileWriter.write(file.nameWithoutExtension + ", " + scores.joinToString() { d -> String.format("%.1f", d) } + "\n")
+        fileWriter.write(file.nameWithoutExtension + ", " + scores.joinToString { d -> String.format("%.1f", d) } + "\n")
     }
     fileWriter.close()
+
+    val fileWriterWins = FileWriter("AgentRoundRobinWins.csv")
+    fileWriterWins.write("," + fileNames.joinToString() { it.nameWithoutExtension } + "\n")
+    agentWins.zip(fileNames).forEach { (scores, file) ->
+        fileWriterWins.write(file.nameWithoutExtension + ", " + scores.joinToString { d -> String.format("%d", d) } + "\n")
+    }
+    fileWriterWins.close()
 }
