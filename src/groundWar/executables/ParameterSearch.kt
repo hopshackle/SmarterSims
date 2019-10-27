@@ -440,6 +440,7 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 pruneTree = settingsMap.getOrDefault("pruneTree", defaultParams.params.contains("pruneTree")) as Boolean,
                 maxDepth = settingsMap.getOrDefault("sequenceLength", defaultParams.getParam("sequenceLength", "10").toInt()) as Int,
                 maxActions = settingsMap.getOrDefault("maxActions", defaultParams.getParam("maxActions", "10").toInt()) as Int,
+                actionFilter = settingsMap.getOrDefault("actionFilter", defaultParams.getParam("actionFilter", "none")) as String,
                 discountRate = settingsMap.getOrDefault("discountFactor", defaultParams.getParam("discountFactor", "1.0").toDouble()) as Double
         ),
                 stateFunction = LandCombatStateFunction,

@@ -26,8 +26,8 @@ fun main(args: Array<String>) {
 
     val rnd = Random(1)
     val seeds = (0 until maxGames).map { rnd.nextLong() }.toLongArray()
-    var agentWins = Array(allAgents.size) { IntArray(allAgents.size) { 0 } }
-    var agentScores = Array(allAgents.size) { DoubleArray(allAgents.size) { 0.0 } }
+    val agentWins = Array(allAgents.size) { IntArray(allAgents.size) { 0 } }
+    val agentScores = Array(allAgents.size) { DoubleArray(allAgents.size) { 0.0 } }
     allAgents.withIndex().forEach { (i, agenti) ->
         allAgents.withIndex().forEach { (j, agentj) ->
             StatsCollator.clear()
@@ -36,7 +36,7 @@ fun main(args: Array<String>) {
             agentScores[j][i] -= StatsCollator.getStatistics("BLUE_SCORE") / 2.0
 
             agentWins[i][j] += StatsCollator.getStatistics(("BLUE_wins")).toInt()
-            agentWins[j][i] += maxGames - StatsCollator.getStatistics(("BLUE_wins")).toInt()
+            agentWins[j][i] += (maxGames - StatsCollator.getStatistics(("BLUE_wins")).toInt())
         }
     }
 
