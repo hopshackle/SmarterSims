@@ -35,8 +35,8 @@ fun main(args: Array<String>) {
             agentScores[i][j] += StatsCollator.getStatistics("BLUE_SCORE") / 2.0
             agentScores[j][i] -= StatsCollator.getStatistics("BLUE_SCORE") / 2.0
 
-            agentWins[i][j] += StatsCollator.getStatistics(("BLUE_wins")).toInt()
-            agentWins[j][i] += (maxGames - StatsCollator.getStatistics(("BLUE_wins")).toInt())
+            agentWins[i][j] += (StatsCollator.getStatistics(("BLUE_wins")) * 100.0).toInt()
+            agentWins[j][i] += (maxGames - (StatsCollator.getStatistics(("BLUE_wins")) * 100.0).toInt())
         }
     }
 
