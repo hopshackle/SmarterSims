@@ -35,24 +35,33 @@ fun main(args: Array<String>) {
     val redScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCR") })
 
     val fortVictory = args.contains("fortVictory")
+    val mapOverride = args.find { it.startsWith("map=") }?.substring(4) ?: ""
     StatsCollator.clear()
     runGames(maxGames, agentParams1.createAgent("BLUE"), agentParams2.createAgent("RED"), intervalParams,
-            scoreFunctions = arrayOf(blueScoreFunction, redScoreFunction), fortVictory = fortVictory)
+            scoreFunctions = arrayOf(blueScoreFunction, redScoreFunction), mapOverride = mapOverride, fortVictory = fortVictory)
     println(StatsCollator.summaryString())
 }
 
 fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: SimpleActionPlayerInterface,
              intervalParams: IntervalParams? = null, eventParams: EventGameParams? = null, worldSeeds: LongArray = longArrayOf(),
              scoreFunctions: Array<(LandCombatGame, Int) -> Double> = arrayOf(interimScoreFunction, interimScoreFunction),
-             fortVictory: Boolean = false) {
+             mapOverride: String = "",
+             fortVictory: Boolean = false, blueTargetVictory: Boolean = true) {
 
     val agents = mapOf(PlayerId.Blue to blueAgent, PlayerId.Red to redAgent)
 
-    val victoryFunctions: Array<(LandCombatGame, Int) -> Boolean> = if (fortVictory) {
-        arrayOf({ g, _ -> allFortsConquered(PlayerId.Blue).invoke(g) }, hasMaterialAdvantage)
-    } else {
-        arrayOf(hasMaterialAdvantage, hasMaterialAdvantage)
+    val victoryFunctions: Array<(LandCombatGame, Int) -> Boolean> = when {
+        blueTargetVictory -> {
+            val targetMap = if (mapOverride == "") emptyMap() else {
+                val mapFileAsLines = BufferedReader(FileReader(mapOverride)).readLines().joinToString("\n")
+                victoryValuesFromJSON(mapFileAsLines)
+            }
+            arrayOf({ g, _ -> allTargetsConquered(PlayerId.Blue, targetMap).invoke(g) }, hasMaterialAdvantage)
+        }
+        fortVictory -> arrayOf({ g, _ -> allFortsConquered(PlayerId.Blue).invoke(g) }, hasMaterialAdvantage)
+        else -> arrayOf(hasMaterialAdvantage, hasMaterialAdvantage)
     }
+
 
     for (r in 1..maxGames) {
 
@@ -65,7 +74,11 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
             intervalParams == null -> EventGameParams(seed = seedToUse)
             else -> intervalParams.sampleParams()
         }
-        val world = World(params = params)
+        val world = if (mapOverride != "") {
+            val worldFileAsLines = BufferedReader(FileReader(mapOverride)).readLines().joinToString("\n")
+            createWorld(worldFileAsLines, params)
+        } else
+            World(params = params)
 
         val game = LandCombatGame(world)
         game.scoreFunction[PlayerId.Blue] = scoreFunctions[0]
@@ -86,7 +99,6 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
         val decisions = game.eventQueue.history.map(Event::action).filterIsInstance<MakeDecision>().partition { m -> m.playerRef == 0 }
         println(String.format("Game %2d\tScore: %6.1f\tCities: %2d\tRoutes: %2d\tseed: %d\tTime: %3d\tTicks: %4d\tDecisions: %d:%d", r, gameScore, world.cities.size, world.routes.size, params.seed,
                 System.currentTimeMillis() - startTime, game.nTicks(), decisions.first.size, decisions.second.size))
-
 
         StatsCollator.addStatistics("BLUE_victory", if (victoryFunctions[0](game, 0)) 1.0 else 0.0)
         StatsCollator.addStatistics("RED_victory", if (victoryFunctions[1](game, 1)) 1.0 else 0.0)

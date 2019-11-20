@@ -19,6 +19,12 @@ fun main(args: Array<String>) {
         createAgentParamsFromString(fileAsLines)
     }.toList()
 
+    val mapOverride = args.find { it.startsWith("map=") }?.substring(4) ?: ""
+    val oneSided = args.contains("oneSided");
+    val blueScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCB") })
+    val redScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCR") })
+    val fortVictory = args.contains("fortVictory")
+
     val eventParams = if (args.size > 2) {
         val fileAsLines = BufferedReader(FileReader(args[2])).lines().toList()
         createIntervalParamsFromString(fileAsLines).sampleParams()
@@ -31,12 +37,19 @@ fun main(args: Array<String>) {
     allAgents.withIndex().forEach { (i, agenti) ->
         allAgents.withIndex().forEach { (j, agentj) ->
             StatsCollator.clear()
-            runGames(maxGames, agenti.createAgent("BLUE"), agentj.createAgent("RED"), eventParams = eventParams, worldSeeds = seeds)
-            agentScores[i][j] += StatsCollator.getStatistics("BLUE_SCORE") / 2.0
-            agentScores[j][i] -= StatsCollator.getStatistics("BLUE_SCORE") / 2.0
+            runGames(maxGames, agenti.createAgent("BLUE"), agentj.createAgent("RED"),
+                    eventParams = eventParams, worldSeeds = seeds,
+                    scoreFunctions = arrayOf(blueScoreFunction, redScoreFunction), mapOverride = mapOverride, fortVictory = fortVictory)
 
-            agentWins[i][j] += StatsCollator.getStatistics(("BLUE_wins")).toInt()
-            agentWins[j][i] += (maxGames - StatsCollator.getStatistics(("BLUE_wins")).toInt())
+            if (oneSided) {
+                agentScores[i][j] += StatsCollator.getStatistics("BLUE_SCORE")
+                agentWins[i][j] += StatsCollator.getStatistics(("BLUE_victory")).toInt()
+            } else {
+                agentScores[i][j] += StatsCollator.getStatistics("BLUE_SCORE") / 2.0
+                agentScores[j][i] -= StatsCollator.getStatistics("BLUE_SCORE") / 2.0
+                agentWins[i][j] += StatsCollator.getStatistics(("BLUE_wins")).toInt()
+                agentWins[j][i] += (maxGames - StatsCollator.getStatistics(("BLUE_wins")).toInt())
+            }
         }
     }
 
