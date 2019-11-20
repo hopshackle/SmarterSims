@@ -43,12 +43,12 @@ fun main(args: Array<String>) {
 
             if (oneSided) {
                 agentScores[i][j] += StatsCollator.getStatistics("BLUE_SCORE")
-                agentWins[i][j] += StatsCollator.getStatistics(("BLUE_victory")).toInt()
+                agentWins[i][j] += (StatsCollator.getStatistics(("BLUE_victory")) * 100.0).toInt()
             } else {
                 agentScores[i][j] += StatsCollator.getStatistics("BLUE_SCORE") / 2.0
                 agentScores[j][i] -= StatsCollator.getStatistics("BLUE_SCORE") / 2.0
-                agentWins[i][j] += StatsCollator.getStatistics(("BLUE_wins")).toInt()
-                agentWins[j][i] += (maxGames - StatsCollator.getStatistics(("BLUE_wins")).toInt())
+                agentWins[i][j] += (StatsCollator.getStatistics(("BLUE_wins")) * 100.0).toInt()
+                agentWins[j][i] += (maxGames - (StatsCollator.getStatistics(("BLUE_wins"))*100.0).toInt())
             }
         }
     }
