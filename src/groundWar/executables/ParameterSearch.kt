@@ -13,7 +13,7 @@ import utilities.StatsCollator
 import java.io.BufferedReader
 import java.io.FileReader
 import java.lang.AssertionError
-import kotlin.math.min
+import kotlin.math.*
 import kotlin.reflect.KClass
 import kotlin.streams.toList
 
@@ -117,30 +117,38 @@ fun main(args: Array<String>) {
                 println("No GameParams specified - using default values")
                 EventGameParams()
             }
-                else -> {
+            else -> {
                 val fileAsLines = BufferedReader(FileReader(fileName)).lines().toList()
                 createIntervalParamsFromString(fileAsLines).sampleParams()
             }
         }
     }.invoke()
 
+    val arg2 = args[2].split("_")
+
+    val T = 30.0
+    val weightFunction: (Int) -> Double = when (arg2[0]) {
+        "EXP" -> { visits: Int -> 1.0 - exp(-visits.toDouble() / T) }
+        "LIN" -> { visits: Int -> min(visits.toDouble() / T, 1.0) }
+        "INV" -> { visits: Int -> 1.0 - T / (T + visits.toDouble()) }
+        "SQRT" -> { visits: Int -> 1.0 - sqrt(T / (T + visits.toDouble())) }
+        else -> { visits: Int -> 1.0 - exp(-visits.toDouble() / T) }
+        // we default to exponential
+    }
+    val minWeight = when {
+        args[2].split(":").size > 1 -> args[2].split(":")[1].toDouble()
+        else -> 0.0
+    }
     val landscapeModel: LandscapeModel = when {
         args[2] == "GP" -> GaussianProcessSearch("GP", searchSpace)
         args[2] == "STD" -> NTupleSystem(searchSpace)
-        args[2] in listOf("EXP_MEAN") -> NTupleSystemExp(searchSpace, 30, expWeightExplore = false)
-        args[2].startsWith("EXP_FULL") -> {
-            val minWeight = args[2].split(":")[1].toDouble()
-            NTupleSystemExp(searchSpace, 30, minWeight)
-        }
-        args[2].startsWith("EXP_SQRT:") -> {
-            val minWeight = args[2].split(":")[1].toDouble()
-            NTupleSystemExp(searchSpace, 30, minWeight, exploreWithSqrt = true)
-        }
-        args[2].startsWith("EXP_SQRT") -> {
-            NTupleSystemExp(searchSpace, 30, expWeightExplore = false, exploreWithSqrt = true)
-        }
+        arg2.size != 2 -> throw AssertionError("Invalid second argument " + args[2])
+        arg2[1].startsWith("MEAN") -> NTupleSystemExp(searchSpace, T.toInt(), minWeight, weightFunction, weightExplore = false, exploreWithSqrt = false)
+        arg2[1].startsWith("FULL") -> NTupleSystemExp(searchSpace, T.toInt(), minWeight, weightFunction, weightExplore = true, exploreWithSqrt = false)
+        arg2[1].startsWith("SQRT") -> NTupleSystemExp(searchSpace, T.toInt(), minWeight, weightFunction, weightExplore = false, exploreWithSqrt = true)
         else -> throw AssertionError("Unknown NTuple parameter: " + args[2])
     }
+
     val use3Tuples = args.contains("useThreeTuples")
     if (landscapeModel is NTupleSystem) {
         landscapeModel.use3Tuple = use3Tuples
