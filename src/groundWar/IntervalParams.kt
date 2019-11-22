@@ -159,6 +159,22 @@ data class AgentParams(
         return params.firstOrNull { it.contains(name) }?.let { it.split(":")[1] } ?: default
     }
 
+    fun createSimpleAgent(colour: String): SimplePlayerInterface {
+        return when (algorithm) {
+            "RHEASimple" -> SimpleEvoAgent(
+                    nEvals = evalBudget,
+                    timeLimit = timeBudget,
+                    useMutationTransducer = params.contains("useMutationTransducer"),
+                    repeatProb = getParam("repeatProb", "0.00").toDouble(),
+                    useShiftBuffer = params.contains("useShiftBuffer"),
+                    flipAtLeastOneValue = params.contains("flipAtLeastOneValue"),
+                    probMutation = getParam("probMutation", "0.01").toDouble(),
+                    discountFactor = getParam("discountFactor", "1.0").toDouble()
+            )
+            else -> throw AssertionError("Invalid Algorithm " + algorithm)
+        }
+    }
+
     fun createAgent(colour: String): SimpleActionPlayerInterface {
         val opponentModel = getOpponentModel()
         return when (algorithm) {
@@ -174,6 +190,7 @@ data class AgentParams(
                             sequenceLength = sequenceLength,
                             horizon = planningHorizon,
                             useMutationTransducer = params.contains("useMutationTransducer"),
+                            repeatProb = getParam("repeatProb", "0.00").toDouble(),
                             useShiftBuffer = params.contains("useShiftBuffer"),
                             flipAtLeastOneValue = params.contains("flipAtLeastOneValue"),
                             probMutation = getParam("probMutation", "0.01").toDouble(),
@@ -256,7 +273,7 @@ fun createAgentParamsFromString(details: List<String>): AgentParams {
     //      OODALoop = 10, [5, 50]          - a single parameter setting for BLUE, and an Interval for RED
 
     // firstly we create a map from parameter name to value
-    val paramMap: Map<String, String> = details.filter{it.trim() != ""}.map {
+    val paramMap: Map<String, String> = details.filter { it.trim() != "" }.map {
         val temp = it.split("=")
         temp[0].trim() to temp[1].trim()
     }.toMap()

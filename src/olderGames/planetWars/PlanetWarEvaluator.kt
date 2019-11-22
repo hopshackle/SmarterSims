@@ -1,16 +1,16 @@
-package olderGames.asteroids
+package olderGames.planetWars
 
 import groundWar.*
 import groundWar.executables.*
 import ggi.*
 import evodef.*
 
-class AsteroidsEvaluator(val searchSpace: HopshackleSearchSpace<SimplePlayerInterface>,
+class PlanetWarEvaluator(val searchSpace: HopshackleSearchSpace<SimplePlayerInterface>,
                          val logger: EvolutionLogger,
                          val opponentParams: AgentParams
 ) : SolutionEvaluator {
 
-    var nSteps = 1000
+    var nSteps = 200
 
     override fun optimalFound() = false
 
@@ -25,16 +25,18 @@ class AsteroidsEvaluator(val searchSpace: HopshackleSearchSpace<SimplePlayerInte
     }
 
     override fun evaluate(settings: DoubleArray): Double {
-        var finalScore = 0.0
-        val gameState = AsteroidsGameState()
-        val params = GameParameters().injectValues(DefaultParams())
-        gameState.setParams(params).initForwardModel()
-        val p1 = searchSpace.getAgent(settings)
+        val seedToUse = System.currentTimeMillis()
 
-        val actions = IntArray(1)
+        var finalScore = 0.0
+        val gameState = GameState().defaultState(seedToUse)
+        val p1 = searchSpace.getAgent(settings)
+        val p2 = opponentParams.createSimpleAgent("target")
+
+        val actions = IntArray(2)
         var i = 0
         while (i < nSteps && !gameState.isTerminal()) {
             actions[0] = p1.getAction(gameState.copy(), 0)
+            actions[1] = p2.getAction(gameState.copy(), 1)
             gameState.next(actions)
             i++
         }
@@ -43,7 +45,7 @@ class AsteroidsEvaluator(val searchSpace: HopshackleSearchSpace<SimplePlayerInte
 
         nEvals++
         logger.log(finalScore, settings, false)
-        return finalScore
+        return if (finalScore > 0.0) 1.0 else -1.0
     }
 
     override fun searchSpace() = searchSpace

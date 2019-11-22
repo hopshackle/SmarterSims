@@ -7,15 +7,14 @@ import evodef.*
 import ggi.*
 import groundWar.*
 import ntbea.*
-import utilities.GaussianProcessFramework
-import utilities.GaussianProcessSearch
-import utilities.StatsCollator
-import java.io.BufferedReader
-import java.io.FileReader
+import olderGames.asteroids.AsteroidsEvaluator
+import utilities.*
+import java.io.*
 import java.lang.AssertionError
 import kotlin.math.*
 import kotlin.reflect.KClass
 import kotlin.streams.toList
+import olderGames.planetWars.*
 
 val defaultMCTSAgent = """
         algorithm=MCTS
@@ -89,6 +88,8 @@ fun main(args: Array<String>) {
                 |SCR=           Score function for Red
                 |SCB=           Score function for Blue      
                 |fortVictory    If specified, then instead of using material advantage, we score a game only on difference in forts taken
+                |kExplore=      The k to use in NTBEA - defaults to 100.0
+                |T=             The T parameter in EXP/LIN/INV/SQRT weight functions
             """.trimMargin()
     )
 
@@ -98,8 +99,13 @@ fun main(args: Array<String>) {
 
     val agentParams = agentParamsFromCommandLine(args, "Agent")
     val fortVictory = args.contains("fortVictory")
+    val game = args.find { it.startsWith("game=") }?.split("=")?.get(1) ?: ""
+    val kExplore = (args.find { it.startsWith("kExplore=") }?.split("=")?.get(1) ?: "100.0").toDouble()
+    val T = (args.find { it.startsWith("T=") }?.split("=")?.get(1) ?: "30").toInt()
 
     val searchSpace = when (args[0].split("|")[0]) {
+        "RHEASimple" -> RHEASimpleSearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultRHEAAgent),
+                fileName = args[0].split("|")[1])
         "RHEA" -> RHEASearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultRHEAAgent),
                 fileName = args[0].split("|")[1])
         "MCTS" -> MCTSSearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultMCTSAgent),
@@ -126,7 +132,6 @@ fun main(args: Array<String>) {
 
     val arg2 = args[2].split("_")
 
-    val T = 30.0
     val weightFunction: (Int) -> Double = when (arg2[0]) {
         "EXP" -> { visits: Int -> 1.0 - exp(-visits.toDouble() / T) }
         "LIN" -> { visits: Int -> min(visits.toDouble() / T, 1.0) }
@@ -166,7 +171,7 @@ fun main(args: Array<String>) {
     }.sum()
 
     val searchFramework: EvoAlg = when (landscapeModel) {
-        is NTupleSystem -> NTupleBanditEA(100.0, min(50.0, stateSpaceSize * 0.01).toInt())
+        is NTupleSystem -> NTupleBanditEA(kExplore, min(50.0, stateSpaceSize * 0.01).toInt())
         is GaussianProcessSearch -> {
             val retValue = GaussianProcessFramework()
             retValue.nSamples = 5
@@ -184,19 +189,23 @@ fun main(args: Array<String>) {
                 (0 until searchSpace.nValues(it)).map { i -> searchSpace.value(it, i) }.joinToString()))
     }
 
-    val groundWarEvaluator = GroundWarEvaluator(
-            searchSpace,
-            params,
-            logger,
-            agentParams,
-            scoreFunctions = arrayOf(stringToScoreFunction(args.firstOrNull { it.startsWith("SCB|") }),
-                    stringToScoreFunction(args.firstOrNull { it.startsWith("SCR|") })),
-            fortVictory = fortVictory
-    )
+    val evaluator = when (game) {
+        "PlanetWars" -> PlanetWarEvaluator(searchSpace as HopshackleSearchSpace<SimplePlayerInterface>, logger, agentParams)
+        "Asteroids" -> AsteroidsEvaluator(searchSpace as HopshackleSearchSpace<SimplePlayerInterface>, logger, agentParams)
+        else -> GroundWarEvaluator(
+                searchSpace as HopshackleSearchSpace<SimpleActionPlayerInterface>,
+                params,
+                logger,
+                agentParams,
+                scoreFunctions = arrayOf(stringToScoreFunction(args.firstOrNull { it.startsWith("SCB|") }),
+                        stringToScoreFunction(args.firstOrNull { it.startsWith("SCR|") })),
+                fortVictory = fortVictory
+        )
+    }
 
     repeat(totalRuns / reportEvery) {
-        groundWarEvaluator.nEvals = 0
-        searchFramework.runTrial(groundWarEvaluator, reportEvery)
+        evaluator.reset()
+        searchFramework.runTrial(evaluator, reportEvery)
 
         // tuples gets cleared out
         println("Current best sampled point (using mean estimate): " + landscapeModel.bestOfSampled.joinToString() +
@@ -230,22 +239,25 @@ fun main(args: Array<String>) {
         }
     }
 
-    val bestAgent = when (landscapeModel) {
-        is GaussianProcessSearch -> searchSpace.getAgent(landscapeModel.bestOfSampled)
-        else -> searchSpace.getAgent(searchSpace.convertSettings(landscapeModel.bestOfSampled.map { it.toInt() }.toIntArray()))
-    }
-    StatsCollator.clear()
-    runGames(1000,
-            bestAgent,
-            agentParams.createAgent("opponent"),
-            scoreFunctions = arrayOf(stringToScoreFunction(args.firstOrNull { it.startsWith("SCB|") }),
-                    stringToScoreFunction(args.firstOrNull { it.startsWith("SCR|") })),
-            eventParams = params,
-            fortVictory = fortVictory)
-    println(StatsCollator.summaryString())
+    /*
+val bestAgent = when (landscapeModel) {
+    is GaussianProcessSearch -> searchSpace.getAgent(landscapeModel.bestOfSampled)
+    else -> searchSpace.getAgent(searchSpace.convertSettings(landscapeModel.bestOfSampled.map { it.toInt() }.toIntArray()))
 }
 
-class GroundWarEvaluator(val searchSpace: HopshackleSearchSpace,
+StatsCollator.clear()
+runGames(1000,
+        bestAgent,
+        agentParams.createAgent("opponent"),
+        scoreFunctions = arrayOf(stringToScoreFunction(args.firstOrNull { it.startsWith("SCB|") }),
+                stringToScoreFunction(args.firstOrNull { it.startsWith("SCR|") })),
+        eventParams = params,
+        fortVictory = fortVictory)
+println(StatsCollator.summaryString())
+*/
+}
+
+class GroundWarEvaluator(val searchSpace: HopshackleSearchSpace<SimpleActionPlayerInterface>,
                          val params: EventGameParams,
                          val logger: EvolutionLogger,
                          val opponentParams: AgentParams,
@@ -317,13 +329,15 @@ class GroundWarEvaluator(val searchSpace: HopshackleSearchSpace,
 
     override fun searchSpace() = searchSpace
 
-    override fun reset() {}
+    override fun reset() {
+        nEvals = 0
+    }
 
     override fun nEvals() = nEvals
 }
 
 
-abstract class HopshackleSearchSpace(fileName: String) : SearchSpace {
+abstract class HopshackleSearchSpace<T>(fileName: String) : SearchSpace {
 
     val searchDimensions: List<String> = if (fileName != "") FileReader(fileName).readLines() else emptyList()
     val searchKeys: List<String> = searchDimensions.map { it.split("=").first() }
@@ -367,14 +381,14 @@ abstract class HopshackleSearchSpace(fileName: String) : SearchSpace {
         }.toMap()
     }
 
-    abstract fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface
+    abstract fun getAgent(settings: DoubleArray): T
     override fun nValues(i: Int) = searchValues[i].size
     override fun nDims() = searchValues.size
     override fun name(i: Int) = searchKeys[i]
     override fun value(d: Int, i: Int) = searchValues[d][i]
 }
 
-class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace(fileName) {
+class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace<SimpleActionPlayerInterface>(fileName) {
 
     override val types: Map<String, KClass<*>>
         get() = mapOf("useShiftBuffer" to Boolean::class, "probMutation" to Double::class,
@@ -403,7 +417,37 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
     }
 }
 
-class RHCASearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace(fileName) {
+class RHEASimpleSearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace<SimplePlayerInterface>(fileName) {
+
+    override val types: Map<String, KClass<*>>
+        get() = mapOf("useShiftBuffer" to Boolean::class, "mutatedPoints" to Double::class,
+                "flipAtLeastOneValue" to Boolean::class, "discountFactor" to Double::class,
+                "sequenceLength" to Int::class, "useMutationTransducer" to Boolean::class,
+                "horizon" to Int::class, "timeBudget" to Int::class,
+                "resample" to Int::class, "repeatProb" to Double::class)
+
+    override fun getAgent(settings: DoubleArray): SimplePlayerInterface {
+
+        val settingsMap = settingsToMap(settings)
+        val mutatedPoints = settingsMap.getOrDefault("mutatedPoints", defaultParams.getParam("mutatedPoints", "1.0").toDouble()) as Double
+        val sequenceLength = settingsMap.getOrDefault("sequenceLength", defaultParams.sequenceLength) as Int
+        val probMutation = mutatedPoints / sequenceLength
+        return SimpleEvoAgent(
+                nEvals = 10000,
+                timeLimit = settingsMap.getOrDefault("timeBudget", defaultParams.timeBudget) as Int,
+                useMutationTransducer = settingsMap.getOrDefault("mutationTransducer", defaultParams.params.contains("mutationTransducer")) as Boolean,
+                repeatProb = settingsMap.getOrDefault("repeatProb", defaultParams.getParam("repeatProb", "0.0").toDouble()) as Double,
+                sequenceLength = sequenceLength,
+                horizon = settingsMap.getOrDefault("horizon", defaultParams.planningHorizon) as Int,
+                useShiftBuffer = settingsMap.getOrDefault("useShiftBuffer", defaultParams.params.contains("useShiftBuffer")) as Boolean,
+                probMutation = probMutation,
+                flipAtLeastOneValue = settingsMap.getOrDefault("flipAtLeastOneValue", defaultParams.params.contains("flipAtLeastOneValue")) as Boolean,
+                discountFactor = settingsMap.getOrDefault("discountFactor", defaultParams.getParam("discountFactor", "1.0").toDouble()) as Double
+        )
+    }
+}
+
+class RHCASearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace<SimpleActionPlayerInterface>(fileName) {
 
     override val types: Map<String, KClass<*>>
         get() = mapOf("useShiftBuffer" to Boolean::class, "probMutation" to Double::class,
@@ -430,7 +474,7 @@ class RHCASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
     }
 }
 
-class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace(fileName) {
+class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : HopshackleSearchSpace<SimpleActionPlayerInterface>(fileName) {
 
     override val types: Map<String, KClass<*>>
         get() = mapOf("sequenceLength" to Int::class, "horizon" to Int::class, "pruneTree" to Boolean::class,
@@ -462,7 +506,7 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
     }
 }
 
-class UtilitySearchSpace(val agentParams: AgentParams, val defaultScore: ScoreParams, fileName: String) : HopshackleSearchSpace(fileName) {
+class UtilitySearchSpace(val agentParams: AgentParams, val defaultScore: ScoreParams, fileName: String) : HopshackleSearchSpace<SimpleActionPlayerInterface>(fileName) {
     override val types: Map<String, KClass<*>>
         get() = mapOf("visibilityNode" to Double::class, "visibilityArc" to Double::class, "theirCity" to Double::class,
                 "ownForce" to Double::class, "theirForce" to Double::class, "fortressValue" to Double::class,
