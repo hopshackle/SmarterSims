@@ -38,7 +38,7 @@ class AsteroidsEvaluator(val searchSpace: HopshackleSearchSpace<SimplePlayerInte
             gameState.next(actions)
             i++
         }
-     //   println("Game score  ${settings.joinToString()} is ${gameState.score()}")
+       println("Game score  ${settings.joinToString()} is ${gameState.score()}")
         finalScore += gameState.score()
 
         nEvals++
