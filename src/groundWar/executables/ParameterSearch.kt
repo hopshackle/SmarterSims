@@ -90,6 +90,7 @@ fun main(args: Array<String>) {
                 |fortVictory    If specified, then instead of using material advantage, we score a game only on difference in forts taken
                 |kExplore=      The k to use in NTBEA - defaults to 100.0
                 |T=             The T parameter in EXP/LIN/INV/SQRT weight functions
+                |hood=          The size of neighbourhood to look at in NTBEA. Default is min(50, |searchSpace|/100)
             """.trimMargin()
     )
 
@@ -148,9 +149,9 @@ fun main(args: Array<String>) {
         args[2] == "GP" -> GaussianProcessSearch("GP", searchSpace)
         args[2] == "STD" -> NTupleSystem(searchSpace)
         arg2.size != 2 -> throw AssertionError("Invalid second argument " + args[2])
-        arg2[1].startsWith("MEAN") -> NTupleSystemExp(searchSpace, T.toInt(), minWeight, weightFunction, weightExplore = false, exploreWithSqrt = false)
-        arg2[1].startsWith("FULL") -> NTupleSystemExp(searchSpace, T.toInt(), minWeight, weightFunction, weightExplore = true, exploreWithSqrt = false)
-        arg2[1].startsWith("SQRT") -> NTupleSystemExp(searchSpace, T.toInt(), minWeight, weightFunction, weightExplore = false, exploreWithSqrt = true)
+        arg2[1].startsWith("MEAN") -> NTupleSystemExp(searchSpace, T, minWeight, weightFunction, weightExplore = false, exploreWithSqrt = false)
+        arg2[1].startsWith("FULL") -> NTupleSystemExp(searchSpace, T, minWeight, weightFunction, weightExplore = true, exploreWithSqrt = false)
+        arg2[1].startsWith("SQRT") -> NTupleSystemExp(searchSpace, T, minWeight, weightFunction, weightExplore = false, exploreWithSqrt = true)
         else -> throw AssertionError("Unknown NTuple parameter: " + args[2])
     }
 
@@ -170,8 +171,9 @@ fun main(args: Array<String>) {
         }.sum()
     }.sum()
 
+    val neighbourhood: Double = args.find { it.startsWith("hood=") }?.split("=")?.get(1)?.toDouble() ?: min(50.0, stateSpaceSize * 0.01)
     val searchFramework: EvoAlg = when (landscapeModel) {
-        is NTupleSystem -> NTupleBanditEA(kExplore, min(50.0, stateSpaceSize * 0.01).toInt())
+        is NTupleSystem -> NTupleBanditEA(kExplore, neighbourhood.toInt())
         is GaussianProcessSearch -> {
             val retValue = GaussianProcessFramework()
             retValue.nSamples = 5
