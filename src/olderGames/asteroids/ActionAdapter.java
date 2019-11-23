@@ -20,7 +20,7 @@ public class ActionAdapter {
         int n = fires.length * thrusts.length * turns.length;
         int ix = 0;
         actions = new Action[n];
-        System.out.println("Action adapter: " + n);
+   //     System.out.println("Action adapter: " + n);
         for (boolean fire : fires) {
             for (double thrust : thrusts) {
                 for (double turn : turns) {
