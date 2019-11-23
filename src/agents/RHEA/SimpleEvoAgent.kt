@@ -125,6 +125,7 @@ data class SimpleEvoAgent(
         var sequenceLength: Int = 200,
         var nEvals: Int = 20,
         var timeLimit: Int = 1000,
+        var tickBudget: Int = 0,
         var useShiftBuffer: Boolean = true,
         var useMutationTransducer: Boolean = false,
         var repeatProb: Double = 0.5,  // only used with mutation transducer
@@ -181,10 +182,12 @@ data class SimpleEvoAgent(
                     gameState.translateGene(playerId, solution)))
         }
 
+        var ticksUsed = if (tickBudget > 0) 0 else -1
         do {
             // evaluate the current one
             val mut = mutate(solution, probMutation, gameState.nActions(), useMutationTransducer, repeatProb, flipAtLeastOneValue)
-            val mutScore = evalSeq(gameState.copy(), mut, playerId)
+            val rolloutGame = gameState.copy()
+            val mutScore = evalSeq(rolloutGame, mut, playerId)
             if (debug) debugLog.log(String.format("\t%3d: Gets score of %.1f with %s (%s)", iterations, mutScore, mut.joinToString(""),
                     (gameState as LandCombatGame).translateGene(playerId, mut)))
             if (mutScore >= curScore) {
@@ -194,7 +197,8 @@ data class SimpleEvoAgent(
                         (gameState as LandCombatGame).translateGene(playerId, solution)))
             }
             iterations++
-        } while (iterations < nEvals && System.currentTimeMillis() - startTime < timeLimit)
+            if (tickBudget > 0) ticksUsed += rolloutGame.nTicks() - gameState.nTicks()
+        } while (ticksUsed < tickBudget && iterations < nEvals && System.currentTimeMillis() - startTime < timeLimit)
         if (debug) debugLog.flush()
         if (solution.size < 3)
             throw AssertionError("Solution is too short")
@@ -202,6 +206,7 @@ data class SimpleEvoAgent(
         StatsCollator.addStatistics("${name}_ProportionsGene", solution[2])
         StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
         StatsCollator.addStatistics("${name}_Evals", iterations)
+        StatsCollator.addStatistics("${name}_Ticks", ticksUsed)
         StatsCollator.addStatistics("${name}_HorizonUsed", elapsedLengthOfPlan(solution, gameState.copy(), playerId))
         buffer = solution
         return solution

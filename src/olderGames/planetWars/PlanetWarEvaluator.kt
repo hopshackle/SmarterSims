@@ -42,6 +42,7 @@ class PlanetWarEvaluator(val searchSpace: HopshackleSearchSpace<SimplePlayerInte
         }
      //   println("Game score  ${settings.joinToString()} is ${gameState.score()}")
         finalScore += gameState.score()
+     //   println("Total ticks in game = " + i)
 
         nEvals++
         logger.log(finalScore, settings, false)

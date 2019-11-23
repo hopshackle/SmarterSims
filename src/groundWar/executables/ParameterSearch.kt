@@ -402,7 +402,7 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
         val settingsMap = settingsToMap(settings)
         return SimpleActionEvoAgent(
                 underlyingAgent = SimpleEvoAgent(
-                        nEvals = 10000,
+                        nEvals = settingsMap.getOrDefault("evalBudget", defaultParams.evalBudget) as Int,
                         timeLimit = settingsMap.getOrDefault("timeBudget", defaultParams.timeBudget) as Int,
                         useMutationTransducer = false,
                         sequenceLength = settingsMap.getOrDefault("sequenceLength", defaultParams.sequenceLength) as Int,
@@ -433,8 +433,9 @@ class RHEASimpleSearchSpace(val defaultParams: AgentParams, fileName: String) : 
         val sequenceLength = settingsMap.getOrDefault("sequenceLength", defaultParams.sequenceLength) as Int
         val probMutation = mutatedPoints / sequenceLength
         return SimpleEvoAgent(
-                nEvals = 10000,
+                nEvals = settingsMap.getOrDefault("evalBudget", defaultParams.evalBudget) as Int,
                 timeLimit = settingsMap.getOrDefault("timeBudget", defaultParams.timeBudget) as Int,
+                tickBudget = settingsMap.getOrDefault("tickBudget", defaultParams.tickBudget) as Int,
                 useMutationTransducer = settingsMap.getOrDefault("mutationTransducer", defaultParams.params.contains("mutationTransducer")) as Boolean,
                 repeatProb = settingsMap.getOrDefault("repeatProb", defaultParams.getParam("repeatProb", "0.0").toDouble()) as Double,
                 sequenceLength = sequenceLength,
@@ -486,7 +487,7 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
         val settingsMap = settingsToMap(settings)
         return MCTSTranspositionTableAgentMaster(MCTSParameters(
                 C = settingsMap.getOrDefault("C", defaultParams.getParam("C", "0.1").toDouble()) as Double,
-                maxPlayouts = 10000,
+                maxPlayouts = settingsMap.getOrDefault("evalBudget", defaultParams.evalBudget) as Int,
                 timeLimit = settingsMap.getOrDefault("timeBudget", defaultParams.timeBudget) as Int,
                 horizon = settingsMap.getOrDefault("horizon", defaultParams.planningHorizon) as Int,
                 pruneTree = settingsMap.getOrDefault("pruneTree", defaultParams.params.contains("pruneTree")) as Boolean,
