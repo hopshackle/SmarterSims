@@ -7,8 +7,7 @@ import evodef.*
 import utilities.StatsCollator
 
 class AsteroidsEvaluator(val searchSpace: HopshackleSearchSpace<SimplePlayerInterface>,
-                         val logger: EvolutionLogger,
-                         val opponentParams: AgentParams
+                         val logger: EvolutionLogger
 ) : SolutionEvaluator {
 
     var nSteps = 1000

@@ -193,7 +193,7 @@ fun main(args: Array<String>) {
 
     val evaluator = when (game) {
         "PlanetWars" -> PlanetWarEvaluator(searchSpace as HopshackleSearchSpace<SimplePlayerInterface>, logger, agentParams)
-        "Asteroids" -> AsteroidsEvaluator(searchSpace as HopshackleSearchSpace<SimplePlayerInterface>, logger, agentParams)
+        "Asteroids" -> AsteroidsEvaluator(searchSpace as HopshackleSearchSpace<SimplePlayerInterface>, logger)
         else -> GroundWarEvaluator(
                 searchSpace as HopshackleSearchSpace<SimpleActionPlayerInterface>,
                 params,
