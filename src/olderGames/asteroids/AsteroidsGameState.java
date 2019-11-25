@@ -13,6 +13,7 @@ public class AsteroidsGameState implements AbstractGameState {
     public int initialLives = 3;
     public int initialLevel = 5;
     public ForwardModel forwardModel;
+    private int nTicks = 0;
 
     State state, nextState;
     String message;
@@ -57,6 +58,7 @@ public class AsteroidsGameState implements AbstractGameState {
         gs.nextState = nextState;
         gs.message = message;
         gs.wait = wait;
+        gs.nTicks = nTicks;
 
         // no need to copy the params
         gs.params = params;  // .copy();
@@ -78,7 +80,7 @@ public class AsteroidsGameState implements AbstractGameState {
     }
 
     public int nTicks() {
-        return forwardModel.nTicks;
+        return nTicks;
     }
 
 
@@ -87,6 +89,7 @@ public class AsteroidsGameState implements AbstractGameState {
 
     public void update(Action action) {
         // System.out.println("AsteroidsGameState.update() " + state + " : " + action);
+        nTicks++;
         switch (state) {
             case WaitingToStart: {
                 if (action.shoot)

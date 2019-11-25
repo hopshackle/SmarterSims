@@ -4,6 +4,7 @@ import groundWar.*
 import groundWar.executables.*
 import ggi.*
 import evodef.*
+import utilities.StatsCollator
 
 class AsteroidsEvaluator(val searchSpace: HopshackleSearchSpace<SimplePlayerInterface>,
                          val logger: EvolutionLogger,
@@ -26,6 +27,7 @@ class AsteroidsEvaluator(val searchSpace: HopshackleSearchSpace<SimplePlayerInte
 
     override fun evaluate(settings: DoubleArray): Double {
         var finalScore = 0.0
+        val startTime = System.currentTimeMillis()
         val gameState = AsteroidsGameState()
         val params = GameParameters().injectValues(DefaultParams())
         gameState.setParams(params).initForwardModel()
@@ -33,12 +35,20 @@ class AsteroidsEvaluator(val searchSpace: HopshackleSearchSpace<SimplePlayerInte
 
         val actions = IntArray(1)
         var i = 0
+        var timeSpentOnAI = 0L
+        var timeSpentOnGame = 0L
+  //      StatsCollator.clear()
         while (i < nSteps && !gameState.isTerminal()) {
+            val stepStartTime = System.currentTimeMillis()
             actions[0] = p1.getAction(gameState.copy(), 0)
+            val actionChosenTime = System.currentTimeMillis()
             gameState.next(actions)
             i++
+ //           timeSpentOnAI += (actionChosenTime - stepStartTime)
+ //           timeSpentOnGame+= (System.currentTimeMillis() - actionChosenTime)
         }
-       println("Game score  ${settings.joinToString()} is ${gameState.score()}")
+ //       println("Game score  ${settings.joinToString()} is ${gameState.score()} in $nSteps steps and ${(System.currentTimeMillis() - startTime)/1000} seconds (${timeSpentOnAI/1000}/${timeSpentOnGame/1000})")
+ //       println(StatsCollator.summaryString())
         finalScore += gameState.score()
 
         nEvals++
