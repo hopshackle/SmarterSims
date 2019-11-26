@@ -52,7 +52,7 @@ class Hartmann3Evaluator(val searchSpace: FunctionSearchSpace) : SolutionEvaluat
 
     override fun evaluate(settings: DoubleArray): Double {
         nEvals++
-        return if (rnd.nextDouble() < functionValue(settings)) 1.0 else -1.0
+        return if (rnd.nextDouble() < (functionValue(settings) / 4.0)) 1.0 else -1.0
     }
 }
 
@@ -84,7 +84,8 @@ class HartmannExhaustiveResult(val searchSpace: FunctionSearchSpace) {
             params to perfectScore
         }
 
-        println("Best score is ${optionScores.sortedBy { it.second }.last().second} at ${optionScores.sortedBy { it.second }.last().first.joinToString()}")
+        val sortedScores = optionScores.sortedBy { it.second }.reversed().take(50)
+        println("Best scores are " + sortedScores.joinToString("\n") { String.format("%.3g at %s", it.second, it.first.joinToString()) })
     }
 }
 
