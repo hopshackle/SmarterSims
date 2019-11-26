@@ -20,6 +20,14 @@ class PlanetWarEvaluator(val searchSpace: HopshackleSearchSpace<SimplePlayerInte
 
     var nEvals = 0
 
+
+    override fun searchSpace() = searchSpace
+
+    override fun reset() {
+        nEvals = 0
+    }
+
+    override fun nEvals() = nEvals
     override fun evaluate(settings: IntArray): Double {
         return evaluate(searchSpace.convertSettings(settings))
     }
@@ -49,12 +57,5 @@ class PlanetWarEvaluator(val searchSpace: HopshackleSearchSpace<SimplePlayerInte
         return if (finalScore > 0.0) 1.0 else -1.0
     }
 
-    override fun searchSpace() = searchSpace
-
-    override fun reset() {
-        nEvals = 0
-    }
-
-    override fun nEvals() = nEvals
 }
 
