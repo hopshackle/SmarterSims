@@ -189,8 +189,9 @@ data class SimpleEvoAgent(
             val mut = mutate(solution, probMutation, gameState.nActions(), useMutationTransducer, repeatProb, flipAtLeastOneValue)
             val mutScore = (0 until resample).map {
                 val rolloutGame = gameState.copy()
+                val gameResult = evalSeq(rolloutGame, mut, playerId)
                 if (tickBudget > 0) ticksUsed += rolloutGame.nTicks() - gameState.nTicks()
-                evalSeq(rolloutGame, mut, playerId)
+                gameResult
             }.average()
             if (debug) debugLog.log(String.format("\t%3d: Gets score of %.1f with %s (%s)", iterations, mutScore, mut.joinToString(""),
                     (gameState as LandCombatGame).translateGene(playerId, mut)))
@@ -200,7 +201,7 @@ data class SimpleEvoAgent(
                 if (debug) debugLog.log(String.format("Player %d finds better score of %.1f with %s (%s)", playerId, mutScore, solution.joinToString(""),
                         (gameState as LandCombatGame).translateGene(playerId, solution)))
             }
-            iterations += resample
+           iterations += resample
         } while (ticksUsed < tickBudget && iterations < nEvals && System.currentTimeMillis() - startTime < timeLimit)
         if (debug) debugLog.flush()
         if (solution.size < 3)

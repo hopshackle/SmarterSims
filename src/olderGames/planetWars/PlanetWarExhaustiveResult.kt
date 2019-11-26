@@ -4,6 +4,7 @@ import evodef.*
 import ggi.*
 import groundWar.*
 import groundWar.executables.*
+import utilities.StatsCollator
 import java.util.*
 
 fun main(args: Array<String>) {
@@ -32,8 +33,11 @@ class PlanetWarExhaustiveResult(val searchSpace: HopshackleSearchSpace<SimplePla
     val optionScores = allOptions.map {
         val evaluator = PlanetWarEvaluator(searchSpace, EvolutionLogger(), opponentParams)
         val params = it.toIntArray()
+        val startTime = System.currentTimeMillis()
+     //   StatsCollator.clear()
         val meanScore = (0..maxGames).map { evaluator.evaluate(params) }.average()
-        println("${params.joinToString()} has mean score ${String.format("%.3f", meanScore)}")
+        println("${params.joinToString()} has mean score ${String.format("%.3f", meanScore)}, taking ${(System.currentTimeMillis() - startTime)/1000} seconds")
+     //   println(StatsCollator.summaryString())
         params to meanScore
     }
 }
