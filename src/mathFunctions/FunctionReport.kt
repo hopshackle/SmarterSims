@@ -70,7 +70,7 @@ class FunctionReport(val f: NTBEAFunction) {
             searchFramework.runTrial(evaluator, iterPerRun)
 
             val choice = landscapeModel.bestOfSampled.map { it.toInt() }.toIntArray()
-            fullRecord[choice.joinToString("")] = fullRecord.getOrDefault(choice.joinToString(""), 0) + 1
+            fullRecord[choice.joinToString(",")] = fullRecord.getOrDefault(choice.joinToString(","), 0) + 1
             val actualValue = f.functionValue(searchSpace.convertSettings(choice))
             val predictedValue = landscapeModel.getMeanEstimate(landscapeModel.bestOfSampled) ?: 0.0
             StatsCollator.addStatistics("ActualValue", actualValue)
