@@ -6,8 +6,7 @@ import agents.MCTS.*
 import evodef.*
 import ggi.*
 import groundWar.*
-import mathFunctions.FunctionSearchSpace
-import mathFunctions.Hartmann3Evaluator
+import mathFunctions.*
 import ntbea.*
 import olderGames.asteroids.AsteroidsEvaluator
 import utilities.*
@@ -196,8 +195,10 @@ fun main(args: Array<String>) {
     }
 
     val evaluator = when (game) {
-        "Hartmann3" -> Hartmann3Evaluator(searchSpace as FunctionSearchSpace)
-   //     "Hartmann6" -> Hartmann6Evaluator(searchSpace as HopshackleSearchSpace<SimplePlayerInterface>, logger)
+        "Hartmann3" -> FunctionEvaluator(Hartmann3, searchSpace as FunctionSearchSpace)
+        "Hartmann6" -> FunctionEvaluator(Hartmann6, searchSpace as FunctionSearchSpace)
+        "Branin" -> FunctionEvaluator(Branin, searchSpace as FunctionSearchSpace)
+        "GoldsteinPrice" -> FunctionEvaluator(GoldsteinPrice, searchSpace as FunctionSearchSpace)
         "PlanetWars" -> PlanetWarEvaluator(searchSpace as HopshackleSearchSpace<SimplePlayerInterface>, logger, agentParams)
         "Asteroids" -> AsteroidsEvaluator(searchSpace as HopshackleSearchSpace<SimplePlayerInterface>, logger)
         else -> GroundWarEvaluator(
