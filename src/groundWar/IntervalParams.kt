@@ -159,11 +159,22 @@ data class AgentParams(
     fun getParam(name: String, default: String): String {
         return params.firstOrNull { it.contains(name) }?.let { it.split(":")[1] } ?: default
     }
+    fun checkConsistency(allParams: List<String>) : Boolean {
+        val unknownParams = params.map{it.split(":")[0]}.filterNot {
+            it in listOf("timeBudget", "evalBudget", "tickBudget", "sequenceLength", "horizon")
+        }.filter{
+            !allParams.contains(it)
+        }
+        if (unknownParams.isEmpty())
+            return true
+        throw AssertionError("Unknown Algorithm Parameters : " + unknownParams.joinToString())
+    }
 
     fun createSimpleAgent(colour: String): SimplePlayerInterface {
         return when (algorithm) {
             "RHEASimple" -> SimpleEvoAgent(
                     nEvals = evalBudget,
+                    resample = getParam("resample", "1").toInt(),
                     timeLimit = timeBudget,
                     tickBudget = tickBudget,
                     sequenceLength = sequenceLength,

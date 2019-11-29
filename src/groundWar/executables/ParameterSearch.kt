@@ -405,7 +405,7 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 "sequenceLength" to Int::class,
                 "horizon" to Int::class, "timeBudget" to Int::class,
                 "opponentWithdraw" to Boolean::class, "opponentAttack" to Double::class, "opponentDefense" to Double::class)
-
+    init {defaultParams.checkConsistency(types.keys.toList())}
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
 
         val settingsMap = settingsToMap(settings)
@@ -434,15 +434,17 @@ class RHEASimpleSearchSpace(val defaultParams: AgentParams, fileName: String) : 
                 "sequenceLength" to Int::class, "useMutationTransducer" to Boolean::class,
                 "horizon" to Int::class, "timeBudget" to Int::class,
                 "resample" to Int::class, "repeatProb" to Double::class)
-
+    init {
+        defaultParams.checkConsistency(types.keys.toList())
+    }
     override fun getAgent(settings: DoubleArray): SimplePlayerInterface {
-
         val settingsMap = settingsToMap(settings)
         val mutatedPoints = settingsMap.getOrDefault("mutatedPoints", defaultParams.getParam("mutatedPoints", "1.0").toDouble()) as Double
         val sequenceLength = settingsMap.getOrDefault("sequenceLength", defaultParams.sequenceLength) as Int
         val probMutation = mutatedPoints / sequenceLength
         return SimpleEvoAgent(
                 nEvals = settingsMap.getOrDefault("evalBudget", defaultParams.evalBudget) as Int,
+                resample = settingsMap.getOrDefault("resample", defaultParams.getParam("resample", "1").toInt()) as Int,
                 timeLimit = settingsMap.getOrDefault("timeBudget", defaultParams.timeBudget) as Int,
                 tickBudget = settingsMap.getOrDefault("tickBudget", defaultParams.tickBudget) as Int,
                 useMutationTransducer = settingsMap.getOrDefault("mutationTransducer", defaultParams.params.contains("mutationTransducer")) as Boolean,
@@ -465,7 +467,7 @@ class RHCASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 "sequenceLength" to Int::class,
                 "horizon" to Int::class, "populationSize" to Int::class, "parentSize" to Int::class,
                 "evalsPerGeneration" to Int::class)
-
+    init {defaultParams.checkConsistency(types.keys.toList())}
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         val settingsMap = settingsToMap(settings)
 
@@ -491,7 +493,7 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 "C" to Double::class, "maxActions" to Int::class, "rolloutPolicy" to SimpleActionPlayerInterface::class,
                 "discountFactor" to Double::class, "opponentMCTS" to Boolean::class, "timeBudget" to Int::class,
                 "opponentWithdraw" to Boolean::class, "opponentAttack" to Double::class, "opponentDefense" to Double::class)
-
+    init {defaultParams.checkConsistency(types.keys.toList())}
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         val settingsMap = settingsToMap(settings)
         return MCTSTranspositionTableAgentMaster(MCTSParameters(
