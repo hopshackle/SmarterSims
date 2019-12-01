@@ -25,7 +25,6 @@ fun main(args: Array<String>) {
 class AsteroidsExhaustiveResult(val searchSpace: HopshackleSearchSpace<SimplePlayerInterface>,
                                 val maxGames: Int,
                                 val specificSettingsToTry: List<List<Int>> = emptyList()
-
 ) {
 
 

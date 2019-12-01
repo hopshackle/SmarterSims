@@ -18,7 +18,7 @@ fun main(args: Array<String>) {
         throw AssertionError("No data found for $fileName")
     } else {
         val fileAsLines = BufferedReader(FileReader(fileName)).lines().toList()
-        fileAsLines.map { it.split(",").map { v -> v.trim().toInt() } }
+        fileAsLines.map { it.split(",").map(String::trim).filterNot { s -> s == "" }.map(String::toInt) }
     }
     PlanetWarExhaustiveResult(sSpace, opponent, args[1].toInt(), settings)
 }
