@@ -1,5 +1,4 @@
 # SmarterSims
-For DSTL-funded project, Towards Smarter Simulations.
 General documentation on functionality is available [here](https://docs.google.com/document/d/1zVXV5NJ-CwM_Y8R8tNk3xYZrZa9kqxAG2ndL4YRpooE/edit?usp=sharing).
 
 This project should work out of the box if imported into IntelliJ. Specific points to note:
