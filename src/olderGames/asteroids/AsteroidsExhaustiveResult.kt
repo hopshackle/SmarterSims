@@ -27,7 +27,6 @@ class AsteroidsExhaustiveResult(val searchSpace: HopshackleSearchSpace<SimplePla
                                 val specificSettingsToTry: List<List<Int>> = emptyList()
 ) {
 
-
     // We run through every possible setting in the searchSpace, and run maxGames, logging the average result
     val allRanges = (0 until searchSpace.nDims()).map { 0 until searchSpace.nValues(it) }
 
