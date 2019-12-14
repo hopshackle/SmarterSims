@@ -10,10 +10,10 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import kotlin.test.*
 
-val cityCreationParams = EventGameParams(seed = 3, minConnections = 2, autoConnect = 300, maxDistance = 1000,
+private val cityCreationParams = EventGameParams(seed = 3, minConnections = 2, autoConnect = 300, maxDistance = 1000,
         fogOfWar = true, fogMemory = intArrayOf(100, 200), minAssaultFactor = doubleArrayOf(0.0, 0.0),
         fogStrengthAssumption = doubleArrayOf(1.0, 2.0))
-var foggyWorld: World = World(params = cityCreationParams)
+private var foggyWorld: World = World(params = cityCreationParams)
 internal val noVisibility = HistoricVisibility(emptyMap())
 
 class FogTests {

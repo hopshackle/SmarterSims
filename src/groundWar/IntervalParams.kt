@@ -159,10 +159,11 @@ data class AgentParams(
     fun getParam(name: String, default: String): String {
         return params.firstOrNull { it.contains(name) }?.let { it.split(":")[1] } ?: default
     }
-    fun checkConsistency(allParams: List<String>) : Boolean {
-        val unknownParams = params.map{it.split(":")[0]}.filterNot {
+
+    fun checkConsistency(allParams: List<String>): Boolean {
+        val unknownParams = params.map { it.split(":")[0] }.filterNot {
             it in listOf("timeBudget", "evalBudget", "tickBudget", "sequenceLength", "horizon")
-        }.filter{
+        }.filter {
             !allParams.contains(it)
         }
         if (unknownParams.isEmpty())
@@ -249,26 +250,30 @@ data class AgentParams(
     }
 
     fun getOpponentModel(settingsMap: Map<String, Any> = emptyMap()): SimpleActionPlayerInterface? {
-        var oppParams = opponentModel.split(":").toMutableList()
-        (oppParams.size..4).forEach { oppParams.add("") }
-        if (settingsMap.contains("opponentWithdraw")) {
-            if (settingsMap["opponentWithdraw"] as Boolean) {
-                oppParams[3] = "WITHDRAW"
-                oppParams[4] = "ATTACK"
-            } else {
-                oppParams[4] = "WITHDRAW"
-                oppParams[3] = "ATTACK"
-            }
+        val oppParams = (opponentModel.split(":") + (opponentModel.split(":").size..2).map{""}).toMutableList()
+        // We always oppAttack. oppWithdraw and oppReinforce are then switched off if they have a value 0
+        // Otherwise they go at that priority (high numbers before lower ones), with Attack at 10.
+        // in the case of a tie,
+        if (settingsMap.contains("oppAttack")) {
+            oppParams[1] = settingsMap["oppAttack"].toString()
         }
-        if (settingsMap.contains("opponentAttack")) {
-            oppParams[1] = settingsMap["opponentAttack"].toString()
-        }
-        if (settingsMap.contains("opponentDefense")) {
-            oppParams[2] = settingsMap["opponentDefense"].toString()
+        if (settingsMap.contains("oppDefense")) {
+            oppParams[2] = settingsMap["oppDefense"].toString()
         }
         return when (oppParams[0]) {
             "Heuristic" -> {
-                val options = oppParams.subList(3, oppParams.size).map(HeuristicOptions::valueOf)
+                val options = (settingsMap + mapOf("baseAttack" to 10))
+                        .filter { it.key in listOf("oppWithdraw", "oppReinforce") && it.value != 0 }
+                        .map { it.key to it.value as Int }
+                        .sortedBy { it.second }
+                        .map { (k, v) ->
+                            when (k) {
+                                "oppWithdraw" -> HeuristicOptions.WITHDRAW
+                                "oppReinforce" -> HeuristicOptions.REINFORCE
+                                "baseAttack" -> HeuristicOptions.ATTACK
+                                else -> throw AssertionError("Unknown key " + k)
+                            }
+                        }
                 HeuristicAgent(oppParams[1].toDouble(), oppParams[2].toDouble(), options)
             }
             "DoNothing" -> SimpleActionDoNothing(1000)

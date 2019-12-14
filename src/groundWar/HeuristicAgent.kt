@@ -8,7 +8,12 @@ enum class HeuristicOptions {
     ATTACK, WITHDRAW, REINFORCE
 }
 
-class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val policy: List<HeuristicOptions> = listOf(HeuristicOptions.ATTACK), val seed: Int = 1) : SimpleActionPlayerInterface {
+
+class HeuristicAgent(val attackRatio: Double,
+                     val defenseRatio: Double,
+                     val policy: List<HeuristicOptions> = listOf(HeuristicOptions.ATTACK),
+                     val seed: Int = 1
+) : SimpleActionPlayerInterface {
 
     val rnd: Random = Random(seed)
 
@@ -94,7 +99,7 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
 
     private fun reinforceOption(gameState: LandCombatGame, player: Int): Action {
         val playerId = numberToPlayerID(player)
-        // the idea here is that we look for city not adjacent to a city that is a threat (at least defenseRation the force size of any enemy neighbour)
+        // the idea here is that we look for city not adjacent to a city that is a threat (at least defenseRatio the force size of any enemy neighbour)
         // and that is next to a threatened friendly city (i.e. one which is less than defenseRatio force of an enemy neighbour)
 
         with(gameState.world) {
@@ -103,7 +108,7 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
                         ?: 0.00
                 val maxTransitEnemy: Double = currentTransits.filter { t -> t.toCity == i && t.playerId != playerId && t.force.size > c.pop.size * defenseRatio }.map { it.force.size }.max()
                         ?: 0.00
-                val surplus = max(maxCityEnemy, maxTransitEnemy) - c.pop.size * defenseRatio
+                val surplus = c.pop.size - max(maxCityEnemy, maxTransitEnemy) * defenseRatio
                 Triple(i, c, surplus)
             }.filter { (i, c, m) -> c.owner == playerId && c.pop.size > 0.00 && m > 0.00 }
 
@@ -112,15 +117,15 @@ class HeuristicAgent(val attackRatio: Double, val defenseRatio: Double, val poli
                         ?: 0.00
                 val maxTransitEnemy: Double = currentTransits.filter { t -> t.toCity == i && t.playerId != playerId && t.force.size > c.pop.size * defenseRatio }.map { it.force.size }.max()
                         ?: 0.00
-                val needed = max(maxCityEnemy, maxTransitEnemy) - c.pop.size * defenseRatio
+                val needed = max(maxCityEnemy, maxTransitEnemy) * defenseRatio - c.pop.size
                 Triple(i, c, needed)
-            }.filter { (i, c, m) -> c.owner == playerId && m < 0.00 }
+            }.filter { (i, c, m) -> c.owner == playerId && m > 0.00 }
 
             val options = defendedCities.zip(threatenedCities).filter { (reinforcer, defender) ->
                 val (i, _, m) = defender
                 val (i2, _, m2) = reinforcer
                 (allRoutesFromCity[i2]?.any { it.toCity == i } ?: false) &&
-                       m2 >= -m
+                        m2 >= -m
             }
 
             return if (options.isEmpty()) {

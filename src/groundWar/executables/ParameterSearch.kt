@@ -404,10 +404,9 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 "flipAtLeastOneValue" to Boolean::class, "discountFactor" to Double::class,
                 "sequenceLength" to Int::class,
                 "horizon" to Int::class, "timeBudget" to Int::class,
-                "opponentWithdraw" to Boolean::class, "opponentAttack" to Double::class, "opponentDefense" to Double::class)
+                "oppWithdraw" to Int::class, "oppReinforce" to Int::class, "oppAttack" to Double::class, "oppDefense" to Double::class)
     init {defaultParams.checkConsistency(types.keys.toList())}
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
-
         val settingsMap = settingsToMap(settings)
         return SimpleActionEvoAgent(
                 underlyingAgent = SimpleEvoAgent(
@@ -491,8 +490,8 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
     override val types: Map<String, KClass<*>>
         get() = mapOf("sequenceLength" to Int::class, "horizon" to Int::class, "pruneTree" to Boolean::class,
                 "C" to Double::class, "maxActions" to Int::class, "rolloutPolicy" to SimpleActionPlayerInterface::class,
-                "discountFactor" to Double::class, "opponentMCTS" to Boolean::class, "timeBudget" to Int::class,
-                "opponentWithdraw" to Boolean::class, "opponentAttack" to Double::class, "opponentDefense" to Double::class)
+                "discountFactor" to Double::class, "oppMCTS" to Boolean::class, "timeBudget" to Int::class,
+                "oppWithdraw" to Int::class, "oppReinforce" to Int::class, "oppAttack" to Double::class, "oppDefense" to Double::class)
     init {defaultParams.checkConsistency(types.keys.toList())}
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         val settingsMap = settingsToMap(settings)
@@ -510,7 +509,7 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 stateFunction = LandCombatStateFunction,
                 rolloutPolicy = settingsMap.getOrDefault("rolloutPolicy", SimpleActionDoNothing(1000)) as SimpleActionPlayerInterface,
                 opponentModel = when {
-                    (settingsMap.getOrDefault("opponentMCTS", false) as Boolean) -> null
+                    (settingsMap.getOrDefault("oppMCTS", false) as Boolean) -> null
                     defaultParams.opponentModel == "MCTS" -> null
                     else -> defaultParams.getOpponentModel(settingsMap)
                 }

@@ -67,8 +67,10 @@ class FunctionExhaustiveResult(val f: NTBEAFunction, val searchSpace: FunctionSe
             params to perfectScore
         }
 
+        val numberPositive = optionScores.filter { it.second > 0.0 }.count().toDouble()
         val sortedScores = optionScores.sortedBy { it.second }.reversed().take(50)
         println("Best scores are : \n" + sortedScores.joinToString("\n") { String.format("\t%.3g at %s", it.second, it.first.joinToString()) })
+        println("A total of ${String.format("%.1f%% are above zero", 100.0 * numberPositive / optionScores.size)}")
     }
 }
 
