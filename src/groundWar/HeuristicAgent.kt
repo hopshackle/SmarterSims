@@ -106,7 +106,7 @@ class HeuristicAgent(val attackRatio: Double,
             val defendedCities = cities.withIndex().map { (i, c) ->
                 val maxCityEnemy: Double = allRoutesFromCity[i]?.map { r -> cities[r.toCity] }?.filterNot { it.owner == playerId }?.map { it.pop.size }?.max()
                         ?: 0.00
-                val maxTransitEnemy: Double = currentTransits.filter { t -> t.toCity == i && t.playerId != playerId && t.force.size > c.pop.size * defenseRatio }.map { it.force.size }.max()
+                val maxTransitEnemy: Double = currentTransits.filter { t -> t.toCity == i && t.playerId != playerId }.map { it.force.size }.max()
                         ?: 0.00
                 val surplus = c.pop.size - max(maxCityEnemy, maxTransitEnemy) * defenseRatio
                 Triple(i, c, surplus)
@@ -115,7 +115,7 @@ class HeuristicAgent(val attackRatio: Double,
             val threatenedCities = cities.withIndex().map { (i, c) ->
                 val maxCityEnemy: Double = allRoutesFromCity[i]?.map { r -> cities[r.toCity] }?.filterNot { it.owner == playerId }?.map { it.pop.size }?.max()
                         ?: 0.00
-                val maxTransitEnemy: Double = currentTransits.filter { t -> t.toCity == i && t.playerId != playerId && t.force.size > c.pop.size * defenseRatio }.map { it.force.size }.max()
+                val maxTransitEnemy: Double = currentTransits.filter { t -> t.toCity == i && t.playerId != playerId }.map { it.force.size }.max()
                         ?: 0.00
                 val needed = max(maxCityEnemy, maxTransitEnemy) * defenseRatio - c.pop.size
                 Triple(i, c, needed)
@@ -133,7 +133,7 @@ class HeuristicAgent(val attackRatio: Double,
             } else {
                 val chosen = options.random()
                 LaunchExpedition(playerId, chosen.first.first, chosen.second.first,
-                        chosen.first.third / chosen.first.second.pop.size, gameState.world.params.OODALoop[player])
+                        chosen.second.third / chosen.first.second.pop.size, gameState.world.params.OODALoop[player])
             }
         }
     }

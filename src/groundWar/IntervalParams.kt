@@ -263,7 +263,7 @@ data class AgentParams(
         return when (oppParams[0]) {
             "Heuristic" -> {
                 val options = (settingsMap + mapOf("baseAttack" to 10))
-                        .filter { it.key in listOf("oppWithdraw", "oppReinforce") && it.value != 0 }
+                        .filter { it.key in listOf("oppWithdraw", "oppReinforce", "baseAttack") && it.value != 0 }
                         .map { it.key to it.value as Int }
                         .sortedBy { it.second }
                         .map { (k, v) ->
