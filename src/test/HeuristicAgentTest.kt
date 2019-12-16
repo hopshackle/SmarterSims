@@ -36,6 +36,8 @@ private val attackOnly = HeuristicAgent(3.0, 1.0, listOf(HeuristicOptions.ATTACK
 private val retreatAttack = HeuristicAgent(3.0, 1.0, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
 private val reinforceRetreatAttack = HeuristicAgent(3.0, 1.0, listOf(HeuristicOptions.REINFORCE, HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
 private val reinforceSmall = HeuristicAgent(3.0, 0.5, listOf(HeuristicOptions.REINFORCE, HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
+private val retreatAttackRedeploy = HeuristicAgent(3.0, 1.0, listOf(HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK, HeuristicOptions.REDEPLOY))
+private val reinforceRedeployRetreatAttack = HeuristicAgent(3.0, 1.0, listOf(HeuristicOptions.REINFORCE, HeuristicOptions.REDEPLOY, HeuristicOptions.WITHDRAW, HeuristicOptions.ATTACK))
 
 class ReinforceTests {
     @BeforeEach
@@ -49,8 +51,12 @@ class ReinforceTests {
         assertEquals(attackOnly.getAction(game ,1), LaunchExpedition(PlayerId.Red, 1, 2, 0.0, 10))
         assertEquals(retreatAttack.getAction(game ,0), LaunchExpedition(PlayerId.Blue, 0, 2, 0.0, 10))
         assertEquals(retreatAttack.getAction(game ,1), LaunchExpedition(PlayerId.Red, 1, 2, 0.0, 10))
+        assertEquals(retreatAttackRedeploy.getAction(game ,0), LaunchExpedition(PlayerId.Blue, 0, 2, 0.0, 10))
+        assertEquals(retreatAttackRedeploy.getAction(game ,1), LaunchExpedition(PlayerId.Red, 1, 2, 0.0, 10))
         assertEquals(reinforceRetreatAttack.getAction(game ,0), LaunchExpedition(PlayerId.Blue, 0, 2, 0.0, 10))
         assertEquals(reinforceRetreatAttack.getAction(game ,1), LaunchExpedition(PlayerId.Red, 1, 2, 0.0, 10))
+        assertEquals(reinforceRedeployRetreatAttack.getAction(game ,0), LaunchExpedition(PlayerId.Blue, 0, 2, 0.0, 10))
+        assertEquals(reinforceRedeployRetreatAttack.getAction(game ,1), LaunchExpedition(PlayerId.Red, 1, 2, 0.0, 10))
     }
     @Test
     fun attackOrReinforceLoneOutpost() {
@@ -63,8 +69,12 @@ class ReinforceTests {
         assertEquals(attackOnly.getAction(game ,1), InterruptibleWait(1, 10))
         assertEquals(retreatAttack.getAction(game ,0), LaunchExpedition(PlayerId.Blue, 0, 2, 0.3, 10))
         assertEquals(retreatAttack.getAction(game ,1), InterruptibleWait(1, 10))
+        assertEquals(retreatAttackRedeploy.getAction(game ,0), LaunchExpedition(PlayerId.Blue, 0, 2, 0.3, 10))
+        assertEquals(retreatAttackRedeploy.getAction(game ,1), LaunchExpedition(PlayerId.Red, 1, 2, 29.0/9.0, 10))
         assertEquals(reinforceRetreatAttack.getAction(game ,0), LaunchExpedition(PlayerId.Blue, 0, 2, 0.3, 10))
         assertEquals(reinforceRetreatAttack.getAction(game ,1), LaunchExpedition(PlayerId.Red, 1, 2, 1.0, 10))
+        assertEquals(reinforceRedeployRetreatAttack.getAction(game ,0), LaunchExpedition(PlayerId.Blue, 0, 2, 0.3, 10))
+        assertEquals(reinforceRedeployRetreatAttack.getAction(game ,1), LaunchExpedition(PlayerId.Red, 1, 2, 1.0, 10))
     }
     @Test
     fun staticFrontLine() {
@@ -79,8 +89,12 @@ class ReinforceTests {
         assertEquals(attackOnly.getAction(game ,1), InterruptibleWait(1, 10))
         assertEquals(retreatAttack.getAction(game ,0), InterruptibleWait(0, 10))
         assertEquals(retreatAttack.getAction(game ,1), InterruptibleWait(1, 10))
+        assertEquals(retreatAttackRedeploy.getAction(game ,0), InterruptibleWait(0, 10))
+        assertEquals(retreatAttackRedeploy.getAction(game ,1), InterruptibleWait(1, 10))
         assertEquals(reinforceRetreatAttack.getAction(game ,0), InterruptibleWait(0, 10))
         assertEquals(reinforceRetreatAttack.getAction(game ,1), InterruptibleWait(1, 10))
+        assertEquals(reinforceRedeployRetreatAttack.getAction(game ,0), InterruptibleWait(0, 10))
+        assertEquals(reinforceRedeployRetreatAttack.getAction(game ,1), InterruptibleWait(1, 10))
     }
 
     @Test
@@ -96,7 +110,9 @@ class ReinforceTests {
 
         assertEquals(attackOnly.getAction(game ,1), InterruptibleWait(1, 10))
         assertEquals(retreatAttack.getAction(game ,1), LaunchExpedition(PlayerId.Red, 2, 1, 1.0, 10))
+        assertEquals(retreatAttackRedeploy.getAction(game ,1), LaunchExpedition(PlayerId.Red, 2, 1, 1.0, 10))
         assertEquals(reinforceRetreatAttack.getAction(game ,1), LaunchExpedition(PlayerId.Red, 1, 2, 6.0/9.0, 10))
+        assertEquals(reinforceRedeployRetreatAttack.getAction(game ,1), LaunchExpedition(PlayerId.Red, 1, 2, 6.0/9.0, 10))
         // because the biggest threat is the 7 still sitting at home base
     }
 
@@ -110,6 +126,25 @@ class ReinforceTests {
 
         assertEquals(reinforceRetreatAttack.getAction(game ,1), LaunchExpedition(PlayerId.Red, 1, 2, 1.0, 10))
         assertEquals(reinforceSmall.getAction(game ,1), LaunchExpedition(PlayerId.Red, 1, 2, 4.0/9.0, 10))
+    }
+
+    @Test
+    fun redeploymentToLaunchFutureAttack() {
+        LaunchExpedition(PlayerId.Blue, 0, 2, 0.5, 10).apply(game)
+        game.next(10)
+
+        assertEquals(attackOnly.getAction(game ,0), InterruptibleWait(0, 10))
+        assertEquals(attackOnly.getAction(game ,1), InterruptibleWait(1, 10))
+        assertEquals(retreatAttack.getAction(game ,0), InterruptibleWait(0, 10))
+        assertEquals(retreatAttack.getAction(game ,1), InterruptibleWait(1, 10))
+        assertEquals(retreatAttackRedeploy.getAction(game ,0),LaunchExpedition(PlayerId.Blue, 0, 2, 5.0, 10))
+        assertEquals(retreatAttackRedeploy.getAction(game ,1), LaunchExpedition(PlayerId.Red, 3, 1, 0.5, 10))
+        assertEquals(reinforceSmall.getAction(game ,0), InterruptibleWait(0, 10))
+        assertEquals(reinforceSmall.getAction(game ,1), InterruptibleWait(1, 10))
+        assertEquals(reinforceRetreatAttack.getAction(game ,0), LaunchExpedition(PlayerId.Blue, 0, 2, 1.0, 10))
+        assertEquals(reinforceRetreatAttack.getAction(game ,1), InterruptibleWait(1, 10))
+        assertEquals(reinforceRedeployRetreatAttack.getAction(game ,0), LaunchExpedition(PlayerId.Blue, 0, 2, 1.0, 10))
+        assertEquals(reinforceRedeployRetreatAttack.getAction(game ,1), LaunchExpedition(PlayerId.Red, 3, 1, 0.5, 10))
     }
 
     @Test

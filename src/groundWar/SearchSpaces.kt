@@ -68,7 +68,7 @@ class HeuristicSearchSpace(val defaultParams: AgentParams, fileName: String) : H
 
     override val types: Map<String, KClass<*>>
         get() = mapOf(
-                "oppWithdraw" to Int::class, "oppReinforce" to Int::class,
+                "oppWithdraw" to Int::class, "oppReinforce" to Int::class, "oppRedeploy" to Int::class,
                 "oppAttack" to Double::class, "oppDefense" to Double::class)
 //    init {defaultParams.checkConsistency(types.keys.toList())}
 

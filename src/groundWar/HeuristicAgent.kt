@@ -5,7 +5,7 @@ import kotlin.math.max
 import kotlin.random.Random
 
 enum class HeuristicOptions {
-    ATTACK, WITHDRAW, REINFORCE
+    ATTACK, WITHDRAW, REINFORCE, REDEPLOY
 }
 
 
@@ -38,6 +38,10 @@ class HeuristicAgent(val attackRatio: Double,
                     HeuristicOptions.REINFORCE -> {
                         val reinforce = reinforceOption(gameState, playerRef)
                         if (reinforce !is NoAction) return reinforce
+                    }
+                    HeuristicOptions.REDEPLOY -> {
+                        val redeploy = reinforceOption(gameState, playerRef, true)
+                        if (redeploy !is NoAction) return redeploy
                     }
                 }
             }
@@ -97,7 +101,7 @@ class HeuristicAgent(val attackRatio: Double,
         return NoAction(player, gameState.world.params.OODALoop[player])
     }
 
-    private fun reinforceOption(gameState: LandCombatGame, player: Int): Action {
+    private fun reinforceOption(gameState: LandCombatGame, player: Int, redeploy: Boolean = false): Action {
         val playerId = numberToPlayerID(player)
         // the idea here is that we look for city not adjacent to a city that is a threat (at least defenseRatio the force size of any enemy neighbour)
         // and that is next to a threatened friendly city (i.e. one which is less than defenseRatio force of an enemy neighbour)
@@ -108,7 +112,9 @@ class HeuristicAgent(val attackRatio: Double,
                         ?: 0.00
                 val maxTransitEnemy: Double = currentTransits.filter { t -> t.toCity == i && t.playerId != playerId }.map { it.force.size }.max()
                         ?: 0.00
-                val surplus = c.pop.size - max(maxCityEnemy, maxTransitEnemy) * defenseRatio
+                val baseSurplus = c.pop.size - max(maxCityEnemy, maxTransitEnemy) * defenseRatio
+                val surplus = if (redeploy && baseSurplus < 0.0) c.pop.size else baseSurplus
+                // REDEPLOY:  or....c.pop.size if resultant surplus is negative
                 Triple(i, c, surplus)
             }.filter { (i, c, m) -> c.owner == playerId && c.pop.size > 0.00 && m > 0.00 }
 
@@ -117,16 +123,23 @@ class HeuristicAgent(val attackRatio: Double,
                         ?: 0.00
                 val maxTransitEnemy: Double = currentTransits.filter { t -> t.toCity == i && t.playerId != playerId }.map { it.force.size }.max()
                         ?: 0.00
-                val needed = max(maxCityEnemy, maxTransitEnemy) * defenseRatio - c.pop.size
+                val needed = if (redeploy) {
+                    maxCityEnemy * attackRatio - c.pop.size
+                } else {
+                    max(maxCityEnemy, maxTransitEnemy) * defenseRatio - c.pop.size
+                }
+                // REDEPLOY: replace with attackRatio.
+                // REDEPLOY: Also, we can ignore transitEnemy
                 Triple(i, c, needed)
             }.filter { (i, c, m) -> c.owner == playerId && m > 0.00 }
 
-            val options = defendedCities.zip(threatenedCities).filter { (reinforcer, defender) ->
-                val (i, _, m) = defender
-                val (i2, _, m2) = reinforcer
-                (allRoutesFromCity[i2]?.any { it.toCity == i } ?: false) &&
-                        m2 >= -m
-            }
+            val options = defendedCities.flatMap { d -> threatenedCities.map { t -> d to t } }
+                    .filter { (reinforcer, threatened) ->
+                        val (i, _, m) = threatened
+                        val (i2, _, m2) = reinforcer
+                        (allRoutesFromCity[i2]?.any { it.toCity == i } ?: false) &&
+                                (redeploy || m2 >= m)
+                    }
 
             return if (options.isEmpty()) {
                 NoAction(player, gameState.world.params.OODALoop[player])
