@@ -1,0 +1,2 @@
+algorithm=Heuristic
+algoParams=options:WITHDRAW|ATTACK, attack:3.0, defence:1.2
