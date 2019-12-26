@@ -315,9 +315,12 @@ fun runNTBEA(evaluator: SolutionEvaluator,
         }
     }
     if (evalGames > 0) {
+        StatsCollator.clear()
         val results = (1..evalGames).map {
             evaluator.evaluate(landscapeModel.bestOfSampled.map(Double::toInt).toIntArray())
         }
+        if (logResults)
+            println(StatsCollator.summaryString())
         val avg = results.average()
         val stdErr = sqrt(
                 results.map { (it - avg).pow(2) }
