@@ -7,6 +7,7 @@ import kotlin.reflect.KFunction
 interface Interval {
     fun sampleFrom(): Number
     fun sampleFrom(rnd: Random): Number
+    fun sampleGrid(n: Int): List<Number>
 }
 
 fun interval(from: Number, to: Number): Interval {
@@ -56,7 +57,7 @@ fun interval(stringRepresentation: String): Interval {
                         .replace("],", "]")
                         .split("]")
                         .map { it.filterNot { c -> c in "[]" } }
-                        .filterNot {it == ","}
+                        .filterNot { it == "," }
                 CompositeInterval(splitByBrackets.filter(String::isNotEmpty).map {
                     val intervalE = it.split(",")
                     convertToInterval(intervalE)
@@ -76,6 +77,12 @@ data class IntegerInterval(val startPoint: Int, val endPoint: Int) : Interval {
 
     override fun sampleFrom(rnd: Random): Int = rnd.nextInt(startPoint, endPoint + 1)
     override fun sampleFrom(): Int = sampleFrom(rnd)
+    override fun sampleGrid(n: Int): List<Int> {
+        if ((endPoint + 1 - startPoint) % n != 0)
+            throw AssertionError(String.format("Number in grid (%d) must be factor of total length (%d)", n, endPoint + 1 - startPoint))
+        val stepAmount = (endPoint + 1 - startPoint) / n
+        return (0 until n).map { startPoint + it * stepAmount }.toList()
+    }
 }
 
 data class DoubleInterval(val startPoint: Double, val endPoint: Double) : Interval {
@@ -83,6 +90,10 @@ data class DoubleInterval(val startPoint: Double, val endPoint: Double) : Interv
 
     override fun sampleFrom(rnd: Random): Double = rnd.nextDouble(startPoint, endPoint)
     override fun sampleFrom(): Double = sampleFrom(rnd)
+    override fun sampleGrid(n: Int): List<Double> {
+        val stepAmount = (endPoint - startPoint) / (n - 1)
+        return (0 until n).map { startPoint + it * stepAmount }.toList()
+    }
 }
 
 data class CompositeInterval(val components: List<Interval>) : Interval {
@@ -92,4 +103,7 @@ data class CompositeInterval(val components: List<Interval>) : Interval {
     }
 
     override fun sampleFrom(): Double = sampleFrom(rnd)
+    override fun sampleGrid(n: Int): List<Number> {
+        TODO("Not yet implemented")
+    }
 }

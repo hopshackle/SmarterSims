@@ -190,8 +190,8 @@ data class AgentParams(
         }
     }
 
-    fun createAgent(colour: String): SimpleActionPlayerInterface {
-        val opponentModel = getOpponentModel()
+    fun createAgent(colour: String, overrideMap: Map<String, Any> = emptyMap()): SimpleActionPlayerInterface {
+        val opponentModel = getOpponentModel(overrideMap)
         return when (algorithm) {
             "Random" -> SimpleActionRandom
             "Heuristic" -> {
