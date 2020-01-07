@@ -1,6 +1,7 @@
 package groundWar
 
 import ggi.*
+import utilities.StatsCollator
 import kotlin.math.max
 import kotlin.random.Random
 
@@ -12,7 +13,8 @@ enum class HeuristicOptions {
 class HeuristicAgent(val attackRatio: Double,
                      val defenseRatio: Double,
                      val policy: List<HeuristicOptions> = listOf(HeuristicOptions.ATTACK),
-                     val seed: Int = 1
+                     val seed: Int = 1,
+                     val waitTime: Int = 10
 ) : SimpleActionPlayerInterface {
 
     val rnd: Random = Random(seed)
@@ -25,6 +27,7 @@ class HeuristicAgent(val attackRatio: Double,
 
     override fun getAction(gameState: ActionAbstractGameState, playerRef: Int): Action {
         if (gameState is LandCombatGame) {
+   //         val startTime = System.nanoTime()
             policy.forEach { option ->
                 when (option) {
                     HeuristicOptions.ATTACK -> {
@@ -45,8 +48,9 @@ class HeuristicAgent(val attackRatio: Double,
                     }
                 }
             }
+   //         StatsCollator.addStatistics("HeuristicTime", System.nanoTime() - startTime)
         }
-        return InterruptibleWait(playerRef, 10)
+        return InterruptibleWait(playerRef, waitTime)
     }
 
     private fun attackOption(gameState: LandCombatGame, player: Int): Action {
