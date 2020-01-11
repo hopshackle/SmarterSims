@@ -85,7 +85,8 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 "flipAtLeastOneValue" to Boolean::class, "discountFactor" to Double::class,
                 "sequenceLength" to Int::class,
                 "horizon" to Int::class, "timeBudget" to Int::class,
-                "oppWithdraw" to Int::class, "oppReinforce" to Int::class, "oppAttack" to Double::class, "oppDefense" to Double::class)
+                "oppWithdraw" to Int::class, "oppReinforce" to Int::class, "oppAttack" to Double::class,
+                "oppRedeploy" to Int::class, "oppDefense" to Double::class)
     init {defaultParams.checkConsistency(types.keys.toList())}
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         val settingsMap = settingsToMap(settings)
