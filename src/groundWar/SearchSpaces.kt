@@ -1,6 +1,7 @@
 package groundWar
 
 import agents.MCTS.MCTSParameters
+import agents.MCTS.MCTSSelectionMethod
 import agents.MCTS.MCTSTranspositionTableAgentMaster
 import agents.RHEA.RHCAAgent
 import agents.RHEA.SimpleActionEvoAgent
@@ -172,9 +173,15 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
     override val types: Map<String, KClass<*>>
         get() = mapOf("sequenceLength" to Int::class, "horizon" to Int::class, "pruneTree" to Boolean::class,
                 "C" to Double::class, "maxActions" to Int::class, "rolloutPolicy" to SimpleActionPlayerInterface::class,
-                "discountFactor" to Double::class, "oppMCTS" to Boolean::class, "timeBudget" to Int::class,
-                "oppWithdraw" to Int::class, "oppReinforce" to Int::class, "oppAttack" to Double::class, "oppDefense" to Double::class)
-    init {defaultParams.checkConsistency(types.keys.toList())}
+                "discountFactor" to Double::class, "oppMCTS" to Boolean::class, "timeBudget" to Int::class, "oppRedeploy" to Int::class,
+                "oppWithdraw" to Int::class, "oppReinforce" to Int::class, "oppAttack" to Double::class, "oppDefense" to Double::class,
+                "actionFilter" to String::class, "rolloutPolicy" to SimpleActionPlayerInterface::class,
+                "selectionPolicy" to MCTSSelectionMethod::class)
+
+    init {
+        defaultParams.checkConsistency(types.keys.toList())
+    }
+
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         val settingsMap = settingsToMap(settings)
         return MCTSTranspositionTableAgentMaster(MCTSParameters(
@@ -186,6 +193,7 @@ class MCTSSearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 maxDepth = settingsMap.getOrDefault("sequenceLength", defaultParams.getParam("sequenceLength", "10").toInt()) as Int,
                 maxActions = settingsMap.getOrDefault("maxActions", defaultParams.getParam("maxActions", "10").toInt()) as Int,
                 actionFilter = settingsMap.getOrDefault("actionFilter", defaultParams.getParam("actionFilter", "none")) as String,
+                selectionMethod = MCTSSelectionMethod.valueOf(settingsMap.getOrDefault("selectionPolicy", defaultParams.getParam("selectionPolicy", "SIMPLE")) as String),
                 discountRate = settingsMap.getOrDefault("discountFactor", defaultParams.getParam("discountFactor", "1.0").toDouble()) as Double
         ),
                 stateFunction = LandCombatStateFunction,

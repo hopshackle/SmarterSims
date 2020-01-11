@@ -90,9 +90,9 @@ fun runWithParams(params: EventGameParams,
     }
 
     val mapDimension = if (world.imageFile != null && world.imageFile != "")
-        Dimension(min(max(world.params.width, 400), 1000), min(max(world.params.height, 250), 1000))
+        Dimension(min(max(world.params.width, 500), 1000), min(max(world.params.height, 400), 1000))
     else
-        Dimension(400, 250)
+        Dimension(500, 400)
 
     val multiView = ListComponent()
     val omniView = WorldView(game, mapDimension)
