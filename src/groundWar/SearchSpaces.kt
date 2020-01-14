@@ -75,8 +75,7 @@ class HeuristicSearchSpace(val defaultParams: AgentParams, fileName: String) : H
 
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         val settingsMap = settingsToMap(settings)
-        return defaultParams.copy(opponentModel = "Heuristic").getOpponentModel(settingsMap)
-                ?: SimpleActionDoNothing(1000)
+        return defaultParams.copy(opponentModel = "Heuristic").getOpponentModel(settingsMap) ?: SimpleActionDoNothing(1000)
     }
 }
 
@@ -87,12 +86,9 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 "flipAtLeastOneValue" to Boolean::class, "discountFactor" to Double::class,
                 "sequenceLength" to Int::class,
                 "horizon" to Int::class, "timeBudget" to Int::class,
-                "oppWithdraw" to Int::class, "oppReinforce" to Int::class, "oppAttack" to Double::class, "oppDefense" to Double::class)
-
-    init {
-        defaultParams.checkConsistency(types.keys.toList())
-    }
-
+                "oppWithdraw" to Int::class, "oppReinforce" to Int::class, "oppAttack" to Double::class,
+                "oppRedeploy" to Int::class, "oppDefense" to Double::class)
+    init {defaultParams.checkConsistency(types.keys.toList())}
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         val settingsMap = settingsToMap(settings)
         return SimpleActionEvoAgent(
@@ -120,11 +116,9 @@ class RHEASimpleSearchSpace(val defaultParams: AgentParams, fileName: String) : 
                 "sequenceLength" to Int::class, "useMutationTransducer" to Boolean::class,
                 "horizon" to Int::class, "timeBudget" to Int::class,
                 "resample" to Int::class, "repeatProb" to Double::class)
-
     init {
         defaultParams.checkConsistency(types.keys.toList())
     }
-
     override fun getAgent(settings: DoubleArray): SimplePlayerInterface {
         val settingsMap = settingsToMap(settings)
         val mutatedPoints = settingsMap.getOrDefault("mutatedPoints", defaultParams.getParam("mutatedPoints", "1.0").toDouble()) as Double
@@ -155,11 +149,7 @@ class RHCASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 "sequenceLength" to Int::class,
                 "horizon" to Int::class, "populationSize" to Int::class, "parentSize" to Int::class,
                 "evalsPerGeneration" to Int::class)
-
-    init {
-        defaultParams.checkConsistency(types.keys.toList())
-    }
-
+    init {defaultParams.checkConsistency(types.keys.toList())}
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         val settingsMap = settingsToMap(settings)
 

@@ -9,11 +9,17 @@ import kotlin.streams.toList
 
 fun main(args: Array<String>) {
 
-    // args[0] is the number of games to run
-    // args[1], args[2] are the files that contains agentParams to use for Blue and Red respectively
-    // args[3] is the file that contains intervalParams to use (this is used with a fixed set at the moment, it is not resampled for each game)
-    // args[4] is the granularity to use in the gird (the number of points on each axis)
-    // args[5] is the Offence Interval, args[6] is the Defense Interval to use in the opponent model for the Blue player
+    val helpText = """
+            args[0] is the number of games to run
+            args[1], args[2] are the files that contains agentParams to use for Blue and Red respectively
+            args[3] is the file that contains intervalParams to use (this is used with a fixed set at the moment, it is not resampled for each game)
+            args[4] is the granularity to use in the grid (the number of points on each axis)
+            args[5] is the Offence Interval, args[6] is the Defense Interval to use in the opponent model for the Blue player
+            om=true/false specifies whether we are using O/D grid for the Opponent Model of Blue (true, default)
+                or using the O/D grid to define the actual Opponent (i.e. the Red player - false)
+    """.trimIndent()
+
+    if (args.contains("-h")) println(helpText)
     val maxGames = if (args.size > 0) args[0].toInt() else 100
     val agentParams1 = if (args.size > 1) {
         val fileAsLines = BufferedReader(FileReader(args[1])).lines().toList()
@@ -27,6 +33,7 @@ fun main(args: Array<String>) {
         val fileAsLines = BufferedReader(FileReader(args[3])).lines().toList()
         createIntervalParamsFromString(fileAsLines)
     } else null
+    val opponentModelChange = args.find { it.startsWith("om=") }?.split("=")?.get(1)?.toBoolean() ?: true
 
     val gridSize = args[4].toInt()
     val offenseInterval = interval(args[5]).sampleGrid(gridSize)
@@ -39,10 +46,12 @@ fun main(args: Array<String>) {
 
     for (offense in offenseInterval) {
         for (defence in defenseInterval) {
-            val override = mapOf("oppAttack" to offense, "oppDefense" to defence)
-            val blueAgent = agentParams1.createAgent("BLUE", override)
+            val overrideBlue = if (opponentModelChange) mapOf("oppAttack" to offense, "oppDefense" to defence) else mapOf()
+            val blueAgent = agentParams1.createAgent("BLUE", overrideBlue)
+            val overrideRed = if (!opponentModelChange) mapOf("attack" to offense, "defense" to defence) else mapOf()
+            val redAgent = agentParams2.createAgent("RED", overrideRed)
             StatsCollator.clear()
-            runGames(maxGames, blueAgent, agentParams2.createAgent("RED"), intervalParams, logAllResults = false,
+            runGames(maxGames, blueAgent, redAgent, intervalParams, logAllResults = false,
                     scoreFunctions = arrayOf(blueScoreFunction, redScoreFunction), mapOverride = mapOverride, fortVictory = fortVictory)
             println(String.format("O: %.2f, D: %.2f, Blue wins: %.1f%%", offense, defence, 100.0 * StatsCollator.getStatistics("BLUE_wins")))
         }
