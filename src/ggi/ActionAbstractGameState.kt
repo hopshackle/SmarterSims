@@ -61,7 +61,7 @@ interface ActionAbstractGameState : AbstractGameState {
 
     fun possibleActions(player: Int, max: Int = Int.MAX_VALUE, filterType: String = ""): List<Action>
 
-    fun translateGene(player: Int, gene: IntArray): Action
+    fun translateGene(player: Int, gene: IntArray, filterType: String = ""): Action
 
     fun registerAgent(player: Int, agent: SimpleActionPlayerInterface)
 

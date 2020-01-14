@@ -128,8 +128,8 @@ class SimpleEvoAgentTest {
         val redGenome = intArrayOf(1, 1, 2, 0, 1, 4, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0)
         // Red gives an expedition order immediately to attack the Neutral city, that takes 3 time units
         // The second action is a Wait for 25
-        val blueAgent = SimpleActionEvoAgentRollForward(blueGenome)
-        val redAgent = SimpleActionEvoAgentRollForward(redGenome)
+        val blueAgent = SimpleActionEvoAgentRollForward(blueGenome, actionFilter = "")
+        val redAgent = SimpleActionEvoAgentRollForward(redGenome, actionFilter = "")
         game.registerAgent(0, blueAgent)
         game.registerAgent(1, redAgent)
         game.next(11)

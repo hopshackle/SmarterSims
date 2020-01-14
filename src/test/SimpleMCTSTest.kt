@@ -36,7 +36,7 @@ class SimpleMazeGame(val playerCount: Int, val target: Int) : ActionAbstractGame
     )
 
     override fun codonsPerAction() = 1
-    override fun translateGene(player: Int, gene: IntArray) = possibleActions(player).getOrElse(gene[0]) { NoAction(player, 1) }
+    override fun translateGene(player: Int, gene: IntArray, actionFilter: String) = possibleActions(player).getOrElse(gene[0]) { NoAction(player, 1) }
 
     override fun copy(): AbstractGameState {
         val retValue = SimpleMazeGame(playerCount, target)

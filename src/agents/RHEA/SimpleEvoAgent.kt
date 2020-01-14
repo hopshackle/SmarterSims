@@ -36,7 +36,7 @@ fun evaluateSequenceDelta(gameState: AbstractGameState,
     }
 
     val retValue = if (gameState is ActionAbstractGameState) {
-        val mutatedAgent = SimpleActionEvoAgentRollForward(seq, horizon)
+        val mutatedAgent = SimpleActionEvoAgentRollForward(seq, horizon, "")
         gameState.registerAgent(playerId, mutatedAgent)
         if (opponentModel is SimpleActionPlayerInterface)
             gameState.registerAgent(1 - playerId, opponentModel)
@@ -132,6 +132,7 @@ data class SimpleEvoAgent(
         var repeatProb: Double = 0.5,  // only used with mutation transducer
         var discountFactor: Double? = null,
         val horizon: Int = 1,
+        val actionFilter: String = "",
         var opponentModel: SimplePlayerInterface = DoNothingAgent(),
         val name: String = "EA"
 ) : SimplePlayerInterface {
@@ -180,7 +181,7 @@ data class SimpleEvoAgent(
             debugLog.log(gameState.world.currentTransits.joinToString("\n") { it.toString() })
             debugLog.log("\n")
             debugLog.log(String.format("Player %d starting score to beat is %.1f with %s (%s)", playerId, startScore, solution.joinToString(""),
-                    gameState.translateGene(playerId, solution)))
+                    gameState.translateGene(playerId, solution, actionFilter)))
         }
 
         var ticksUsed = if (tickBudget > 0) 0 else -1
@@ -194,12 +195,12 @@ data class SimpleEvoAgent(
                 gameResult
             }.average()
             if (debug) debugLog.log(String.format("\t%3d: Gets score of %.1f with %s (%s)", iterations, mutScore, mut.joinToString(""),
-                    (gameState as LandCombatGame).translateGene(playerId, mut)))
+                    (gameState as LandCombatGame).translateGene(playerId, mut, actionFilter)))
             if (mutScore >= curScore) {
                 curScore = mutScore
                 solution = mut
                 if (debug) debugLog.log(String.format("Player %d finds better score of %.1f with %s (%s)", playerId, mutScore, solution.joinToString(""),
-                        (gameState as LandCombatGame).translateGene(playerId, solution)))
+                        (gameState as LandCombatGame).translateGene(playerId, solution, actionFilter)))
             }
            iterations += resample
         } while (ticksUsed < tickBudget && iterations < nEvals && System.currentTimeMillis() - startTime < timeLimit)
@@ -211,7 +212,7 @@ data class SimpleEvoAgent(
         StatsCollator.addStatistics("${name}_Time", System.currentTimeMillis() - startTime)
         StatsCollator.addStatistics("${name}_Evals", iterations)
         StatsCollator.addStatistics("${name}_Ticks", ticksUsed)
-        StatsCollator.addStatistics("${name}_HorizonUsed", elapsedLengthOfPlan(solution, gameState.copy(), playerId))
+        StatsCollator.addStatistics("${name}_HorizonUsed", elapsedLengthOfPlan(solution, gameState.copy(), playerId, ""))
         buffer = solution
         return solution
     }

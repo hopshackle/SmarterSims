@@ -1,10 +1,8 @@
 package groundWar
 
 import ggi.*
-import groundWar.fatigue.FatigueModel
-import groundWar.fatigue.LinearFatigue
-import groundWar.fogOfWar.HistoricVisibility
-import org.apache.commons.math3.ode.events.FilterType
+import groundWar.fatigue.*
+import groundWar.fogOfWar.*
 import test.noVisibility
 import kotlin.math.*
 import kotlin.collections.*
@@ -114,13 +112,14 @@ class LandCombatGame(val world: World = World()) : ActionAbstractGameState {
                         .filter { it.value.owner == playerId && it.value.pop.size > 0.01 }
                         .flatMap { (startIndex, _) -> world.allRoutesFromCity[startIndex]!!.map { Pair(it.fromCity, it.toCity) } }
                         .flatMap { (fromCity, toCity) ->
-                            val proportionLimit = (world.allRoutesFromCity[fromCity]?.find{it.toCity == toCity}?.limit ?: 0.0) / world.cities[fromCity].pop.size
+                            val proportionLimit = (world.allRoutesFromCity[fromCity]?.find { it.toCity == toCity }?.limit
+                                    ?: 0.0) / world.cities[fromCity].pop.size
                             val loopLimit = if (proportionLimit > 0.00) max(1, (proportionLimit * 3).toInt()) else 3
                             (1..loopLimit)
                                     .map {
-                                        LaunchExpedition(playerId, fromCity, toCity, it / 3.0 , world.params.OODALoop[player])
+                                        LaunchExpedition(playerId, fromCity, toCity, it / 3.0, world.params.OODALoop[player])
                                     }
-                        }.filter{it.isValid(this)} +
+                        }.filter { it.isValid(this) } +
                         listOf(InterruptibleWait(player, world.params.OODALoop[player]),
                                 InterruptibleWait(player, 3 * world.params.OODALoop[player]),
                                 InterruptibleWait(player, 10 * world.params.OODALoop[player]))
@@ -131,7 +130,13 @@ class LandCombatGame(val world: World = World()) : ActionAbstractGameState {
         }
     }
 
-    override fun translateGene(player: Int, gene: IntArray): Action {
+    /*
+    To apply a filter to translateGene, we could have a list of actions available, anf then run throygh them
+    with some distance metric and pick the closest.
+    Or, given a gene we could 'snap' each dimension to the closest supported dimension.
+    The latter will (clearly?) be faster as we do not need to instantiate the whole list up front.
+     */
+    override fun translateGene(player: Int, gene: IntArray, filterType: String): Action {
         // if the gene does not encode a valid LaunchExpedition, then we interpret it as a Wait action
         // if we take a real action, then we must wait for a minimum period before the next one
         val playerId = numberToPlayerID(player)
@@ -140,14 +145,28 @@ class LandCombatGame(val world: World = World()) : ActionAbstractGameState {
             return NoAction(player, 1000)   // no units left
         val rawFromGene = gene.take(cityGenes).reversed().mapIndexed { i, v -> 10.0.pow(i.toDouble()) * v }.sum().toInt()
         val rawToGene = gene.takeLast(gene.size - cityGenes).take(routeGenes).reversed().mapIndexed { i, v -> 10.0.pow(i.toDouble()) * v }.sum().toInt()
-        val proportion = 0.1 * (gene[cityGenes + routeGenes] + 1)
+        var proportion = 0.1 * (gene[cityGenes + routeGenes] + 1)
 
         val origin = rawFromGene % world.cities.size
         val destination = destinationCity(origin, rawToGene)
-        val encodedWait = (gene[cityGenes + routeGenes] + 1).pow(2)  // normally this is the proportion gene
+        var encodedWait = (gene[cityGenes + routeGenes] + 1).pow(2)  // normally this is the proportion gene
         val actualWait = world.params.OODALoop[player]
 
+        when (filterType) {
+            "core" -> {
+                // we need to snap the wait time and proportion to the possible settings of 'core'
+                // this will mean that RHEA waits more often than it should....
+                encodedWait = when (ln(encodedWait.toFloat() / world.params.OODALoop[player]).roundToInt()) {
+                    -3, -2, -1, 0 -> world.params.OODALoop[player]
+                    1 -> world.params.OODALoop[player] * 3
+                    else -> world.params.OODALoop[player] * 10
+                }
+                proportion = ((proportion - 0.1) * 3.0).roundToInt() / 3.0 + 0.3333
+            }
+        }
+
         val proposedAction = LaunchExpedition(playerId, origin, destination, proportion, actualWait)
+
         if (!proposedAction.isValid(this))
             return InterruptibleWait(player, max(encodedWait, 10))
         return proposedAction

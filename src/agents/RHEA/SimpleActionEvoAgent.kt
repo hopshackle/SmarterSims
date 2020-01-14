@@ -34,8 +34,8 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
             if (genome.size < intPerAction)
                 return NoAction(playerRef, 1000)
             val gene = genome.sliceArray(0 until intPerAction)
-            val chosen = gameState.translateGene(playerRef, gene)
-            currentPlan = convertGenomeToActionList(genome, gameState.copy(), playerRef)
+            val chosen = gameState.translateGene(playerRef, gene, underlyingAgent.actionFilter)
+            currentPlan = convertGenomeToActionList(genome, gameState.copy(), playerRef, underlyingAgent.actionFilter)
             return chosen
         }
         throw AssertionError("Unexpected type of GameState $gameState")
@@ -43,7 +43,7 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
 
     override fun getForwardModelInterface(): SimpleActionPlayerInterface {
         return SimpleActionEvoAgentRollForward((underlyingAgent.buffer
-                ?: intArrayOf()).copyOf(), underlyingAgent.horizon)
+                ?: intArrayOf()).copyOf(), underlyingAgent.horizon, underlyingAgent.actionFilter)
     }
 
     override fun getLastPlan(): List<Action> {
@@ -54,7 +54,7 @@ class SimpleActionEvoAgent(val underlyingAgent: SimpleEvoAgent = SimpleEvoAgent(
 
 }
 
-fun convertGenomeToActionList(genome: IntArray?, gameState: AbstractGameState, playerRef: Int): List<Action> {
+fun convertGenomeToActionList(genome: IntArray?, gameState: AbstractGameState, playerRef: Int, actionFilter: String): List<Action> {
     val intPerAction = gameState.codonsPerAction()
     if (genome == null || genome.isEmpty()) return listOf()
     if (gameState is ActionAbstractGameState) {
@@ -62,7 +62,7 @@ fun convertGenomeToActionList(genome: IntArray?, gameState: AbstractGameState, p
         gameState.registerAgent(1, SimpleActionDoNothing(1000))
         val retValue = (0 until (genome.size / intPerAction)).map { i ->
             val gene = genome.sliceArray(i * intPerAction until (i + 1) * intPerAction)
-            val action = gameState.translateGene(playerRef, gene)
+            val action = gameState.translateGene(playerRef, gene, actionFilter)
             val finishTime = action.nextDecisionPoint(playerRef, gameState)
             action.apply(gameState)
             gameState.next(finishTime.first - gameState.nTicks())
@@ -73,7 +73,7 @@ fun convertGenomeToActionList(genome: IntArray?, gameState: AbstractGameState, p
     return emptyList()
 }
 
-fun elapsedLengthOfPlan(genome: IntArray, gameState: AbstractGameState, playerRef: Int): Int {
+fun elapsedLengthOfPlan(genome: IntArray, gameState: AbstractGameState, playerRef: Int, actionFilter: String): Int {
     val intPerAction = gameState.codonsPerAction()
     val startingTime = gameState.nTicks()
     if (genome.size < intPerAction) return 0
@@ -82,7 +82,7 @@ fun elapsedLengthOfPlan(genome: IntArray, gameState: AbstractGameState, playerRe
         var i = 0
         do {
             val gene = genome.sliceArray(i * intPerAction until (i + 1) * intPerAction)
-            val action = gameState.translateGene(playerRef, gene)
+            val action = gameState.translateGene(playerRef, gene, actionFilter)
             val nextDecisionTime = action.nextDecisionPoint(playerRef, gameState)
             gameState.planEvent(gameState.nTicks(), action)
             gameState.next(nextDecisionTime.first - gameState.nTicks())
@@ -95,7 +95,7 @@ fun elapsedLengthOfPlan(genome: IntArray, gameState: AbstractGameState, playerRe
 /*
 Will take actions using a specified genome...until the sequence runs out
  */
-class SimpleActionEvoAgentRollForward(var genome: IntArray, val horizon: Int = 1) : SimpleActionPlayerInterface {
+class SimpleActionEvoAgentRollForward(var genome: IntArray, val horizon: Int = 1, val actionFilter: String)  : SimpleActionPlayerInterface {
 
     val scoreByTime = mutableListOf<Pair<Int, Double>>()
 
@@ -105,7 +105,7 @@ class SimpleActionEvoAgentRollForward(var genome: IntArray, val horizon: Int = 1
         if (genome.size >= intPerAction) {
             val gene = genome.sliceArray(0 until intPerAction)
             genome = genome.sliceArray(intPerAction until genome.size)
-            val retValue = gameState.translateGene(playerRef, gene)
+            val retValue = gameState.translateGene(playerRef, gene, actionFilter)
             if (retValue is InterruptibleWait) {
                 return NoAction(retValue.playerRef, retValue.waitTime)
             }
@@ -124,7 +124,7 @@ class SimpleActionEvoAgentRollForward(var genome: IntArray, val horizon: Int = 1
     override fun getAgentType() = "SimpleActionEvoAgentRollForward"
 
     override fun getForwardModelInterface(): SimpleActionPlayerInterface {
-        return SimpleActionEvoAgentRollForward(genome.copyOf(), horizon)
+        return SimpleActionEvoAgentRollForward(genome.copyOf(), horizon, actionFilter)
     }
 
     override fun backPropagate(finalScore: Double, finalTime: Int) {}

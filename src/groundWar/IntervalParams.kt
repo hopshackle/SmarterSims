@@ -210,9 +210,11 @@ data class AgentParams(
                             flipAtLeastOneValue = params.contains("flipAtLeastOneValue"),
                             probMutation = getParam("probMutation", "0.01").toDouble(),
                             discountFactor = getParam("discountFactor", "1.0").toDouble(),
+                            actionFilter = getParam("actionFilter", ""),
                             name = colour + "_RHEA"),
                     opponentModel = opponentModel ?: SimpleActionDoNothing(1000))
-            "RHCA" -> RHCAAgent(
+            "RHCA"
+            -> RHCAAgent(
                     flipAtLeastOneValue = params.contains("flipAtLeastOneValue"),
                     probMutation = getParam("probMutation", "0.01").toDouble(),
                     sequenceLength = sequenceLength,
@@ -223,6 +225,7 @@ data class AgentParams(
                     useShiftBuffer = params.contains("useShiftBuffer"),
                     horizon = planningHorizon,
                     discountFactor = getParam("discountFactor", "1.0").toDouble(),
+                    actionFilter = getParam("actionFilter", ""),
                     name = colour + "_RHCA")
             "MCTS" -> MCTSTranspositionTableAgentMaster(
                     MCTSParameters(
@@ -250,7 +253,7 @@ data class AgentParams(
     }
 
     fun getOpponentModel(settingsMap: Map<String, Any> = emptyMap()): SimpleActionPlayerInterface? {
-        val oppParams = (opponentModel.split(":") + (opponentModel.split(":").size..2).map{""}).toMutableList()
+        val oppParams = (opponentModel.split(":") + (opponentModel.split(":").size..2).map { "" }).toMutableList()
         // We always oppAttack. oppWithdraw and oppReinforce are then switched off if they have a value 0
         // Otherwise they go at that priority (high numbers before lower ones), with Attack at 10.
         // in the case of a tie,

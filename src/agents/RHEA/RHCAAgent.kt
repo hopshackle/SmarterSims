@@ -16,6 +16,7 @@ data class RHCAAgent(
         val useShiftBuffer: Boolean = true,
         val discountFactor: Double = 1.0,
         val horizon: Int = 1,
+        val actionFilter: String = "",
         val name: String = "RHCAAgent"
 ) : SimpleActionPlayerInterface {
 
@@ -73,9 +74,9 @@ data class RHCAAgent(
         StatsCollator.addStatistics("${name}_ScoreTime", scoreTime)
         StatsCollator.addStatistics("${name}_BreedTime", breedTime)
         StatsCollator.addStatistics("${name}_Evals", iterations)
-        StatsCollator.addStatistics("${name}_HorizonUsed", elapsedLengthOfPlan(lastBest, gameState.copy(), playerRef))
+        StatsCollator.addStatistics("${name}_HorizonUsed", elapsedLengthOfPlan(lastBest, gameState.copy(), playerRef, actionFilter))
 
-        currentPlan = convertGenomeToActionList(lastBest, gameState.copy(), playerRef)
+        currentPlan = convertGenomeToActionList(lastBest, gameState.copy(), playerRef, actionFilter)
 
         return gameState.translateGene(playerRef, lastBest)
     }
@@ -94,7 +95,7 @@ data class RHCAAgent(
             (0 until evals).forEach {
                 val j = opponentOrdering[it]
                 val score = evaluateSequenceDelta(gameState.copy(), currentPopulation[i], playerId,
-                        discountFactor, horizon, SimpleActionEvoAgentRollForward(opponentPopulation[j], horizon))
+                        discountFactor, horizon, SimpleActionEvoAgentRollForward(opponentPopulation[j], horizon, actionFilter))
                 currentScores[i] += score
                 opponentScores[j] -= score // we assume zero-sum for convenience
                 opponentTrials[j]++
@@ -128,7 +129,7 @@ data class RHCAAgent(
 
     override fun getForwardModelInterface(): SimpleActionPlayerInterface {
         if (currentParents.isEmpty()) return SimpleActionDoNothing(1000)
-        return SimpleActionEvoAgentRollForward(currentParents[0], horizon)
+        return SimpleActionEvoAgentRollForward(currentParents[0], horizon, actionFilter)
     }
 
     override fun backPropagate(finalScore: Double, finalTime: Int) {}
