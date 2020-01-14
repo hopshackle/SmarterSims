@@ -53,7 +53,7 @@ fun main(args: Array<String>) {
             StatsCollator.clear()
             runGames(maxGames, blueAgent, redAgent, intervalParams, logAllResults = false,
                     scoreFunctions = arrayOf(blueScoreFunction, redScoreFunction), mapOverride = mapOverride, fortVictory = fortVictory)
-            println(String.format("O: %.2f, D: %.2f, Blue wins: %.1f%%", offense, defence, 100.0 * StatsCollator.getStatistics("BLUE_wins")))
+            println(String.format("O: %.2f, D: %.2f, Blue wins: %.1f%%", offense.toFloat(), defence.toFloat(), 100.0 * StatsCollator.getStatistics("BLUE_wins")))
         }
     }
 
