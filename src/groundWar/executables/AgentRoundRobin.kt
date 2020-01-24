@@ -20,6 +20,7 @@ fun main(args: Array<String>) {
     }.toList()
 
     val mapOverride = args.find { it.startsWith("map=") }?.substring(4) ?: ""
+    val outputFile = args.find { it.startsWith("out=") }?.substring(4) ?: "AgentRoundRobin"
     val oneSided = args.contains("oneSided");
     val blueScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCB") })
     val redScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCR") })
@@ -53,14 +54,14 @@ fun main(args: Array<String>) {
         }
     }
 
-    val fileWriter = FileWriter("AgentRoundRobinScores.csv")
+    val fileWriter = FileWriter(outputFile + "_scores.csv")
     fileWriter.write("," + fileNames.joinToString() { it.nameWithoutExtension } + "\n")
     agentScores.zip(fileNames).forEach { (scores, file) ->
         fileWriter.write(file.nameWithoutExtension + ", " + scores.joinToString { d -> String.format("%.1f", d) } + "\n")
     }
     fileWriter.close()
 
-    val fileWriterWins = FileWriter("AgentRoundRobinWins.csv")
+    val fileWriterWins = FileWriter(outputFile + "_wins.csv")
     fileWriterWins.write("," + fileNames.joinToString() { it.nameWithoutExtension } + "\n")
     agentWins.zip(fileNames).forEach { (scores, file) ->
         fileWriterWins.write(file.nameWithoutExtension + ", " + scores.joinToString { d -> String.format("%d", d) } + "\n")

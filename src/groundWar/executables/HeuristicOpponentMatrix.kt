@@ -43,13 +43,18 @@ fun main(args: Array<String>) {
 
     val fortVictory = args.contains("fortVictory")
     val mapOverride = args.find { it.startsWith("map=") }?.substring(4) ?: ""
-
+    val baseParams = agentParams2.params
+            .filterNot { it.contains("attack:") }
+            .filterNot { it.contains("defence:") }
+            .joinToString()
     for (offense in offenseInterval) {
         for (defence in defenseInterval) {
             val overrideBlue = if (opponentModelChange) mapOf("oppAttack" to offense, "oppDefense" to defence) else mapOf()
             val blueAgent = agentParams1.createAgent("BLUE", overrideBlue)
-            val overrideRed = if (!opponentModelChange) mapOf("attack" to offense, "defense" to defence) else mapOf()
-            val redAgent = agentParams2.createAgent("RED", overrideRed)
+            val redAgent = if (opponentModelChange)
+                agentParams2.createAgent("RED")
+            else
+                agentParams2.copy(algoParams = baseParams + String.format(", attack:%.1f, defence:%.1f", offense, defence)).createAgent("RED")
             StatsCollator.clear()
             runGames(maxGames, blueAgent, redAgent, intervalParams, logAllResults = false,
                     scoreFunctions = arrayOf(blueScoreFunction, redScoreFunction), mapOverride = mapOverride, fortVictory = fortVictory)
