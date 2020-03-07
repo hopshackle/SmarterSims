@@ -3,6 +3,7 @@ package mathFunctions
 import evodef.*
 import ntbea.*
 import utilities.StatsCollator
+import java.io.FileWriter
 import kotlin.AssertionError
 import kotlin.math.*
 
@@ -33,6 +34,7 @@ class FunctionReport(val f: NTBEAFunction) {
         val T = (args.find { it.startsWith("T=") }?.split("=")?.get(1) ?: "30").toInt()
         val neighbourhood: Double = args.find { it.startsWith("hood=") }?.split("=")?.get(1)?.toDouble()
                 ?: min(50.0, searchDimensions.second.toDouble().pow(searchDimensions.first) * 0.01)
+        val fileName: String = args.find { it.startsWith("logFile=") }?.split("=")?.get(1) ?: ""
 
         val weightFunction: (Int) -> Double = when (type) {
             "EXP" -> { visits: Int -> 1.0 - exp(-visits.toDouble() / T) }
@@ -64,6 +66,7 @@ class FunctionReport(val f: NTBEAFunction) {
 
         val fullRecord = mutableMapOf<String, Int>()
         StatsCollator.clear()
+        val fileWriter: FileWriter? = if (fileName != "") FileWriter("$fileName") else null
         repeat(runs) {
             evaluator.reset()
             landscapeModel.reset()
@@ -75,8 +78,11 @@ class FunctionReport(val f: NTBEAFunction) {
             val predictedValue = landscapeModel.getMeanEstimate(landscapeModel.bestOfSampled) ?: 0.0
             StatsCollator.addStatistics("ActualValue", actualValue)
             StatsCollator.addStatistics("Delta", predictedValue - actualValue)
-   //         println("Current best sampled point (using mean estimate): " + landscapeModel.bestOfSampled.joinToString() +
-   //                 String.format(", %.3g", landscapeModel.getMeanEstimate(landscapeModel.bestOfSampled)))
+            if (fileWriter != null) {
+                val details = String.format("%.3g, %.3g, %.3g, %s\n", predictedValue, actualValue, predictedValue - actualValue,
+                        landscapeModel.bestOfSampled.joinToString(separator = "|", transform = { it.toInt().toString() }))
+                fileWriter.write(details)
+            }
         }
 
         println(StatsCollator.summaryString())

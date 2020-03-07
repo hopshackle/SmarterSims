@@ -89,7 +89,8 @@ fun main(args: Array<String>) {
                 |kExplore=      The k to use in NTBEA - defaults to 100.0
                 |T=             The T parameter in EXP/LIN/INV/SQRT weight functions
                 |hood=          The size of neighbourhood to look at in NTBEA. Default is min(50, |searchSpace|/100)
-                |game=          PlanetWars/Asteroids/Hartmann3
+                |game=          PlanetWars/Asteroids/Hartmann3/Hartmann6/Branin/GoldsteinPrice
+                |repeat=        The number of times NTBEA should be re-run, to find a single best recommendation
             """.trimMargin()
     )
 
@@ -114,6 +115,7 @@ fun main(args: Array<String>) {
     val kExplore = argParam("kExplore", 100.0)
     val T = argParam("T", 30)
     val evalGames = argParam("evalGames", 1000)
+    val fileName = argParam("logFile", "")
 
     val searchSpace = when (args[0].split("|")[0]) {
         "RHEASimple" -> RHEASimpleSearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultRHEAAgent),
@@ -173,6 +175,7 @@ fun main(args: Array<String>) {
     val neighbourhood = argParam("hood", min(50.0, stateSpaceSize * 0.01))
     val threadCount = argParam("CPU", 1)
     val use3Tuples = args.contains("useThreeTuples")
+    val fileWriter: FileWriter? = if (fileName != "") FileWriter("$fileName") else null
 
     val logger = EvolutionLogger()
     println("Search space consists of $stateSpaceSize states and $twoTupleSize possible 2-Tuples" +
@@ -228,34 +231,11 @@ fun main(args: Array<String>) {
         Triple(evaluator, landscapeModel, searchFramework)
     }
 
-    val context = newFixedThreadPoolContext(threadCount, "NTBEA")
-    val scope = CoroutineScope(context)
-    val startTime = System.currentTimeMillis()
-    val deferredResults = (0 until repeats).map { i ->
-        scope.async(context) {
-            val r = runNTBEA(stuff[i].first, stuff[i].third, totalRuns, reportEvery, evalGames = evalGames, logResults = false)
-            println(String.format("Recommended settings at time = %d have score %.3g +/- %.3g:\t%s\n %s",
-                    ((System.currentTimeMillis() - startTime) / 1000).toInt(),
-                    r.first, r.second,
-                    stuff[i].second.bestOfSampled.joinToString(", ") { String.format("%.0f", it) },
-                    stuff[i].second.bestOfSampled.withIndex().joinToString(separator = "") { (i, data) ->
-                        String.format("\t%s:\t%s\n",
-                                searchSpace.name(i),
-                                when (val v = searchSpace.value(i, data.toInt())) {
-                                    is Int -> String.format("%d", v)
-                                    is Double -> String.format("%.3g", v)
-                                    else -> v.toString()
-                                })
-                    }))
-            Triple(r.first, r.second, stuff[i].second.bestOfSampled)
-        }
-    }
-    runBlocking {
-        val bestResult = deferredResults.map { it.await() }.sortedBy { -it.first }[0]
+    fun printDetailsOfRun(data: Pair<Pair<Double, Double>, DoubleArray>) {
         println(String.format("Recommended settings have score %.3g +/- %.3g:\t%s\n %s",
-                bestResult.first, bestResult.second,
-                bestResult.third.joinToString(", ") { String.format("%.0f", it) },
-                bestResult.third.withIndex().joinToString(separator = "") { (i, data) ->
+                data.first.first, data.first.second,
+                data.second.joinToString(", ") { String.format("%.0f", it) },
+                data.second.withIndex().joinToString(separator = "") { (i, data) ->
                     String.format("\t%s:\t%s\n",
                             searchSpace.name(i),
                             when (val v = searchSpace.value(i, data.toInt())) {
@@ -264,9 +244,32 @@ fun main(args: Array<String>) {
                                 else -> v.toString()
                             })
                 }))
-
     }
+
+    val context = newFixedThreadPoolContext(threadCount, "NTBEA")
+    val scope = CoroutineScope(context)
+    val startTime = System.currentTimeMillis()
+    val deferredResults = (0 until repeats).map { i ->
+        scope.async(context) {
+            val r = runNTBEA(stuff[i].first, stuff[i].third, totalRuns, reportEvery, evalGames = evalGames, logResults = false)
+            val retValue = Pair(r, stuff[i].second.bestOfSampled)
+            if (fileWriter != null) {
+                val details = String.format("%.3g, %.3g, %.3g, %s\n", predictedValue, predictedValue - actualValue,
+                        stuff[i].second.bestOfSampled.joinToString(separator = "|", transform = { it.toInt().toString() }))
+                fileWriter.write(details)
+            }
+            printDetailsOfRun(retValue)
+            retValue
+        }
+    }
+    runBlocking {
+        val bestResult = deferredResults.map { it.await() }.sortedBy { -it.first.first }[0]
+        println("\nFinal Recommendation: ")
+        printDetailsOfRun(bestResult)
+    }
+
 }
+
 
 /*
 The final result will be held in searchFramework.landscapeModel.bestOfSample
