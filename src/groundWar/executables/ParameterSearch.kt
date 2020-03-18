@@ -175,7 +175,6 @@ fun main(args: Array<String>) {
     val neighbourhood = argParam("hood", min(50.0, stateSpaceSize * 0.01))
     val threadCount = argParam("CPU", 1)
     val use3Tuples = args.contains("useThreeTuples")
-    val fileWriter: FileWriter? = if (fileName != "") FileWriter("$fileName") else null
 
     val logger = EvolutionLogger()
     println("Search space consists of $stateSpaceSize states and $twoTupleSize possible 2-Tuples" +
@@ -253,11 +252,6 @@ fun main(args: Array<String>) {
         scope.async(context) {
             val r = runNTBEA(stuff[i].first, stuff[i].third, totalRuns, reportEvery, evalGames = evalGames, logResults = false)
             val retValue = Pair(r, stuff[i].second.bestOfSampled)
-            if (fileWriter != null) {
-                val details = String.format("%.3g, %.3g, %.3g, %s\n", predictedValue, predictedValue - actualValue,
-                        stuff[i].second.bestOfSampled.joinToString(separator = "|", transform = { it.toInt().toString() }))
-                fileWriter.write(details)
-            }
             printDetailsOfRun(retValue)
             retValue
         }
