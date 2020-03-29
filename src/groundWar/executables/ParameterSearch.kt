@@ -12,6 +12,7 @@ import java.io.*
 import kotlin.math.*
 import kotlin.streams.toList
 import kotlinx.coroutines.*
+import utilities.argParam
 
 val defaultMCTSAgent = """
         algorithm=MCTS
@@ -94,28 +95,17 @@ fun main(args: Array<String>) {
             """.trimMargin()
     )
 
-    fun <T> argParam(name: String, default: T): T {
-        val fn: (String) -> T = when (default) {
-            is Int -> { x: String -> x.toInt() as T }
-            is Double -> { x: String -> x.toDouble() as T }
-            is Boolean -> { x: String -> x.toBoolean() as T }
-            else -> { x: String -> x as T }
-        }
-        val v: String? = args.find { it.startsWith(name + "=") }?.split("=")?.getOrNull(1)
-        return if (v == null) default else fn(v)
-    }
-
     if (args.size < 3) throw AssertionError("Must specify at least three parameters: RHEA/MCTS trials STD/EXP_MEAN/EXP_FULL:nn/EXP_SQRT:nn")
     val totalRuns = args[1].split("|")[0].toInt()
     val reportEvery = args[1].split("|").getOrNull(1)?.toInt() ?: totalRuns
-    val repeats = argParam("repeat", 1)
+    val repeats = argParam(args, "repeat", 1)
     val agentParams = agentParamsFromCommandLine(args, "Agent")
     val fortVictory = args.contains("fortVictory")
-    val game = argParam("game", "")
-    val kExplore = argParam("kExplore", 100.0)
-    val T = argParam("T", 30)
-    val evalGames = argParam("evalGames", 1000)
-    val fileName = argParam("logFile", "")
+    val game = argParam(args, "game", "")
+    val kExplore = argParam(args, "kExplore", 100.0)
+    val T = argParam(args, "T", 30)
+    val evalGames = argParam(args, "evalGames", 1000)
+    val fileName = argParam(args, "logFile", "")
 
     val searchSpace = when (args[0].split("|")[0]) {
         "RHEASimple" -> RHEASimpleSearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultRHEAAgent),
@@ -135,7 +125,7 @@ fun main(args: Array<String>) {
     }
 
     val params = {
-        when (val fileName = argParam("GameParams", "")) {
+        when (val fileName = argParam(args, "GameParams", "")) {
             "" -> {
                 println("No GameParams specified - using default values")
                 EventGameParams()
@@ -172,8 +162,8 @@ fun main(args: Array<String>) {
         }.sum()
     }.sum()
 
-    val neighbourhood = argParam("hood", min(50.0, stateSpaceSize * 0.01))
-    val threadCount = argParam("CPU", 1)
+    val neighbourhood = argParam(args, "hood", min(50.0, stateSpaceSize * 0.01))
+    val threadCount = argParam(args, "CPU", 1)
     val use3Tuples = args.contains("useThreeTuples")
 
     val logger = EvolutionLogger()
@@ -301,13 +291,13 @@ fun runNTBEA(evaluator: SolutionEvaluator,
             println("\nSummary of 10 most tried full-tuple statistics:")
             landscapeModel.tuples.find { it.tuple.size == searchSpace.nDims() }
                     ?.ntMap?.map { (k, v) -> k to v }?.sortedByDescending { (_, v) -> v.n() }?.take(10)?.forEach { (k, v) ->
-                println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), landscapeModel.getMeanEstimate(k.v)))
-            }
+                        println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), landscapeModel.getMeanEstimate(k.v)))
+                    }
             println("\nSummary of 5 highest valued full-tuple statistics:")
             landscapeModel.tuples.find { it.tuple.size == searchSpace.nDims() }
                     ?.ntMap?.map { (k, v) -> k to v }?.sortedByDescending { (_, v) -> v.mean() }?.take(3)?.forEach { (k, v) ->
-                println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), landscapeModel.getMeanEstimate(k.v)))
-            }
+                        println(String.format("\t%s\t%d trials\t mean %.3g +/- %.2g\t(NTuple estimate: %.3g)", k, v.n(), v.mean(), v.stdErr(), landscapeModel.getMeanEstimate(k.v)))
+                    }
             println("")
         }
     }

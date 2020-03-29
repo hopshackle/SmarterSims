@@ -2,11 +2,15 @@ package groundWar.executables
 
 import agents.MCTS.*
 import agents.RHEA.*
+import agents.UI.GUIAgent
+import agents.UI.NextMoveContainer
+import agents.UI.QueueNextMove
 import ggi.SimpleActionPlayerInterface
 import groundWar.*
 import groundWar.views.*
 import utilities.*
 import java.awt.*
+import java.awt.event.ActionListener
 import java.io.*
 import javax.swing.*
 import kotlin.math.*
@@ -98,17 +102,28 @@ fun runWithParams(params: EventGameParams,
     val omniView = WorldView(game, mapDimension)
     val redView = WorldView(game, mapDimension)
     val blueView = WorldView(game, mapDimension)
-    multiView.add(omniView)
-    if (params.fogOfWar) {
-        multiView.add(redView)
-        multiView.add(blueView)
-    }
     val bluePlan = PlanView(blueAgent, game, 0)
     val redPlan = PlanView(redAgent, game, 1)
-    if (showAgentPlans) {
-        multiView.add(bluePlan)
-        multiView.add(redPlan)
+    if (blueAgent is GUIAgent) {
+        // we have a human player, so just add their view, but with GUI below it
+        val UIContainer = JSplitPane()
+        UIContainer.orientation = JSplitPane.VERTICAL_SPLIT
+        UIContainer.topComponent = if (params.fogOfWar) blueView else omniView
+        UIContainer.bottomComponent = userInterface(blueAgent.moveDetails as QueueNextMove, world)
+        multiView.add(UIContainer)
+    } else {
+        multiView.add(omniView)
+        if (params.fogOfWar) {
+            multiView.add(redView)
+            multiView.add(blueView)
+        }
+
+        if (showAgentPlans) {
+            multiView.add(bluePlan)
+            multiView.add(redPlan)
+        }
     }
+
     val frame = JEasyFrame(multiView, "Event Based Game")
     frame.defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
 
@@ -130,4 +145,60 @@ fun runWithParams(params: EventGameParams,
     }
 
     println(StatsCollator.summaryString())
+}
+
+fun userInterface(moveQueue: QueueNextMove, world: World): JComponent {
+    val retValue = JPanel(FlowLayout(FlowLayout.LEFT, 5, 5))
+    val fromBox = JTextField("1", 3)
+    val toBox = JTextField(world.allRoutesFromCity[1]?.first()?.toCity.toString(), 3)
+    val percentageBox = JTextField("100", 3)
+    fromBox.inputVerifier = object : InputVerifier() {
+        override fun verify(input: JComponent?): Boolean {
+            try {
+                val newValue = fromBox.text.toInt()
+                return world.cities.size >= newValue
+            } catch (e: Exception) {
+                return false
+            }
+        }
+    }
+    toBox.inputVerifier = object : InputVerifier() {
+        override fun verify(input: JComponent?): Boolean {
+            try {
+                val fromCity = fromBox.text.toInt()
+                val newValue = fromBox.text.toInt()
+                return world.routes.filter { it.fromCity == fromCity && it.toCity == newValue }.isNotEmpty()
+            } catch (e: Exception) {
+                return false
+            }
+        }
+    }
+    percentageBox.inputVerifier = object : InputVerifier() {
+        override fun verify(input: JComponent?): Boolean {
+            try {
+                val newValue = fromBox.getText().toInt()
+                return (newValue in 1..100)
+            } catch (e: Exception) {
+                return false
+            }
+        }
+    }
+
+    val submitButton = JButton("Submit")
+    submitButton.addActionListener {
+        // We take the data from the fields, and add it to the current list of orders
+        moveQueue.actionQueue.add(Triple(fromBox.text.toInt(), toBox.text.toInt(), percentageBox.text.toInt() / 100.0))
+        fromBox.text = "1"
+        toBox.text = world.allRoutesFromCity[1]?.first()?.toCity.toString()
+        percentageBox.text = "100"
+    }
+
+    retValue.add(JLabel("From: "))
+    retValue.add(fromBox)
+    retValue.add(JLabel("To: "))
+    retValue.add(toBox)
+    retValue.add(JLabel("%age (1-100): "))
+    retValue.add(percentageBox)
+    retValue.add(submitButton)
+    return retValue
 }

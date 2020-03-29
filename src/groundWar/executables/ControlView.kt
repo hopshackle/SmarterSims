@@ -1,20 +1,24 @@
 package groundWar.executables
 
+import agents.UI.GUIAgent
+import agents.UI.QueueNextMove
 import groundWar.*
 import java.awt.*
 import java.io.BufferedReader
 import java.io.FileReader
 import javax.swing.*
 import kotlin.reflect.full.memberProperties
+import utilities.argParam
+import java.util.*
 
 fun main(args: Array<String>) {
     //Schedule a job for the event dispatch thread:
     //creating and showing this application's GUI.
-    SwingUtilities.invokeLater { createAndShowGUI() }
+    SwingUtilities.invokeLater { createAndShowGUI(args) }
 }
 
-fun createAndShowGUI() {
-    val view = ControlView()
+fun createAndShowGUI(args: Array<String>) {
+    val view = ControlView(args)
     view.create(JFrame())
 }
 
@@ -40,7 +44,7 @@ val defaultRedAgent = """
         opponentModel=DoNothing
     """.trimIndent()
 
-class ControlView {
+class ControlView(args: Array<String>) {
 
     val params = EventGameParams()
     val propertyMap: MutableMap<String, Any?> = EventGameParams::class.memberProperties.map { it.name to it.get(params) }.toMap().toMutableMap()
@@ -143,7 +147,11 @@ class ControlView {
                         minAssaultFactor = propertyMap["minAssaultFactor"] as DoubleArray,
                         seed = propertyMap["seed"] as Long
                 )
-                val blueAgent = createAgentParamsFromString(blueAgentDetails.text.split("\n")).createAgent("BLUE")
+
+                val blueAgent = if (blueAgentDetails.text.trim().toLowerCase() == "human")
+                    GUIAgent(QueueNextMove())
+                else
+                    createAgentParamsFromString(blueAgentDetails.text.split("\n")).createAgent("BLUE")
                 val redAgent = createAgentParamsFromString(redAgentDetails.text.split("\n")).createAgent("RED")
                 val fileAsLines = if (mapNameField.text != "") BufferedReader(FileReader(mapNameField.text)).readLines().joinToString("\n") else ""
                 val cityValues = if (fileAsLines == "") emptyMap() else victoryValuesFromJSON(fileAsLines)
