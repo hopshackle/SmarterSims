@@ -8,9 +8,13 @@ import agents.UI.QueueNextMove
 import ggi.SimpleActionPlayerInterface
 import groundWar.*
 import groundWar.views.*
+import math.Vec2d
+import org.junit.jupiter.api.Order
 import utilities.*
 import java.awt.*
 import java.awt.event.ActionListener
+import java.awt.event.MouseEvent
+import java.awt.event.MouseListener
 import java.io.*
 import javax.swing.*
 import kotlin.math.*
@@ -109,8 +113,10 @@ fun runWithParams(params: EventGameParams,
         val UIContainer = JSplitPane()
         UIContainer.orientation = JSplitPane.VERTICAL_SPLIT
         UIContainer.topComponent = if (params.fogOfWar) blueView else omniView
-        UIContainer.bottomComponent = userInterface(blueAgent.moveDetails as QueueNextMove, world)
+        val userInterface = LCGUI(blueAgent.moveDetails as QueueNextMove, world)
+        UIContainer.bottomComponent = userInterface
         multiView.add(UIContainer)
+        UIContainer.topComponent.addMouseListener(LandCombatGameMouseListener(if (params.fogOfWar) blueView else omniView, userInterface))
     } else {
         multiView.add(omniView)
         if (params.fogOfWar) {
@@ -147,58 +153,99 @@ fun runWithParams(params: EventGameParams,
     println(StatsCollator.summaryString())
 }
 
-fun userInterface(moveQueue: QueueNextMove, world: World): JComponent {
-    val retValue = JPanel(FlowLayout(FlowLayout.LEFT, 5, 5))
-    val fromBox = JTextField("1", 3)
-    val toBox = JTextField(world.allRoutesFromCity[1]?.first()?.toCity.toString(), 3)
+class IntVerifier(val input: JTextField, val range: IntRange) : InputVerifier() {
+    override fun verify(input: JComponent?): Boolean {
+        return try {
+            val value = this.input.text.toInt()
+            value in range
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+}
+
+class LCGUI(val moveQueue: QueueNextMove, val world: World) : JSplitPane(VERTICAL_SPLIT) {
+    val fromBox = JTextField("0", 3)
+    val toBox = JTextField("0", 3)
     val percentageBox = JTextField("100", 3)
-    fromBox.inputVerifier = object : InputVerifier() {
-        override fun verify(input: JComponent?): Boolean {
-            try {
-                val newValue = fromBox.text.toInt()
-                return world.cities.size >= newValue
-            } catch (e: Exception) {
-                return false
-            }
+
+    init {
+        world.cities.forEach{ println("${it.name} at ${it.location}")}
+
+        val firstLine = JPanel(FlowLayout(FlowLayout.LEFT, 5, 5))
+        fromBox.inputVerifier = IntVerifier(fromBox, 0..world.cities.size)
+        toBox.inputVerifier = IntVerifier(fromBox, 0..world.cities.size)
+        percentageBox.inputVerifier = IntVerifier(fromBox, 0..100)
+
+        val submitButton = JButton("Submit")
+        submitButton.addActionListener {
+            // We take the data from the fields, and add it to the current list of orders
+            moveQueue.actionQueue.add(Triple(fromBox.text.toInt(), toBox.text.toInt(), percentageBox.text.toInt() / 100.0))
+            fromBox.text = "0"
+            toBox.text = "0"
+            percentageBox.text = "100"
         }
-    }
-    toBox.inputVerifier = object : InputVerifier() {
-        override fun verify(input: JComponent?): Boolean {
-            try {
-                val fromCity = fromBox.text.toInt()
-                val newValue = fromBox.text.toInt()
-                return world.routes.filter { it.fromCity == fromCity && it.toCity == newValue }.isNotEmpty()
-            } catch (e: Exception) {
-                return false
-            }
+        val pauseButton = JButton("Pause")
+        pauseButton.addActionListener {
+            paused = !paused
+            pauseButton.text = if (paused) "Re-start" else "Pause"
         }
+        firstLine.add(JLabel("From: "))
+        firstLine.add(fromBox)
+        firstLine.add(JLabel("To: "))
+        firstLine.add(toBox)
+        firstLine.add(JLabel("%age (1-100): "))
+        firstLine.add(percentageBox)
+        firstLine.add(submitButton)
+        firstLine.add(pauseButton)
+        topComponent = firstLine
+        val amountSlider = JSlider(SwingConstants.HORIZONTAL, 1, 100, 100)
+        bottomComponent = amountSlider
+        amountSlider.addChangeListener { percentageBox.text = amountSlider.value.toString() }
     }
-    percentageBox.inputVerifier = object : InputVerifier() {
-        override fun verify(input: JComponent?): Boolean {
-            try {
-                val newValue = fromBox.getText().toInt()
-                return (newValue in 1..100)
-            } catch (e: Exception) {
-                return false
+}
+
+class LandCombatGameMouseListener(val worldView: WorldView, val userInterface: LCGUI) : MouseListener {
+    enum class OrderState {
+        FROM, TO
+    }
+
+    var currentState = OrderState.FROM
+    override fun mouseClicked(e: MouseEvent?) {
+        if (e != null) {
+            val xScale = worldView.getWidth() / userInterface.world.params.width.toDouble()
+            val yScale = worldView.getHeight() / userInterface.world.params.height.toDouble()
+            val clickPos = Vec2d(e.x.toDouble() / xScale, e.y.toDouble() / yScale)
+            println("Click Position $clickPos")
+            val nearestCity = userInterface.world.cities.withIndex()
+                    .map { Triple(it.index, it.value, it.value.location.distanceTo(clickPos)) }
+                    .minBy { it.third }
+                    ?.first ?: -1
+            if (nearestCity == -1) return
+            when (currentState) {
+                OrderState.FROM -> {
+                    currentState = OrderState.TO
+                    userInterface.fromBox.text = nearestCity.toString()
+                }
+                OrderState.TO -> {
+                    currentState = OrderState.FROM
+                    userInterface.toBox.text = nearestCity.toString()
+                }
             }
         }
     }
 
-    val submitButton = JButton("Submit")
-    submitButton.addActionListener {
-        // We take the data from the fields, and add it to the current list of orders
-        moveQueue.actionQueue.add(Triple(fromBox.text.toInt(), toBox.text.toInt(), percentageBox.text.toInt() / 100.0))
-        fromBox.text = "1"
-        toBox.text = world.allRoutesFromCity[1]?.first()?.toCity.toString()
-        percentageBox.text = "100"
+    override fun mouseReleased(e: MouseEvent?) {
     }
 
-    retValue.add(JLabel("From: "))
-    retValue.add(fromBox)
-    retValue.add(JLabel("To: "))
-    retValue.add(toBox)
-    retValue.add(JLabel("%age (1-100): "))
-    retValue.add(percentageBox)
-    retValue.add(submitButton)
-    return retValue
+    override fun mouseEntered(e: MouseEvent?) {
+    }
+
+    override fun mouseExited(e: MouseEvent?) {
+    }
+
+    override fun mousePressed(e: MouseEvent?) {
+    }
+
 }

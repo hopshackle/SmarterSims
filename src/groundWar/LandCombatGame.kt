@@ -38,6 +38,7 @@ val defaultVictoryFunctions = mutableMapOf(
 class LandCombatGame(val world: World = World()) : ActionAbstractGameState {
 
     val LCG_rnd = Random(world.params.seed)
+
     // the first digits are the city...so we need at least the number of cities
     // then the second is the destination...so we need to maximum degree of a node
     // then the next two are proprtion of force and wait time
@@ -185,16 +186,22 @@ class LandCombatGame(val world: World = World()) : ActionAbstractGameState {
     }
 
     override fun score(player: Int): Double {
-        if (isTerminal())
+        if (isTerminal() && nTicks() <= 1000)
             return if (victoryFunction[numberToPlayerID(player)]?.invoke(this) == true) 10000.0 else -10000.0
         return scoreFunction[numberToPlayerID(player)]?.invoke(this, player) ?: 0.0
     }
 
     override fun isTerminal(): Boolean {
         // game is over if all cities are controlled by the same player, whoever that is
-        return (nTicks() > 1000 ||
-                victoryFunction[PlayerId.Blue]?.invoke(this) ?: false ||
-                victoryFunction[PlayerId.Red]?.invoke(this) ?: false)
+        return (nTicks() > 1000 || victoriousPlayer() != -1)
+    }
+
+    private fun victoriousPlayer(): Int {
+        return when {
+            victoryFunction[PlayerId.Blue]?.invoke(this) ?: false -> playerIDToNumber(PlayerId.Blue)
+            victoryFunction[PlayerId.Red]?.invoke(this) ?: false -> playerIDToNumber(PlayerId.Red)
+            else -> -1
+        }
     }
 
     override fun nTicks() = eventQueue.currentTime

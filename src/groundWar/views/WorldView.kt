@@ -17,9 +17,9 @@ class WorldView(var game: LandCombatGame, val dim: Dimension = Dimension(400, 25
 
     val oliveGreen = Color(84, 79, 61)
 
-    val outline = when {
-        game.world.imageFile == null -> Color.lightGray
-        game.world.imageFile == "" -> Color.lightGray
+    val outline = when (game.world.imageFile) {
+        null -> Color.lightGray
+        "" -> Color.lightGray
         else -> Color.darkGray
     }
 

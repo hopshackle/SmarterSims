@@ -54,10 +54,9 @@ class QueueNextMove(val actionQueue: Queue<Triple<Int, Int, Double>> = LinkedLis
 
     override fun eligibleMoveFor(gameState: LandCombatGame, playerRef: Int): Action {
         if (!actionQueue.isEmpty()) {
-            val inputData = actionQueue.peek()
+            val inputData = actionQueue.poll()
             val proposedAction = LaunchExpedition(numberToPlayerID(playerRef), inputData.first, inputData.second, inputData.third, gameState.world.params.OODALoop[playerRef])
             if (proposedAction.isValid(gameState)) {
-                actionQueue.poll()
                 return proposedAction
             }
         }
@@ -69,7 +68,7 @@ class QueueNextMove(val actionQueue: Queue<Triple<Int, Int, Double>> = LinkedLis
     }
 
     override fun copy(): NextMoveContainer {
-        val qCopy: Queue<Triple<Int, Int, Double>> = LinkedList<Triple<Int, Int, Double>>()
+        val qCopy: Queue<Triple<Int, Int, Double>> = LinkedList()
         actionQueue.forEach { i -> qCopy.add(i) }
         return QueueNextMove(qCopy, this.minWait)
     }
