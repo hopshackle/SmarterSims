@@ -76,7 +76,7 @@ fun main(args: Array<String>) {
     if (args.contains("--help") || args.contains("-h")) println(
             """The first three arguments must be
                 |- search type <RHEA|MCTS|RHCA|Utility|Function>|<filename for searchSpace definition>
-                |- number of runs|report every
+                |- number of <runs>|<report every>
                 |- search algorithm <STD|EXP_MEAN|EXP_SQRT|GP|EXP_FULL:dd> where dd is in [0.0, 1.0]
                 |
                 |Then there are a number of optional arguments:
@@ -90,7 +90,7 @@ fun main(args: Array<String>) {
                 |kExplore=      The k to use in NTBEA - defaults to 100.0
                 |T=             The T parameter in EXP/LIN/INV/SQRT weight functions
                 |hood=          The size of neighbourhood to look at in NTBEA. Default is min(50, |searchSpace|/100)
-                |game=          PlanetWars/Asteroids/Hartmann3/Hartmann6/Branin/GoldsteinPrice
+                |game=          PlanetWars/Asteroids/Hartmann3/Hartmann6/Branin/GoldsteinPrice (default is GroundWar)
                 |repeat=        The number of times NTBEA should be re-run, to find a single best recommendation
             """.trimMargin()
     )
@@ -105,7 +105,6 @@ fun main(args: Array<String>) {
     val kExplore = argParam(args, "kExplore", 100.0)
     val T = argParam(args, "T", 30)
     val evalGames = argParam(args, "evalGames", 1000)
-    val fileName = argParam(args, "logFile", "")
 
     val searchSpace = when (args[0].split("|")[0]) {
         "RHEASimple" -> RHEASimpleSearchSpace(agentParamsFromCommandLine(args, "baseAgent", default = defaultRHEAAgent),

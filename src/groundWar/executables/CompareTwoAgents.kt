@@ -11,11 +11,21 @@ import kotlin.streams.toList
 
 fun main(args: Array<String>) {
     StatsCollator.clear()
+    val helpText = """
+            args[0] is the number of games to run
+            args[1], args[2] are the files that contains agentParams to use for Blue and Red respectively
+            args[3] is the file that contains intervalParams to use (this is used with a fixed set at the moment, it is not resampled for each game)
+            fortVictory     will set insta-win condition being to occupy all forts (the default is all cities)
+            map=            will specify a map to use (the same for all games)
+            SCB/SCR=        the score functions to use for Blue and Red respectively (default is 1 per force unit, 5 per city)
+            logAll=         log all game results (default is true, if false then just reports summary stats)
+    """.trimIndent()
 
+    if (args.contains("-h")) println(helpText)
     // args[0] is the number of games to run
     // args[1], args[2] is the file that contains agentParams to use
     // args[3] is the file that contains intervalParams to use (this is used with a fixed set at the moment, it is not resampled for each game)
-    val maxGames = if (args.size > 0) args[0].toInt() else 100
+    val maxGames = if (args.isNotEmpty()) args[0].toInt() else 100
     val agentParams1 = if (args.size > 1) {
         val fileAsLines = BufferedReader(FileReader(args[1])).lines().toList()
         createAgentParamsFromString(fileAsLines)
@@ -31,12 +41,13 @@ fun main(args: Array<String>) {
 
     val blueScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCB") })
     val redScoreFunction = stringToScoreFunction(args.firstOrNull { it.startsWith("SCR") })
+    val logAll = argParam(args, "logAll", true)
 
     val fortVictory = args.contains("fortVictory")
     val mapOverride = args.find { it.startsWith("map=") }?.substring(4) ?: ""
     StatsCollator.clear()
     runGames(maxGames, agentParams1.createAgent("BLUE"), agentParams2.createAgent("RED"), intervalParams,
-            scoreFunctions = arrayOf(blueScoreFunction, redScoreFunction), mapOverride = mapOverride, fortVictory = fortVictory)
+            scoreFunctions = arrayOf(blueScoreFunction, redScoreFunction), mapOverride = mapOverride, fortVictory = fortVictory, logAllResults = logAll)
     println(StatsCollator.summaryString())
 }
 

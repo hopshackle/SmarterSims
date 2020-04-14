@@ -30,6 +30,7 @@ abstract class HopshackleSearchSpace<T>(fileName: String) : SearchSpace {
                                 Int::class -> it.toInt()
                                 Double::class -> it.toDouble()
                                 Boolean::class -> it.toBoolean()
+                                String::class -> it
                                 else -> throw AssertionError("Currently unsupported class $cl")
                             }
                         }
@@ -42,6 +43,7 @@ abstract class HopshackleSearchSpace<T>(fileName: String) : SearchSpace {
                 is Int -> v.toDouble()
                 is Double -> values[i]
                 is Boolean -> if (v) 1.0 else 0.0
+                is String -> i.toDouble() // if a String, then we return the index of this
                 else -> settings[i].toDouble()      // if not numeric, default to the category
             } as Double
         }.toDoubleArray()
@@ -53,6 +55,7 @@ abstract class HopshackleSearchSpace<T>(fileName: String) : SearchSpace {
                 Int::class -> (v + 0.5).toInt()
                 Double::class -> v
                 Boolean::class -> v > 0.5
+                String::class -> searchValues[i][(v + 0.5).toInt()]
                 else -> throw AssertionError("Unsupported class ${searchTypes[i]}")
             }
         }.toMap()
@@ -75,7 +78,8 @@ class HeuristicSearchSpace(val defaultParams: AgentParams, fileName: String) : H
 
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         val settingsMap = settingsToMap(settings)
-        return defaultParams.copy(opponentModel = "Heuristic").getOpponentModel(settingsMap) ?: SimpleActionDoNothing(1000)
+        return defaultParams.copy(opponentModel = "Heuristic").getOpponentModel(settingsMap)
+                ?: SimpleActionDoNothing(1000)
     }
 }
 
@@ -88,7 +92,11 @@ class RHEASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 "horizon" to Int::class, "timeBudget" to Int::class,
                 "oppWithdraw" to Int::class, "oppReinforce" to Int::class, "oppAttack" to Double::class,
                 "oppRedeploy" to Int::class, "oppDefense" to Double::class)
-    init {defaultParams.checkConsistency(types.keys.toList())}
+
+    init {
+        defaultParams.checkConsistency(types.keys.toList())
+    }
+
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         val settingsMap = settingsToMap(settings)
         return SimpleActionEvoAgent(
@@ -116,9 +124,11 @@ class RHEASimpleSearchSpace(val defaultParams: AgentParams, fileName: String) : 
                 "sequenceLength" to Int::class, "useMutationTransducer" to Boolean::class,
                 "horizon" to Int::class, "timeBudget" to Int::class,
                 "resample" to Int::class, "repeatProb" to Double::class)
+
     init {
         defaultParams.checkConsistency(types.keys.toList())
     }
+
     override fun getAgent(settings: DoubleArray): SimplePlayerInterface {
         val settingsMap = settingsToMap(settings)
         val mutatedPoints = settingsMap.getOrDefault("mutatedPoints", defaultParams.getParam("mutatedPoints", "1.0").toDouble()) as Double
@@ -149,7 +159,11 @@ class RHCASearchSpace(val defaultParams: AgentParams, fileName: String) : Hopsha
                 "sequenceLength" to Int::class,
                 "horizon" to Int::class, "populationSize" to Int::class, "parentSize" to Int::class,
                 "evalsPerGeneration" to Int::class)
-    init {defaultParams.checkConsistency(types.keys.toList())}
+
+    init {
+        defaultParams.checkConsistency(types.keys.toList())
+    }
+
     override fun getAgent(settings: DoubleArray): SimpleActionPlayerInterface {
         val settingsMap = settingsToMap(settings)
 
