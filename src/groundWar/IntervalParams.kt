@@ -162,7 +162,7 @@ data class AgentParams(
 
     fun checkConsistency(allParams: List<String>): Boolean {
         val unknownParams = params.map { it.split(":")[0].trim() }.filterNot {
-            it in listOf("timeBudget", "evalBudget", "tickBudget", "sequenceLength", "horizon")
+            it in listOf("timeBudget", "evalBudget", "tickBudget", "sequenceLength", "horizon", "actionFilter")
         }.filter {
             !allParams.contains(it)
         }

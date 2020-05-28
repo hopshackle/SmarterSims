@@ -248,7 +248,6 @@ open class MCTSTranspositionTableAgentChild(val tree: MutableMap<String, TTNode>
     }
 
     private fun possibleActions(gameState: ActionAbstractGameState, currentState: String, playerRef: Int): List<Action> {
-        // we create X random actions on the same lines as an EvoAgent would
         if (!stateToActionMap.containsKey(currentState)) {
             stateToActionMap[currentState] = gameState.possibleActions(playerRef, params.maxActions, params.actionFilter)
         }
