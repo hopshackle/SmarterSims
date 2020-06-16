@@ -55,7 +55,7 @@ fun runGames(maxGames: Int, blueAgent: SimpleActionPlayerInterface, redAgent: Si
              intervalParams: IntervalParams? = null, eventParams: EventGameParams? = null, worldSeeds: LongArray = longArrayOf(),
              scoreFunctions: Array<(LandCombatGame, Int) -> Double> = arrayOf(interimScoreFunction, interimScoreFunction),
              mapOverride: String = "", logAllResults: Boolean = true,
-             fortVictory: Boolean = false, blueTargetVictory: Boolean = true) {
+             fortVictory: Boolean = false, blueTargetVictory: Boolean = false) {
 
     val agents = mapOf(PlayerId.Blue to blueAgent, PlayerId.Red to redAgent)
 

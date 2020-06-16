@@ -42,14 +42,16 @@ fun main(args: Array<String>) {
                     eventParams = eventParams, worldSeeds = seeds,
                     scoreFunctions = arrayOf(blueScoreFunction, redScoreFunction), mapOverride = mapOverride, fortVictory = fortVictory)
 
+            println(StatsCollator.summaryString())
             if (oneSided) {
                 agentScores[i][j] += StatsCollator.getStatistics("BLUE_SCORE")
-                agentWins[i][j] += (StatsCollator.getStatistics(("BLUE_victory")) * 100.0).toInt()
+                agentWins[i][j] += (StatsCollator.getStatistics("BLUE_victory") * maxGames).toInt()
             } else {
                 agentScores[i][j] += StatsCollator.getStatistics("BLUE_SCORE") / 2.0
                 agentScores[j][i] -= StatsCollator.getStatistics("BLUE_SCORE") / 2.0
-                agentWins[i][j] += (StatsCollator.getStatistics(("BLUE_wins")) * 100.0).toInt()
-                agentWins[j][i] += (maxGames - (StatsCollator.getStatistics(("BLUE_wins"))*100.0).toInt())
+                val gamesWonByBlue = (StatsCollator.getStatistics("BLUE_wins") * maxGames).toInt()
+                agentWins[i][j] += gamesWonByBlue
+                agentWins[j][i] += maxGames - gamesWonByBlue
             }
         }
     }
